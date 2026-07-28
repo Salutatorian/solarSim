@@ -1,0 +1,54 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/SolarSim/UI/AppShell.uss" />
+    <ui:VisualElement name="app-root" class="app-root">
+        <ui:VisualElement name="top-bar" class="top-bar">
+            <ui:Label name="app-title" text="solarSim" class="app-title" />
+            <ui:Label name="project-name" text="Untitled.solarproj" class="project-name" />
+            <ui:VisualElement class="top-bar-spacer" />
+            <ui:Button name="btn-undo" text="Undo" class="toolbar-button" />
+            <ui:Button name="btn-redo" text="Redo" class="toolbar-button" />
+            <ui:Button name="btn-save" text="Save" class="toolbar-button" />
+            <ui:Button name="btn-open" text="Open" class="toolbar-button" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="main-row" class="main-row">
+            <ui:VisualElement name="left-sidebar" class="sidebar left-sidebar">
+                <ui:Label text="COMPONENTS" class="sidebar-title" />
+                <ui:ScrollView name="component-library">
+                    <ui:Label text="Solar Panel" class="section-label" />
+                    <ui:Button name="lib-boviet-270" text="Boviet 270 W" class="library-item" />
+                    <ui:Button name="lib-generic-400" text="Generic 400 W" class="library-item" />
+                    <ui:Button name="lib-generic-550" text="Generic 550 W" class="library-item" />
+                    <ui:Button name="lib-custom-panel" text="+ Custom Panel" class="library-item library-item-accent" />
+                    <ui:Label text="Wires" class="section-label" />
+                    <ui:Button name="lib-pv-wire" text="PV Wire" class="library-item" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="canvas-host" class="canvas-host">
+                <!-- Orthographic scene renders beneath; this host receives overlay widgets -->
+                <ui:VisualElement name="empty-state" class="empty-state">
+                    <ui:Label text="Start your solar design" class="empty-title" />
+                    <ui:Label text="Drag a solar panel from the component library&#10;or create a custom module." class="empty-body" />
+                    <ui:Button name="btn-add-panel" text="Add Solar Panel" class="primary-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="right-inspector" class="sidebar right-sidebar">
+                <ui:Label text="PROPERTIES" class="sidebar-title" />
+                <ui:ScrollView name="inspector-content">
+                    <ui:Label name="inspector-heading" text="PROJECT" class="inspector-heading" />
+                    <ui:Label name="inspector-body" text="Select a panel or wire to inspect." class="inspector-body" />
+                </ui:ScrollView>
+                <ui:VisualElement name="strings-panel" class="strings-panel">
+                    <ui:Label text="STRINGS" class="sidebar-title" />
+                    <ui:ScrollView name="strings-list" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="status-bar" class="status-bar">
+            <ui:Label name="status-text" text="0 Panels  |  0 W DC  |  0 Strings  |  0 Errors  |  0 Warnings" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

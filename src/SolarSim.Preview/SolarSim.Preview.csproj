@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>SolarSim.Preview</RootNamespace>
+    <AssemblyName>solarSim</AssemblyName>
+    <ApplicationTitle>solarSim</ApplicationTitle>
+    <Product>solarSim</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SolarSim.Domain\SolarSim.Domain.csproj" />
+    <ProjectReference Include="..\SolarSim.Application\SolarSim.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\Tools\pvlib_estimate.py" Link="Tools\pvlib_estimate.py" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

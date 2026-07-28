@@ -1,0 +1,196 @@
+:root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --text: #1f1f1f;
+    --muted: #5c5c5c;
+    --border: #e2e2de;
+    --accent: #2f6fed;
+    --danger: #b42318;
+    --warning: #b54708;
+    --success: #027a48;
+    --font: "Segoe UI";
+}
+
+/* Transparent root so the orthographic camera / modules show through the center. */
+.app-root {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--text);
+    font-size: 13px;
+}
+
+.top-bar {
+    flex-direction: row;
+    align-items: center;
+    height: 44px;
+    padding: 0 12px;
+    background-color: var(--surface);
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+    flex-shrink: 0;
+}
+
+.app-title {
+    font-size: 15px;
+    -unity-font-style: bold;
+    margin-right: 16px;
+    color: var(--text);
+}
+
+.project-name {
+    color: var(--muted);
+}
+
+.top-bar-spacer {
+    flex-grow: 1;
+}
+
+.toolbar-button {
+    height: 28px;
+    margin-left: 6px;
+    padding: 0 10px;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: 4px;
+    color: var(--text);
+}
+
+.toolbar-button:hover {
+    background-color: #f0f0ec;
+}
+
+.main-row {
+    flex-grow: 1;
+    flex-direction: row;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.sidebar {
+    width: 240px;
+    background-color: var(--surface);
+    border-color: var(--border);
+    padding: 10px;
+    flex-shrink: 0;
+}
+
+.left-sidebar {
+    border-right-width: 1px;
+}
+
+.right-sidebar {
+    border-left-width: 1px;
+    width: 280px;
+}
+
+.sidebar-title {
+    -unity-font-style: bold;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+.section-label {
+    margin-top: 12px;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.library-item {
+    height: 32px;
+    margin-bottom: 4px;
+    background-color: #fafaf8;
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    -unity-text-align: middle-left;
+    padding-left: 10px;
+}
+
+.library-item:hover {
+    background-color: #eef3ff;
+    border-color: #c9d8ff;
+}
+
+.library-item-accent {
+    -unity-font-style: bold;
+}
+
+/* Must stay transparent — this is the hole onto the 3D design canvas. */
+.canvas-host {
+    flex-grow: 1;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.empty-state {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.empty-title {
+    font-size: 22px;
+    -unity-font-style: bold;
+    margin-bottom: 8px;
+    color: var(--text);
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 8px 14px;
+    border-radius: 6px;
+}
+
+.empty-body {
+    color: var(--muted);
+    white-space: normal;
+    -unity-text-align: middle-center;
+    margin-bottom: 16px;
+    max-width: 360px;
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 8px 14px;
+    border-radius: 6px;
+}
+
+.primary-button {
+    height: 34px;
+    padding: 0 16px;
+    background-color: var(--accent);
+    color: #ffffff;
+    border-radius: 4px;
+    border-width: 0;
+}
+
+.inspector-heading {
+    -unity-font-style: bold;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.inspector-body {
+    color: var(--muted);
+    white-space: normal;
+}
+
+.strings-panel {
+    margin-top: 12px;
+    border-top-width: 1px;
+    border-top-color: var(--border);
+    padding-top: 10px;
+    min-height: 140px;
+}
+
+.status-bar {
+    height: 32px;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 12px;
+    background-color: var(--surface);
+    border-top-width: 1px;
+    border-top-color: var(--border);
+    color: var(--muted);
+    flex-shrink: 0;
+}

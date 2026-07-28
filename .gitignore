@@ -1,0 +1,42 @@
+# Build
+**/bin/
+**/obj/
+*.user
+*.suo
+*.DotSettings.user
+
+# Unity
+UnityProject/Library/
+UnityProject/Temp/
+UnityProject/Obj/
+UnityProject/Build/
+UnityProject/Builds/
+UnityProject/Logs/
+UnityProject/UserSettings/
+UnityProject/MemoryCaptures/
+UnityProject/*.csproj
+UnityProject/*.sln
+UnityProject/Assembly-CSharp*.csproj
+UnityProject/.vs/
+
+# IDE
+.vs/
+.idea/
+*.swp
+*~
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local / secrets
+.env
+.env.*
+*.solarproj.recovery
+/recovery/
+
+# Test artifacts
+TestResults/
+*.trx
+*.coverage

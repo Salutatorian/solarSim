@@ -1,0 +1,914 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-JW" at "2026-07-28T14:39:52.0302139Z"
+Built from '6000.5/staging' branch; Version is '6000.5.5f1 (d16e074b49fd) revision 13725191'; Using compiler version '194234433'; Build Type 'Release'
+OS: 'Windows 11  (10.0.26200) Professional' Language: 'en' Physical Memory: 64661 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+System  architecture: x64
+Process architecture: x64
+Date: 2026-07-28T14:39:52Z
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.5.5f1\Editor\Unity.exe
+-batchmode
+-nographics
+-quit
+-projectPath
+c:\Users\JW\Desktop\projects\solarSim\UnityProject
+-executeMethod
+SolarSim.Unity.Editor.SceneBootstrap.EnsureMainSceneBatch
+-logFile
+c:\Users\JW\Desktop\projects\solarSim\UnityProject\unity-batch4.log
+Successfully changed project path to: c:\Users\JW\Desktop\projects\solarSim\UnityProject
+C:/Users/JW/Desktop/projects/solarSim/UnityProject
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-main-allocator-mimalloc-enabled=0"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+Logging is directed to a specific file, skipping project log.Player connection [37000]  Target information:
+
+Player connection [37000]  * "[IP] 192.168.1.137 [Port] 55504 [Flags] 2 [Guid] 884931820 [EditorId] 884931820 [Version] 1048832 [Id] WindowsEditor(7,DESKTOP-1KIOJU3) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" 
+
+Player connection [37000]  * "[IP] 10.5.0.2 [Port] 55504 [Flags] 2 [Guid] 884931820 [EditorId] 884931820 [Version] 1048832 [Id] WindowsEditor(7,DESKTOP-1KIOJU3) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" 
+
+Player connection [37000] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [37000] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Package Manager] Connected to IPC stream "Upm-32532" after 0.2 seconds.
+[Licensing::Module] Licensing is not yet initialized.
+[Licensing::Client] Error: HandshakeResponse reported an error:
+	ResponseCode: 505
+	ResponseStatus: Unsupported protocol version '1.18.1'.
+[Licensing::Module] Error: Failed to handshake to channel: "LicenseClient-JW"
+[Licensing::IpcConnector] LicenseClient-JW channel disconnected successfully.
+[Licensing::IpcConnector] Channel LicenseClient-JW-6000.5.5 doesn't exist
+[Licensing::Module] Successfully launched the LicensingClient (PId: 17668)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-JW-6000.5.5" at "2026-07-28T14:39:53.2466758Z"
+[Licensing::Client] Code 10 while verifying Licensing Client signature (process Id: 17668, path: "C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe")
+[Licensing::Module] LicensingClient has failed validation; ignoring
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.18.1+9fbee8e
+  Session Id:              0a0cd5f6a2be4d498641253f11ea036b
+  Correlation Id:          56c820a67dd605a5b971b45e0dda5cba
+  External correlation Id: 2619608792021499855
+  Machine Id:              fDzdlJJmCmr+dCM7uHNVPTVlmZU=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-JW-6000.5.5" (connect: 0.25s, validation: 0.09s, handshake: 0.01s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-JW-6000.5.5-notifications" at "2026-07-28T14:39:53.3446314Z"
+[Licensing::Module] Connected to LicensingClient (PId: 17668, launch time: 0.00, total connection time: 0.34s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] License group:
+  Id: 17867665166671-UnityPersXXXX
+  Product: Unity Personal
+  Type: Assigned
+  Expiration: Unlimited
+[Licensing::Client] Successfully updated license, isAsync: True, time: 0.01
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] Licensing Background thread has ended after 1.35s
+[Licensing::Module] Licensing is initialized (took 0.79s).
+[Licensing::Client] Successfully resolved entitlement details
+Library Redirect Path: Library/
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+Initialize engine version: 6000.5.5f1 (d16e074b49fd)
+[Subsystems] Discovering subsystems at path C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path C:/Users/JW/Desktop/projects/solarSim/UnityProject/Assets
+Forcing GfxDevice: Null
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+Initialize mono
+Mono path[0] = 'C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Managed'
+Mono path[1] = 'C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/runtime/netstandard2.1'
+Mono path[2] = 'C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/MonoBleedingEdge/lib/mono/unityjit-win32'
+Mono config path = 'C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56532
+CodeReloadManager initialized
+ImportWorker Server TCP listen port: 0
+AcceleratorClientConnectionCallback - disconnected - :0
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/PlaybackEngines/WebGLSupport/UnityEditor.WebGL.Extensions.dll
+Register platform support module: C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/PlaybackEngines/WindowsStandaloneSupport/UnityEditor.WindowsStandalone.Extensions.dll
+Registered in 0.003178 seconds.
+Native extension for WindowsStandalone target not found
+Native extension for WebGL target not found
+Package Manager log level set to [2]
+ScheduleIndexationOnStartup MainProcess:False IndexOnStartup:False
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.298 seconds
+Domain Reload Profiling: 749ms
+	BeginReloadAssembly (122ms)
+		CreateAndSetChildDomain (9ms)
+	RebuildCommonClasses (4ms)
+	RebuildNativeTypeToScriptingClass (14ms)
+	initialDomainReloadingComplete (64ms)
+	LoadAllAssembliesAndSetupDomain (246ms)
+		LoadAssemblies (108ms)
+		AnalyzeDomain (179ms)
+			TypeCache.Refresh (178ms)
+				TypeCache.ScanAssembly (165ms)
+	FinalizeReload (300ms)
+		SetupLoadedEditorAssemblies (0ms)
+			BeforeProcessingInitializeOnLoad (70ms)
+			ProcessInitializeOnLoadAttributes (74ms)
+			ProcessInitializeOnLoadMethodAttributes (91ms)
+[Licensing::Client] Successfully resolved entitlement details
+Application.AssetDatabase Initial Refresh Start
+[Package Manager] Restoring resolved packages state from cache
+[Licensing::Client] Successfully resolved entitlement details
+[Package Manager] Registered 17 packages:
+  Packages from [https://packages.unity.com]:
+    com.unity.ide.visualstudio@2.0.23 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.ide.visualstudio@198cdf337d13)
+  Built-in packages:
+    com.unity.ugui@2.5.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.ugui@f2d87ebaaa32)
+    com.unity.modules.androidjni@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.animation)
+    com.unity.modules.audio@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.audio)
+    com.unity.modules.imageconversion@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.jsonserialize)
+    com.unity.modules.physics@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.physics2d)
+    com.unity.modules.ui@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.uielements)
+    com.unity.modules.unitywebrequest@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.unitywebrequest)
+    com.unity.modules.hierarchycore@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.hierarchycore)
+    com.unity.modules.physicscore2d@1.0.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.modules.physicscore2d)
+    com.unity.test-framework@1.7.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.test-framework@1405238725ab)
+    com.unity.ext.nunit@2.1.0 (location: C:\Users\JW\Desktop\projects\solarSim\UnityProject\Library\PackageCache\com.unity.ext.nunit@44f7d31723bd)
+[Subsystems] No new subsystems found in resolved package list.
+[Package Manager] Done registering packages in 0.01 seconds
+[ScriptCompilation] Requested script compilation because: Assembly Definition File(s) changed
+[ScriptCompilation] Requested script compilation because: AssetDatabase observed changes in script compilation related files
+Starting: C:\Program Files\Unity\Hub\Editor\6000.5.5f1\Editor\Data\Tools\BuildPipeline\bee_backend.exe --ipc --defer-dag-verification --dagfile="Library/Bee/1900b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: C:/Users/JW/Desktop/projects/solarSim/UnityProject
+DisplayProgressbar: Compiling Scripts
+ExitCode: 4 Duration: 0s221ms
+Rebuilding DAG because FileSignature timestamp changed: Library/Bee/1900b0aE-inputdata.json
+*** Tundra requires additional run (0.19 seconds), 1 items updated, 244 evaluated
+Starting: C:\Program Files\Unity\Hub\Editor\6000.5.5f1\Editor\Data\netcorerun\netcorerun.exe "C:\Program Files\Unity\Hub\Editor\6000.5.5f1\Editor\Data\Tools\BuildPipeline\ScriptCompilationBuildProgram.exe" "Library/Bee/1900b0aE.dag.json" "Library/Bee/1900b0aE-inputdata.json" "Library\Bee\buildprogram0.traceevents"
+WorkingDir: C:/Users/JW/Desktop/projects/solarSim/UnityProject
+ExitCode: 0 Duration: 0s236ms
+Starting: C:\Program Files\Unity\Hub\Editor\6000.5.5f1\Editor\Data\Tools\BuildPipeline\bee_backend.exe --ipc --defer-dag-verification --dagfile="Library/Bee/1900b0aE.dag" --continue-on-failure --dagfilejson="Library\Bee\1900b0aE.dag.json" --profile="Library/Bee/backend2.traceevents" ScriptAssemblies
+WorkingDir: C:/Users/JW/Desktop/projects/solarSim/UnityProject
+ExitCode: 3 Duration: 0s219ms
+Finished compiling graph: 257 nodes, 2248 flattened edges (2124 ToBuild, 24 ToUse), maximum node priority 105
+[202/254    0s] WriteText Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.rsp
+[245/254    0s] Csc Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.dll (+2 others)
+##### CommandLine
+"C:\Program Files\Unity\Hub\Editor\6000.5.5f1\Editor\Data\DotNetSdk\dotnet.exe" exec "C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/DotNetSdk/sdk/8.0.318/Roslyn/bincore/csc.dll" /nostdlib /noconfig /shared "@Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.rsp" "@Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.rsp2"
+##### Contents of Library\Bee\artifacts\1900b0aE.dag\SolarSim.Runtime.rsp
+-target:library
+-out:"Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.dll"
+-refout:"Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.ref.dll"
+-define:UNITY_6000_5_5
+-define:UNITY_6000_5
+-define:UNITY_6000
+-define:UNITY_5_3_OR_NEWER
+-define:UNITY_5_4_OR_NEWER
+-define:UNITY_5_5_OR_NEWER
+-define:UNITY_5_6_OR_NEWER
+-define:UNITY_2017_1_OR_NEWER
+-define:UNITY_2017_2_OR_NEWER
+-define:UNITY_2017_3_OR_NEWER
+-define:UNITY_2017_4_OR_NEWER
+-define:UNITY_2018_1_OR_NEWER
+-define:UNITY_2018_2_OR_NEWER
+-define:UNITY_2018_3_OR_NEWER
+-define:UNITY_2018_4_OR_NEWER
+-define:UNITY_2019_1_OR_NEWER
+-define:UNITY_2019_2_OR_NEWER
+-define:UNITY_2019_3_OR_NEWER
+-define:UNITY_2019_4_OR_NEWER
+-define:UNITY_2020_1_OR_NEWER
+-define:UNITY_2020_2_OR_NEWER
+-define:UNITY_2020_3_OR_NEWER
+-define:UNITY_2021_1_OR_NEWER
+-define:UNITY_2021_2_OR_NEWER
+-define:UNITY_2021_3_OR_NEWER
+-define:UNITY_2022_1_OR_NEWER
+-define:UNITY_2022_2_OR_NEWER
+-define:UNITY_2022_3_OR_NEWER
+-define:UNITY_2023_1_OR_NEWER
+-define:UNITY_2023_2_OR_NEWER
+-define:UNITY_2023_3_OR_NEWER
+-define:UNITY_6000_0_OR_NEWER
+-define:UNITY_6000_1_OR_NEWER
+-define:UNITY_6000_2_OR_NEWER
+-define:UNITY_6000_3_OR_NEWER
+-define:UNITY_6000_4_OR_NEWER
+-define:UNITY_6000_5_OR_NEWER
+-define:PLATFORM_ARCH_64
+-define:UNITY_64
+-define:UNITY_INCLUDE_TESTS
+-define:ENABLE_AR
+-define:ENABLE_AUDIO
+-define:ENABLE_AUDIO_SCRIPTABLE_PIPELINE
+-define:ENABLE_CACHING
+-define:ENABLE_CLOTH
+-define:ENABLE_EVENT_QUEUE
+-define:ENABLE_MICROPHONE
+-define:ENABLE_MULTIPLE_DISPLAYS
+-define:ENABLE_PHYSICS
+-define:ENABLE_TEXTURE_STREAMING
+-define:ENABLE_VIRTUALTEXTURING
+-define:ENABLE_LZMA
+-define:ENABLE_UNITYEVENTS
+-define:ENABLE_VR
+-define:ENABLE_WEBCAM
+-define:ENABLE_UNITYWEBREQUEST
+-define:ENABLE_WWW
+-define:ENABLE_CLOUD_SERVICES
+-define:ENABLE_CLOUD_SERVICES_ADS
+-define:ENABLE_CLOUD_SERVICES_USE_WEBREQUEST
+-define:ENABLE_UNITY_CONSENT
+-define:ENABLE_UNITY_CLOUD_IDENTIFIERS
+-define:ENABLE_CLOUD_SERVICES_CRASH_REPORTING
+-define:ENABLE_CLOUD_SERVICES_NATIVE_CRASH_REPORTING
+-define:ENABLE_CLOUD_SERVICES_PURCHASING
+-define:ENABLE_CLOUD_SERVICES_ANALYTICS
+-define:ENABLE_CLOUD_SERVICES_BUILD
+-define:ENABLE_EDITOR_GAME_SERVICES
+-define:ENABLE_UNITY_GAME_SERVICES_ANALYTICS_SUPPORT
+-define:ENABLE_CLOUD_LICENSE
+-define:ENABLE_EDITOR_HUB_LICENSE
+-define:ENABLE_WEBSOCKET_CLIENT
+-define:ENABLE_GENERATE_NATIVE_PLUGINS_FOR_ASSEMBLIES_API
+-define:ENABLE_DIRECTOR_AUDIO
+-define:ENABLE_DIRECTOR_TEXTURE
+-define:ENABLE_MANAGED_JOBS
+-define:ENABLE_MANAGED_TRANSFORM_JOBS
+-define:ENABLE_MANAGED_ANIMATION_JOBS
+-define:ENABLE_MANAGED_AUDIO_JOBS
+-define:ENABLE_MANAGED_UNITYTLS
+-define:INCLUDE_DYNAMIC_GI
+-define:ENABLE_SCRIPTING_GC_WBARRIERS
+-define:PLATFORM_SUPPORTS_MONO
+-define:RENDER_SOFTWARE_CURSOR
+-define:ENABLE_MARSHALLING_TESTS
+-define:ENABLE_VIDEO
+-define:ENABLE_NAVIGATION_OFFMESHLINK_TO_NAVMESHLINK
+-define:ENABLE_ACCELERATOR_CLIENT_DEBUGGING
+-define:ENABLE_ACCESSIBILITY_SCREEN_READER
+-define:TEXTCORE_1_0_OR_NEWER
+-define:EDITOR_ONLY_NAVMESH_BUILDER_DEPRECATED
+-define:PLATFORM_STANDALONE_WIN
+-define:PLATFORM_STANDALONE
+-define:UNITY_STANDALONE_WIN
+-define:UNITY_STANDALONE
+-define:ENABLE_RUNTIME_GI
+-define:ENABLE_MOVIES
+-define:ENABLE_NETWORK
+-define:ENABLE_NVIDIA
+-define:ENABLE_AMD
+-define:ENABLE_CRUNCH_TEXTURE_COMPRESSION
+-define:ENABLE_CLOUD_SERVICES_ENGINE_DIAGNOSTICS
+-define:ENABLE_OUT_OF_PROCESS_CRASH_HANDLER
+-define:ENABLE_CLUSTER_SYNC
+-define:ENABLE_CLUSTERINPUT
+-define:PLATFORM_UPDATES_TIME_OUTSIDE_OF_PLAYER_LOOP
+-define:GFXDEVICE_WAITFOREVENT_MESSAGEPUMP
+-define:PLATFORM_USES_EXPLICIT_MEMORY_MANAGER_INITIALIZER
+-define:PLATFORM_SUPPORTS_WAIT_FOR_PRESENTATION
+-define:PLATFORM_SUPPORTS_SPLIT_GRAPHICS_JOBS
+-define:PLATFORM_USES_VULKAN_OLD_SWAPCHAIN
+-define:USE_READ_ASYNC_MANAGED_API
+-define:ENABLE_MONO
+-define:NET_STANDARD_2_0
+-define:NET_STANDARD
+-define:NET_STANDARD_2_1
+-define:NETSTANDARD
+-define:NETSTANDARD2_1
+-define:ENABLE_PROFILER
+-define:DEBUG
+-define:TRACE
+-define:UNITY_ASSERTIONS
+-define:UNITY_EDITOR
+-define:UNITY_EDITOR_64
+-define:UNITY_EDITOR_WIN
+-define:ENABLE_UNITY_COLLECTIONS_CHECKS
+-define:ENABLE_BURST_AOT
+-define:UNITY_TEAM_LICENSE
+-define:ENABLE_CUSTOM_RENDER_TEXTURE
+-define:ENABLE_DIRECTOR
+-define:ENABLE_LOCALIZATION
+-define:ENABLE_SPRITES
+-define:ENABLE_TERRAIN
+-define:ENABLE_TILEMAP
+-define:ENABLE_TIMELINE
+-define:ENABLE_LEGACY_INPUT_MANAGER
+-define:TEXTCORE_FONT_ENGINE_1_5_OR_NEWER
+-define:TEXTCORE_TEXT_ENGINE_1_5_OR_NEWER
+-define:TEXTCORE_FONT_ENGINE_1_6_OR_NEWER
+-define:CSHARP_7_OR_LATER
+-define:CSHARP_7_3_OR_NEWER
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/Microsoft.Bcl.AsyncInterfaces.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/Microsoft.Extensions.Logging.Abstractions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Collections.Immutable.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Diagnostics.DiagnosticSource.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/System.IO.Hashing.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Reflection.Metadata.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Runtime.CompilerServices.Unsafe.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Text.Encodings.Web.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Text.Json.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/Extensions/2.0.0/System.Runtime.InteropServices.WindowsRuntime.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.ComponentModel.Composition.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Core.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Data.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Drawing.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.IO.Compression.FileSystem.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Net.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Numerics.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Runtime.Serialization.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.ServiceModel.Web.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Transactions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Web.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Windows.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Xml.Linq.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Xml.Serialization.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.Xml.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/System.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netfx/mscorlib.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/Microsoft.Win32.Primitives.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.AppContext.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Buffers.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Collections.Concurrent.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Collections.NonGeneric.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Collections.Specialized.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Collections.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.ComponentModel.EventBasedAsync.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.ComponentModel.Primitives.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.ComponentModel.TypeConverter.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.ComponentModel.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Console.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Data.Common.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.Contracts.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.Debug.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.FileVersionInfo.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.Process.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.StackTrace.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.TextWriterTraceListener.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.Tools.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.TraceSource.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Diagnostics.Tracing.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Drawing.Primitives.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Dynamic.Runtime.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Globalization.Calendars.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Globalization.Extensions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Globalization.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.Compression.ZipFile.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.Compression.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.FileSystem.DriveInfo.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.FileSystem.Primitives.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.FileSystem.Watcher.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.FileSystem.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.IsolatedStorage.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.MemoryMappedFiles.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.Pipes.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.UnmanagedMemoryStream.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.IO.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Linq.Expressions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Linq.Parallel.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Linq.Queryable.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Linq.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Memory.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.Http.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.NameResolution.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.NetworkInformation.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.Ping.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.Primitives.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.Requests.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.Security.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.Sockets.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.WebHeaderCollection.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.WebSockets.Client.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Net.WebSockets.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Numerics.Vectors.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.ObjectModel.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Reflection.DispatchProxy.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Reflection.Emit.ILGeneration.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Reflection.Emit.Lightweight.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Reflection.Emit.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Reflection.Extensions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Reflection.Primitives.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Reflection.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Resources.Reader.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Resources.ResourceManager.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Resources.Writer.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.CompilerServices.VisualC.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.Extensions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.Handles.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.InteropServices.RuntimeInformation.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.InteropServices.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.Numerics.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.Serialization.Formatters.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.Serialization.Json.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.Serialization.Primitives.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.Serialization.Xml.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Runtime.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Security.Claims.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Security.Cryptography.Algorithms.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Security.Cryptography.Csp.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Security.Cryptography.Encoding.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Security.Cryptography.Primitives.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Security.Cryptography.X509Certificates.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Security.Principal.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Security.SecureString.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Text.Encoding.Extensions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Text.Encoding.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Text.RegularExpressions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Threading.Overlapped.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Threading.Tasks.Extensions.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Threading.Tasks.Parallel.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Threading.Tasks.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Threading.Thread.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Threading.ThreadPool.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Threading.Timer.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Threading.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.ValueTuple.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Xml.ReaderWriter.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Xml.XDocument.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Xml.XPath.XDocument.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Xml.XPath.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Xml.XmlDocument.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/compat/2.1.0/shims/netstandard/System.Xml.XmlSerializer.dll"
+-r:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/NetStandard/ref/2.1.0/netstandard.dll"
+-r:"Library/PackageCache/com.unity.ext.nunit@44f7d31723bd/net472/unity-custom/nunit.framework.dll"
+-analyzer:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/analyzers/dotnet/roslyn4.0/cs/Microsoft.Extensions.Logging.Generators.dll"
+-analyzer:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/BCLExtensions/TargetingPacks/netstandard2.1/analyzers/dotnet/roslyn4.0/cs/System.Text.Json.SourceGeneration.dll"
+-analyzer:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Tools/BuildPipeline/Unity.Analyzers.Common/Unity.Analyzers.Common.dll"
+-analyzer:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Tools/BuildPipeline/Unity.Analyzers.LongLiving/Unity.Analyzers.LongLiving.dll"
+-analyzer:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Tools/BuildPipeline/Unity.SourceGenerators/Unity.Properties.SourceGenerator.dll"
+-analyzer:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Tools/BuildPipeline/Unity.SourceGenerators/Unity.SourceGenerators.dll"
+-analyzer:"C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/Tools/BuildPipeline/Unity.SourceGenerators/Unity.UIToolkit.SourceGenerator.dll"
+"Assets/SolarSim/Runtime/Application/Commands/CommandHistory.cs"
+"Assets/SolarSim/Runtime/Application/Commands/ProjectCommands.cs"
+"Assets/SolarSim/Runtime/Application/Equipment/CustomPanelFactory.cs"
+"Assets/SolarSim/Runtime/Application/Events/ProjectEvents.cs"
+"Assets/SolarSim/Runtime/Application/GlobalUsings.cs"
+"Assets/SolarSim/Runtime/Application/Project/SolarProject.cs"
+"Assets/SolarSim/Runtime/Application/Serialization/SolarProjectSerializer.cs"
+"Assets/SolarSim/Runtime/Application/Units/UnitConversionService.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/BomScheduleService.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/ConnectionValidator.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/ElectricalCalculationService.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/ElectricalConnection.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/ElectricalGraph.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/ElectricalPort.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/Enums.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/MpptCompatibilityService.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/SingleLineDiagramService.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/SiteDesignConditions.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/StringSizingService.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/TemperatureDeratingService.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/VoltageDropCalculator.cs"
+"Assets/SolarSim/Runtime/Domain/Electrical/WireRouting.cs"
+"Assets/SolarSim/Runtime/Domain/Equipment/ElectricalEquipmentInstance.cs"
+"Assets/SolarSim/Runtime/Domain/Equipment/InverterDefinition.cs"
+"Assets/SolarSim/Runtime/Domain/Equipment/SolarPanelDefinition.cs"
+"Assets/SolarSim/Runtime/Domain/Equipment/SolarPanelInstance.cs"
+"Assets/SolarSim/Runtime/Domain/GlobalUsings.cs"
+"Assets/SolarSim/Runtime/Domain/Roof/RackingLayoutService.cs"
+"Assets/SolarSim/Runtime/Domain/Roof/RackingParameters.cs"
+"Assets/SolarSim/Runtime/Domain/Roof/RoofDocument.cs"
+"Assets/SolarSim/Runtime/Domain/Roof/RoofGeometry.cs"
+"Assets/SolarSim/Runtime/Domain/Roof/RoofSurface.cs"
+"Assets/SolarSim/Runtime/IsExternalInit.cs"
+-langversion:9.0
+/deterministic
+/optimize+
+/debug:portable
+/nologo
+/RuntimeMetadataVersion:v4.0.30319
+/nowarn:0169
+/nowarn:0649
+/nowarn:0282
+/nowarn:1701
+/nowarn:1702
+/utf8output
+/preferreduilang:en-US
+/additionalfile:"Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.UnityAdditionalFile.txt"
+##### Custom Environment Variables
+DOTNET_HOST_PATH=C:\Program Files\Unity\Hub\Editor\6000.5.5f1\Editor\Data\DotNetSdk\dotnet.exe
+DOTNET_MULTILEVEL_LOOKUP=0
+##### ExitCode
+1
+##### Output
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(1,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(2,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(3,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(4,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(1,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(2,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(3,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\Commands\CommandHistory.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(6,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\Equipment\CustomPanelFactory.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\Events\ProjectEvents.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(6,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(8,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\Units\UnitConversionService.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(4,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ConnectionValidator.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalCalculationService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalConnection.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalPort.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\Enums.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\SingleLineDiagramService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\SiteDesignConditions.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\StringSizingService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\TemperatureDeratingService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\VoltageDropCalculator.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\WireRouting.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Equipment\InverterDefinition.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Roof\RackingLayoutService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Roof\RackingParameters.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\VoltageDropCalculator.cs(59,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(13,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(3,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Application\Commands\CommandHistory.cs(25,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(16,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(27,47): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(27,87): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(34,19): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(183,31): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(279,33): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(47,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(50,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(243,38): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(56,28): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(79,28): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(114,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(115,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(233,39): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(98,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(235,94): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(168,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ConnectionValidator.cs(16,26): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(206,67): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(145,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,71): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,85): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(14,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(24,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(32,38): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Roof\RackingLayoutService.cs(145,29): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(65,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(44,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(233,100): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(41,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalConnection.cs(19,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(162,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(26,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(27,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(23,83): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(23,115): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalPort.cs(30,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(149,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(150,33): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(44,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(62,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(29,35): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(92,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(109,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(146,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(173,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(204,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(235,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(262,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(43,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+*** Tundra build failed (0.20 seconds), 2 items updated, 254 evaluated
+## Script Compilation Error for: Csc Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.dll (+2 others)
+## CmdLine: "C:\Program Files\Unity\Hub\Editor\6000.5.5f1\Editor\Data\DotNetSdk\dotnet.exe" exec "C:/Program Files/Unity/Hub/Editor/6000.5.5f1/Editor/Data/DotNetSdk/sdk/8.0.318/Roslyn/bincore/csc.dll" /nostdlib /noconfig /shared "@Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.rsp" "@Library/Bee/artifacts/1900b0aE.dag/SolarSim.Runtime.rsp2"
+## Output:
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(1,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(2,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(3,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(4,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(1,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(2,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(3,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Commands\CommandHistory.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(6,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Equipment\CustomPanelFactory.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Events\ProjectEvents.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(6,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(8,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Units\UnitConversionService.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(4,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ConnectionValidator.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalCalculationService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalConnection.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalPort.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\Enums.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\SingleLineDiagramService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\SiteDesignConditions.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\StringSizingService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\TemperatureDeratingService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\VoltageDropCalculator.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\WireRouting.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Equipment\InverterDefinition.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RackingLayoutService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RackingParameters.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\VoltageDropCalculator.cs(59,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(13,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(3,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Commands\CommandHistory.cs(25,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(16,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(27,47): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(27,87): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(34,19): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(183,31): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(279,33): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(47,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(50,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(243,38): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(56,28): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(79,28): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(114,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(115,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(233,39): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(98,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(235,94): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(168,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ConnectionValidator.cs(16,26): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(206,67): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(145,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,71): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,85): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(14,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(24,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(32,38): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RackingLayoutService.cs(145,29): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(65,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(44,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(233,100): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(41,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalConnection.cs(19,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(162,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(26,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(27,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(23,83): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(23,115): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalPort.cs(30,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(149,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(150,33): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(44,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(62,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(29,35): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(92,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(109,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(146,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(173,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(204,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(235,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(262,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(43,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(1,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(2,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(3,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\GlobalUsings.cs(4,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(1,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(2,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\GlobalUsings.cs(3,1): error CS8773: Feature 'global using directive' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Commands\CommandHistory.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(6,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Equipment\CustomPanelFactory.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Events\ProjectEvents.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(6,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(8,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Units\UnitConversionService.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(4,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ConnectionValidator.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalCalculationService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalConnection.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalPort.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\Enums.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\SingleLineDiagramService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\SiteDesignConditions.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\StringSizingService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\TemperatureDeratingService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\VoltageDropCalculator.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\WireRouting.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Equipment\InverterDefinition.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RackingLayoutService.cs(3,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RackingParameters.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(1,1): error CS8773: Feature 'file-scoped namespace' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\VoltageDropCalculator.cs(59,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(13,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(3,24): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Application\Commands\CommandHistory.cs(25,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(16,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(27,47): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(27,87): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(34,19): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(183,31): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(279,33): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(47,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(50,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(243,38): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\BomScheduleService.cs(56,28): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(79,28): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(114,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(115,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(233,39): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(98,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Commands\ProjectCommands.cs(235,94): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(168,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ConnectionValidator.cs(16,26): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(206,67): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Serialization\SolarProjectSerializer.cs(145,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,71): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofGeometry.cs(301,85): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(14,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(24,18): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(32,38): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RackingLayoutService.cs(145,29): error CS8773: Feature 'record structs' is not available in C# 9.0. Please use language version 10.0 or greater.
+Assets\SolarSim\Runtime\Domain\Roof\RoofDocument.cs(65,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelDefinition.cs(44,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Application\Project\SolarProject.cs(233,100): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(41,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalConnection.cs(19,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Roof\RoofSurface.cs(162,24): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(26,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\SolarPanelInstance.cs(27,23): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(23,83): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(23,115): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalPort.cs(30,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(149,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\ElectricalGraph.cs(150,33): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(44,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Electrical\MpptCompatibilityService.cs(62,29): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(29,35): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(92,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(109,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(146,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(173,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(204,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(235,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(262,15): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Assets\SolarSim\Runtime\Domain\Equipment\ElectricalEquipmentInstance.cs(43,32): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+Total cache size 4946852
+AssetDatabase: script compilation time: 1.004549s
+Total cache size after purge 4946852, took 00:00:00.0138230
+Scripts have compiler errors.
+Exiting without the bug reporter. Application will terminate with return code 1
