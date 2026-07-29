@@ -373,7 +373,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1%"
 if errorlevel 1 exit /b 1
 robocopy "%SOLARSIM_EXTRACT%" "%APPDIR%" /E /R:2 /W:1 /NFL /NDL /NJH /NJS >NUL
 if errorlevel 8 exit /b 1
-copy /Y "%NOTES%" "%APPDIR%\whats-new.txt" >NUL
+REM Prefer whats-new.txt shipped in the zip (real changelog). Fall back to staged notes only if missing.
+if not exist "%APPDIR%\whats-new.txt" copy /Y "%NOTES%" "%APPDIR%\whats-new.txt" >NUL
 if exist "%PENDING%" del /f /q "%PENDING%"
 start "" "%APPDIR%\%EXE%"
 del /f /q "%PS1%" >NUL 2>&1
@@ -413,8 +414,8 @@ del "%~f0"
     public static string FormatWhatsNewDocument(string version, string? notes, DateTimeOffset? publishedAt)
     {
         var when = (publishedAt ?? DateTimeOffset.Now).ToLocalTime();
-        var body = (notes ?? "").Trim();
-        // Avoid double-header if GitHub body already starts with version / Released.
+        var body = StripInstallBoilerplate((notes ?? "").Trim());
+        // Avoid double-header if changelog already starts with version / Released.
         if (body.StartsWith("solarSim ", StringComparison.OrdinalIgnoreCase)
             || body.StartsWith("Released:", StringComparison.OrdinalIgnoreCase))
             return body;
@@ -446,6 +447,11 @@ del "%~f0"
             version = lines[0]["solarSim ".Length..].Trim();
             start = 1;
         }
+        else if (lines.Length > 0 && lines[0].StartsWith("## solarSim ", StringComparison.OrdinalIgnoreCase))
+        {
+            version = lines[0]["## solarSim ".Length..].Trim();
+            start = 1;
+        }
 
         if (start < lines.Length && lines[start].StartsWith("Released:", StringComparison.OrdinalIgnoreCase))
         {
@@ -460,6 +466,47 @@ del "%~f0"
             ? string.Join("\n", lines[start..]).Trim()
             : "";
         return (version, released, body);
+    }
+
+    /// <summary>Removes GitHub release “Run / download zip” install fluff from notes.</summary>
+    public static string StripInstallBoilerplate(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return "";
+        var lines = body.Replace("\r\n", "\n").Split('\n');
+        var keep = new List<string>();
+        var skipping = false;
+        foreach (var line in lines)
+        {
+            var t = line.TrimStart();
+            if (t.StartsWith("### Run", StringComparison.OrdinalIgnoreCase)
+                || t.StartsWith("## Run", StringComparison.OrdinalIgnoreCase))
+            {
+                skipping = true;
+                continue;
+            }
+
+            if (skipping)
+            {
+                if (t.StartsWith('#'))
+                    skipping = false;
+                else
+                    continue;
+            }
+
+            if (t.Contains("win-x64.zip", StringComparison.OrdinalIgnoreCase)
+                && (t.Contains("Download", StringComparison.OrdinalIgnoreCase)
+                    || t.StartsWith('1') || t.StartsWith('-')))
+                continue;
+            if (t.Contains("WebView2 Runtime", StringComparison.OrdinalIgnoreCase)
+                && (t.StartsWith('3') || t.Contains("Install", StringComparison.OrdinalIgnoreCase)))
+                continue;
+            if (t.Contains("Unzip and run", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            keep.Add(line);
+        }
+
+        return string.Join("\n", keep).Trim();
     }
 
     public static string StagedZipPath(string version) =>

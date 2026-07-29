@@ -218,7 +218,7 @@ public partial class MainWindow : Window
             RefreshStatusAndInspector();
         }
 
-        ShowWhatsNewIfPresent();
+        ShowWhatsNewAfterProjectReady();
         AppUpdateService.Instance.StateChanged += OnUpdateServiceStateChanged;
         AppUpdateService.Instance.ApplyRequested += OnUpdateApplyRequested;
         Closed += (_, _) =>
@@ -229,6 +229,20 @@ public partial class MainWindow : Window
         await StartUpdateScanningAsync();
     }
 
+    /// <summary>
+    /// Home → open/create project → MainWindow paints, then What's new pops over the editor.
+    /// </summary>
+    private void ShowWhatsNewAfterProjectReady()
+    {
+        void OnRendered(object? sender, EventArgs e)
+        {
+            ContentRendered -= OnRendered;
+            Dispatcher.BeginInvoke(ShowWhatsNewIfPresent, DispatcherPriority.ApplicationIdle);
+        }
+
+        ContentRendered += OnRendered;
+    }
+
     private void ShowWhatsNewIfPresent()
     {
         var notes = AppUpdateService.ConsumeWhatsNewNotes();
@@ -236,6 +250,10 @@ public partial class MainWindow : Window
         var (version, released, body) = AppUpdateService.ParseWhatsNewDocument(notes);
         if (string.IsNullOrWhiteSpace(version))
             version = GetAppVersion();
+        // Drop GitHub install boilerplate if an older staged note slipped through.
+        body = AppUpdateService.StripInstallBoilerplate(body);
+        if (string.IsNullOrWhiteSpace(body) && string.IsNullOrWhiteSpace(released))
+            return;
         var dlg = new WhatsNewDialog(version, released, body) { Owner = this };
         dlg.ShowDialog();
     }

@@ -226,6 +226,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Mini toast is Update / Cancel only — no download progress there (bar stays in Settings)
 - Clicking Update once downloads and auto-installs at 100% with no second toast click
 
+### What's new after Home (`0.1.11`)
+- What's new dialog waits until you leave Home and open/create a project (shows over the editor)
+- Uses the shipped changelog (not GitHub zip/install boilerplate)
+
 ---
 
 ## How to verify for submission
