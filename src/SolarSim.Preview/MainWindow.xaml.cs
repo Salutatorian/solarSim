@@ -988,8 +988,16 @@ public partial class MainWindow : Window
             AddInspectorSection("Size");
             AddInspectorRow("Width", $"{eq.WidthMm:0} mm");
             AddInspectorRow("Height", $"{eq.HeightMm:0} mm");
-            AddInspectorNote("Drag the corner handle to resize · Shift = keep aspect.");
+            AddInspectorNote("Drag the corner handle to scale size (aspect locked — never stretches into a square).");
 
+            if (eq.Kind == EquipmentKind.Battery)
+            {
+                AddInspectorSection("Connections");
+                AddInspectorRow("Top", ElectricalEquipmentInstance.HasDualBatteryTerminals(eq)
+                    ? "BAT1± / BAT2±"
+                    : "BAT+ / BAT−");
+                AddInspectorNote("Terminals sit on the top edge — route down to a battery disconnect or inverter BAT.");
+            }
             if (eq.Kind == EquipmentKind.PvDisconnect)
             {
                 AddInspectorSection("Rating check");
@@ -1489,9 +1497,11 @@ public partial class MainWindow : Window
             var thickness = selected ? 2.5 : 1.75;
             var stroke = selected ? cableBrushSelected : cableBrush;
 
-            // Wires sit under panels normally; selected wire comes forward for inspection.
-            var wireZ = selected ? 720 : 40;
-            var hitZ = selected ? 721 : 41;
+            // Panel↔panel cables stay under modules; equipment cables sit above gear so they stay draggable.
+            var startEq = _project.Graph.Equipment.ContainsKey(start.OwnerComponentId);
+            var endEq = _project.Graph.Equipment.ContainsKey(end.OwnerComponentId);
+            var wireZ = selected ? 720 : (startEq || endEq ? 120 : 40);
+            var hitZ = selected ? 721 : (startEq || endEq ? 121 : 41);
 
             laneByConnection.TryGetValue(connection.Id, out var lane);
             var route = BuildPvWireRoute(start, end, p1, p2, connection, obstacles, lane.offset * laneSpacing);
@@ -1580,7 +1590,7 @@ public partial class MainWindow : Window
             };
             Canvas.SetLeft(handle, midX - pillW / 2);
             Canvas.SetTop(handle, midY - pillH / 2);
-            Panel.SetZIndex(handle, 920);
+            Panel.SetZIndex(handle, 980);
 
             var segIndex = i;
             var isHorizontal = horizontal;
@@ -2073,8 +2083,16 @@ public partial class MainWindow : Window
             }
 
             var pos = e.GetPosition(DesignCanvas);
-            if (_selectedConnectionIds.Contains(connectionId)
-                && TryBeginWireSegmentDrag(connectionId, pos))
+            // First click can drag a segment (bake auto-route → waypoints) — don't require a prior select.
+            if (!_selectedConnectionIds.Contains(connectionId))
+            {
+                _selectedPanelIds.Clear();
+                _selectedEquipmentIds.Clear();
+                _selectedConnectionIds.Clear();
+                _selectedConnectionIds.Add(connectionId);
+            }
+
+            if (TryBeginWireSegmentDrag(connectionId, pos))
             {
                 e.Handled = true;
                 return;
@@ -2989,7 +3007,7 @@ public partial class MainWindow : Window
             viewH / 2 - cy * MmToPx * _zoom);
         if (ZoomLabel is not null)
             ZoomLabel.Text = $"{_zoom * 100:0}%";
-        ClearAllWireWaypointsForReroute();
+        // Keep manual wire waypoints (world mm) — only refresh canvas projection.
         RefreshAll();
     }
 
@@ -3252,8 +3270,7 @@ public partial class MainWindow : Window
         var after = WorldToCanvas(beforeX, beforeY);
         _panOffset.X += cx - after.x;
         _panOffset.Y += cy - after.y;
-        // Drop frozen canvas-era waypoints so Smart Wiring re-anchors to live ports.
-        ClearAllWireWaypointsForReroute();
+        // Waypoints are world-mm — keep user-straightened routes across zoom.
         RefreshAll();
     }
 
@@ -3845,7 +3862,6 @@ public partial class MainWindow : Window
         var after = WorldToCanvas(beforeX, beforeY);
         _panOffset.X += mouse.X - after.x;
         _panOffset.Y += mouse.Y - after.y;
-        ClearAllWireWaypointsForReroute();
         RefreshAll();
         e.Handled = true;
     }
@@ -4072,19 +4088,26 @@ public partial class MainWindow : Window
                 var newW = _resizeStartWidthMm + localDxMm;
                 var newH = _resizeStartHeightMm + localDyMm;
 
-                // Always keep aspect — never stretch the face.
+                // Always scale uniformly (resize ≠ free stretch). Clamp scale so SetSize
+                // min/max cannot squash one axis into a square.
                 if (_resizeStartWidthMm > 1 && _resizeStartHeightMm > 1)
                 {
                     var sx = newW / _resizeStartWidthMm;
                     var sy = newH / _resizeStartHeightMm;
                     var s = Math.Abs(sx) >= Math.Abs(sy) ? sx : sy;
+                    if (s < 0) s = Math.Abs(s);
+                    const double minMm = 180;
+                    const double maxMm = 4000;
+                    var minS = Math.Max(minMm / _resizeStartWidthMm, minMm / _resizeStartHeightMm);
+                    var maxS = Math.Min(maxMm / _resizeStartWidthMm, maxMm / _resizeStartHeightMm);
+                    s = Math.Clamp(s, minS, maxS);
                     newW = _resizeStartWidthMm * s;
                     newH = _resizeStartHeightMm * s;
                 }
 
                 eq.SetSize(newW, newH);
                 _rotateMoved = true;
-                ClearWaypointsTouchingEquipment(eq.Id);
+                // Keep manual wire midpoints — endpoints follow live ports on rebuild.
                 UpdateEquipmentVisual(visual, eq);
                 RebuildWireVisuals();
                 RefreshStatusAndInspector();
@@ -4377,8 +4400,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Zoom changes canvas spacing; drop manual midpoints so routes rebuild from live ports.
-    /// (Segment-handle edits are intentionally reset on zoom — connection stays correct.)
+    /// Drop frozen midpoints so routes rebuild from live ports.
+    /// Prefer keeping waypoints across zoom (world mm); call only when topology forces a full reset.
     /// </summary>
     private void ClearAllWireWaypointsForReroute()
     {
@@ -5803,8 +5826,8 @@ public partial class MainWindow : Window
             else if (ElectricalEquipmentInstance.IsWall10kWBattery(equipment))
                 LayoutBatteryTopDualPorts(visual, equipment, w, h, portSize, half);
             else
-                // Tall 16 kWh packs: bottom terminals (common for battery under disconnect).
-                LayoutBatteryBottomDualPorts(visual, equipment, w, h, portSize, half);
+                // Tall 16 kWh packs: dual BAT± on the top edge (same as other storage packs).
+                LayoutBatteryTopDualPorts(visual, equipment, w, h, portSize, half);
         }
         else if (isPvIsolatorFace)
         {
@@ -6165,36 +6188,6 @@ public partial class MainWindow : Window
             Canvas.SetLeft(ellipse, t * bodyW - half);
             Canvas.SetTop(ellipse, y);
         }
-    }
-
-    private static void LayoutBatteryBottomDualPorts(
-        EquipmentVisual visual,
-        ElectricalEquipmentInstance equipment,
-        double bodyW,
-        double bodyH,
-        double portSize,
-        double half)
-    {
-        var y = bodyH - half * 0.35;
-        var pairGap = Math.Min(portSize * 0.95, bodyW * 0.03);
-
-        void Place(string label, double centerX)
-        {
-            var port = equipment.Ports.FirstOrDefault(p =>
-                p.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
-            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
-            ellipse.Width = portSize;
-            ellipse.Height = portSize;
-            ellipse.ToolTip = label;
-            Canvas.SetLeft(ellipse, centerX - half);
-            Canvas.SetTop(ellipse, y);
-        }
-
-        // 16 kWh: two −/+ pairs along the bottom (parallel lugs).
-        Place("BAT1-", 0.28 * bodyW - pairGap);
-        Place("BAT1+", 0.28 * bodyW + pairGap);
-        Place("BAT2-", 0.72 * bodyW - pairGap);
-        Place("BAT2+", 0.72 * bodyW + pairGap);
     }
 
     /// <summary>

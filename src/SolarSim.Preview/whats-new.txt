@@ -1,12 +1,14 @@
-solarSim 0.1.24
+solarSim 0.1.25
 Released: 2026-07-30
 
-Stability
-• CI + unit tests now reject duplicate App.xaml styles / missing StaticResource keys (the ComboBox crash class)
-• Confirmed clean resource dictionary; home screen launches
+Battery + wiring
+• 16 kWh battery terminals on the TOP edge (not bottom)
+• Drag a wire on first click to move runs (no need to select first)
+• Zoom / fit no longer wipes straightened wire paths
+• Resize scales size with locked aspect — no more squash-to-square at the min size
 
-Use this build (or newer). Delete old unzipped folders from 0.1.20–0.1.22.
+Tip: if an old battery wire still looks odd, click it once and drag the white pills, or delete/reconnect.
 
 Earlier
-• 0.1.23 — remove duplicate ComboBox style
-• 0.1.22 — FieldLabel / App.Resources load fix
+• 0.1.24 — XAML resource guards
+• 0.1.23 — duplicate ComboBox crash fix

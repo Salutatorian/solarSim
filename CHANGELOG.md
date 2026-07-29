@@ -281,6 +281,12 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 ### XAML resource guards (`0.1.24`)
 - Unit tests + `Tools/Validate-XamlResources.ps1` (wired into Release CI) fail the build on duplicate App.xaml keys/implicit styles or missing StaticResource references
 
+### Battery ports + fixed wires (`0.1.25`)
+- 16 kWh battery BAT± on top edge (not bottom)
+- Wire segment drag on first click; equipment cables sit above gear for hit-testing
+- Zoom/fit keep manual waypoints (no auto wipe)
+- Equipment corner resize scales uniformly with min/max scale clamp (no square squash)
+
 ---
 
 ## How to verify for submission
