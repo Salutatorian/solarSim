@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="solarSim"
+        Icon="pack://application:,,,/Assets/solarsim-logo.ico"
         Width="1440" Height="900"
         MinWidth="1100" MinHeight="700"
         Background="{DynamicResource BgBrush}"
@@ -19,6 +20,7 @@
                             CornerRadius="0"
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
+    <Grid>
     <DockPanel Background="{DynamicResource BgBrush}">
         <Border DockPanel.Dock="Top" Background="{DynamicResource ChromeBrush}" Height="40"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
@@ -30,19 +32,20 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Image Style="{StaticResource AppLogoMark}" Width="22" Height="22" Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
                     <TextBlock Text="solarSim" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold"
                                FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="AppVersionLabel" Text="0.1.1" Foreground="{DynamicResource MutedBrush}"
+                    <TextBlock x:Name="AppVersionLabel" Text="0.1.2" Foreground="{DynamicResource MutedBrush}"
                                FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBlock Text="design aid" Foreground="{DynamicResource MutedBrush}" FontSize="11"
                                VerticalAlignment="Center" Margin="0,0,14,0" Opacity="0.85"
                                ToolTip="Not stamped electrical, structural, or bankable-yield approval."/>
-                    <Button Content="File" Style="{StaticResource GhostButton}" Click="OverflowMenu_Click"
-                            x:Name="FileMenuButton" Padding="8,4" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <TextBlock Text="|" Foreground="{DynamicResource BorderBrush}" Margin="6,0" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="ProjectNameLabel" Text="Untitled Project"
-                               Foreground="{DynamicResource MutedBrush}"
-                               FontSize="13" VerticalAlignment="Center"/>
+                    <Button x:Name="FileMenuButton" Content="Untitled" Style="{StaticResource GhostButton}"
+                            Click="OverflowMenu_Click" Padding="8,4" FontSize="13"
+                            Foreground="{DynamicResource TextBrush}"
+                            ToolTip="Project menu"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Button x:Name="RoofPlanButton" Content="Roof" Style="{StaticResource NavTabButton}" Click="RoofPlan_Click"
@@ -62,12 +65,20 @@
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <Button Content="Save" Style="{StaticResource PrimaryButton}" Padding="14,5" Click="Save_Click" Margin="0,0,6,0"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Grid Width="34" Height="32" Margin="0,0,6,0">
+                        <Button x:Name="SettingsGearButton" Content="⚙" Style="{StaticResource IconGhostButton}" Width="34"
+                                Click="Settings_Click" ToolTip="Settings"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        <Ellipse x:Name="SettingsUpdateBadge" Width="9" Height="9" Fill="#EF4444"
+                                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0"
+                                 Visibility="Collapsed" IsHitTestVisible="False"/>
+                    </Grid>
                     <Button x:Name="OverflowMenuButton" Content="⋯" Style="{StaticResource IconGhostButton}" Width="34"
                             Click="OverflowMenu_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Open Project…" Click="Open_Click"/>
-                                <MenuItem Header="Save As…" Click="Save_Click"/>
+                                <MenuItem Header="Save As…" Click="SaveAs_Click"/>
                                 <MenuItem Header="Project Settings…" Click="ProjectSettings_Click"/>
                                 <Separator/>
                                 <MenuItem Header="Single-Line Diagram" Click="SingleLine_Click"/>
@@ -82,6 +93,7 @@
                                 <MenuItem Header="Demo L-Roof" Click="DemoLRoof_Click"/>
                                 <MenuItem Header="Clear Roof" Click="ClearRoof_Click"/>
                                 <Separator/>
+                                <MenuItem Header="Settings…" Click="Settings_Click"/>
                                 <MenuItem Header="About solarSim…" Click="About_Click"/>
                             </ContextMenu>
                         </Button.ContextMenu>
@@ -175,7 +187,7 @@
                                 <Button Content="Rotate roof 15°" Style="{StaticResource PaletteRowButton}" Click="RotateRoof15_Click"
                                         ToolTip="Nudge 15° (Shift = −15°). Or drag the ↻ button — snaps to 90° when close."/>
                                 <Button x:Name="LockRoofButton" Content="Unlock roof" Style="{StaticResource PaletteRowButton}" Click="ToggleRoofLock_Click"
-                                        ToolTip="Import locks the roof so box-select and wiring don't move it. Unlock to edit corners/rotate. Even unlocked: Alt+drag moves the house — plain drag is always marquee."/>
+                                        ToolTip="Import locks corners/move so box-select doesn't nudge the house. Drag the ↻ handle under the roof to rotate anytime. Unlock only to edit corners or Alt+drag-move."/>
                                 <TextBlock Text="Setback" Style="{StaticResource FieldLabel}" Margin="0,12,0,6"/>
                                 <DockPanel>
                                     <TextBlock x:Name="SetbackLabel" DockPanel.Dock="Right" Text="mm" Style="{StaticResource FieldLabel}" Margin="8,0,0,0"/>
@@ -281,6 +293,8 @@
 
                     <!-- Soft empty state — no card -->
                     <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image Style="{StaticResource AppLogoMark}" Width="72" Height="72" Margin="0,0,0,18"
+                               HorizontalAlignment="Center" Opacity="0.95"/>
                         <TextBlock x:Name="EmptyStateTitle" Text="Start with your roof"
                                    FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center"/>
@@ -397,4 +411,34 @@
             </Border>
         </Grid>
     </DockPanel>
+
+        <!-- Bottom-right update toast (local download ready) -->
+        <Border x:Name="UpdateToast"
+                Visibility="Collapsed"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="0,0,18,58" Padding="14,12"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                CornerRadius="10" MaxWidth="320"
+                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <Image Style="{StaticResource AppLogoMark}" Width="20" Height="20" Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
+                    <TextBlock x:Name="UpdateToastTitle" Text="Update ready"
+                               FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" FontSize="13"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock x:Name="UpdateToastBody" TextWrapping="Wrap" Margin="0,0,0,12"
+                           Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                           Text="A new version is downloaded. Apply now or keep working — it will install when you close."/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Later" Style="{StaticResource GhostButton}" Padding="10,5"
+                            Click="UpdateToastLater_Click" Margin="0,0,6,0"/>
+                    <Button Content="Update now" Style="{StaticResource PrimaryButton}" Padding="12,5"
+                            Click="UpdateToastApply_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
 </Window>

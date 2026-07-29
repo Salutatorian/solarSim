@@ -168,6 +168,18 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - `SMOKE.md` checklist; known issues in `RELEASE.md`
 - App version `0.1.1`
 
+### Home + updates + ownership (`0.1.2`)
+- Home screen: name project, choose born path on disk, or open recent (local only)
+- Autosave only to the chosen `.solarproj` path — no silent LocalAppData project files; no cloud sync
+- Settings gear (red badge when update available); blue download % bar; bottom-right Update/Later toast
+- Background GitHub Releases check/download; apply on close or Update now; What's New notes after install
+- Title chrome shows the project name (not “File”); drag-rotate roof anytime with 90° / 45° / 15° magnets
+- Brand logo on home, title bars, empty state, dialogs, About, and Windows exe/taskbar icon
+- Update installer hardening (fail-safe apply, zip host allowlist, progress when size unknown)
+- Home Create uses the typed project name; lock status text clarifies rotate-while-locked
+- Proprietary [LICENSE](LICENSE) + [OWNERSHIP.md](OWNERSHIP.md) — public use OK, please do not fork
+- External URL allowlist for browser opens
+
 ---
 
 ## How to verify for submission

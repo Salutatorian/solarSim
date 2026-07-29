@@ -1,0 +1,55 @@
+PROPRIETARY SOFTWARE LICENSE
+
+Copyright (c) 2026 Salutatorian. All rights reserved.
+
+Owner
+-----
+solarSim is the exclusive property of Salutatorian ("Owner").
+The public GitHub repository exists so people can download and use the
+Windows application. It does not grant ownership, co-authorship, or a
+right to fork, rebrand, or republish this project as someone else's work.
+
+Permission to use (end users)
+-----------------------------
+You may download official Release builds from the Owner's GitHub Releases
+page and use solarSim on your own computers for personal or commercial
+design-aid purposes, subject to the product disclaimer (not stamped
+electrical, structural, or bankable-yield approval).
+
+Project files you create (.solarproj and related local files) belong to
+you. They are stored only on your computer unless you choose otherwise.
+solarSim does not upload your projects to any cloud service operated by
+the Owner.
+
+Source code — restricted
+------------------------
+Viewing source on GitHub does not waive these terms.
+
+Without prior written permission from the Owner, you may NOT:
+  - Fork this repository (including GitHub "Fork")
+  - Copy, mirror, or redistribute the source code
+  - Create derivative works based on the source
+  - Remove or alter copyright, license, or ownership notices
+  - Publish a competing product that is substantially this codebase
+  - Claim authorship or ownership of solarSim
+
+GitHub note
+-----------
+GitHub may still allow a technical "Fork" button on a public repository.
+Using that button, or otherwise copying this source, is still a license
+violation. Please do not fork. Star or download Releases instead.
+To report unauthorized copies, contact the Owner via GitHub.
+
+Updates
+-------
+In-app update checks contact only the Owner's official GitHub Releases
+API for this repository. No project design data is transmitted.
+
+Disclaimer
+----------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+USE AT YOUR OWN RISK.
+
+Contact
+-------
+GitHub: https://github.com/Salutatorian/solarSim

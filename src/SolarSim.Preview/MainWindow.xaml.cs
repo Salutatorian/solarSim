@@ -18,6 +18,7 @@ using SolarSim.Application.Units;
 using SolarSim.Domain.Electrical;
 using SolarSim.Domain.Equipment;
 using SolarSim.Domain.Roof;
+using SolarSim.Preview.Updates;
 
 namespace SolarSim.Preview;
 
@@ -155,6 +156,8 @@ public partial class MainWindow : Window
     private DispatcherTimer? _autoSaveTimer;
     private bool _autoSaveEnabled = true;
     private string? _lastAutoSaveError;
+    private bool _applyUpdateOnCloseRequested;
+    private DispatcherTimer? _updateCheckTimer;
 
     public MainWindow()
     {
@@ -172,18 +175,147 @@ public partial class MainWindow : Window
             ScheduleAutoSave();
         };
         _project.CalculationsUpdated += () => Dispatcher.BeginInvoke(RefreshStatusAndInspector, DispatcherPriority.Background);
-        Loaded += (_, _) =>
-        {
-            if (AppVersionLabel is not null)
-                AppVersionLabel.Text = GetAppVersion();
-            if (ShowAttachmentsCheck is not null)
-                ShowAttachmentsCheck.IsChecked = _showAttachments;
-            RebuildRackingVisuals();
-            TryRecoverOrBindAutosavePath();
-        };
+        Loaded += MainWindow_Loaded;
         ApplyWorkspacePlanUi();
         SetUiTool(UiTool.Select);
         RefreshAll();
+    }
+
+    /// <summary>Open editor with a project that already has a born path on disk.</summary>
+    public MainWindow(string projectPath) : this()
+    {
+        if (string.IsNullOrWhiteSpace(projectPath))
+            throw new ArgumentException("Project path is required.", nameof(projectPath));
+        LoadProjectFromPath(projectPath);
+    }
+
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (AppVersionLabel is not null)
+            AppVersionLabel.Text = GetAppVersion();
+        if (ShowAttachmentsCheck is not null)
+            ShowAttachmentsCheck.IsChecked = _showAttachments;
+        RebuildRackingVisuals();
+
+        if (string.IsNullOrWhiteSpace(_project.FilePath))
+        {
+            // Safety: editor must be opened from Home with a real path.
+            MessageBox.Show(this,
+                "Open or create a project from the home screen so it has a save location on this PC.",
+                "solarSim",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        else
+        {
+            RecentProjectsStore.Remember(_project.FilePath);
+            RefreshStatusAndInspector();
+        }
+
+        ShowWhatsNewIfPresent();
+        AppUpdateService.Instance.StateChanged += OnUpdateServiceStateChanged;
+        Closed += (_, _) => AppUpdateService.Instance.StateChanged -= OnUpdateServiceStateChanged;
+        await StartUpdateScanningAsync();
+    }
+
+    private void ShowWhatsNewIfPresent()
+    {
+        var notes = AppUpdateService.ConsumeWhatsNewNotes();
+        if (string.IsNullOrWhiteSpace(notes)) return;
+        MessageBox.Show(this,
+            $"What's new in this update:\n\n{notes}",
+            "solarSim updated",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    private async Task StartUpdateScanningAsync()
+    {
+        try
+        {
+            await AppUpdateService.Instance.CheckForUpdatesAsync(GetAppVersion());
+            RefreshUpdateUi();
+            var avail = AppUpdateService.Instance.Available;
+            if (avail is not null && !AppUpdateService.Instance.DownloadComplete
+                && !AppUpdateService.Instance.IsDownloading)
+            {
+                // Background download while user keeps working
+                _ = AppUpdateService.Instance.StartDownloadAsync();
+            }
+        }
+        catch
+        {
+            // offline is fine
+        }
+
+        _updateCheckTimer ??= new DispatcherTimer { Interval = TimeSpan.FromHours(4) };
+        _updateCheckTimer.Tick -= UpdateCheckTimer_Tick;
+        _updateCheckTimer.Tick += UpdateCheckTimer_Tick;
+        _updateCheckTimer.Start();
+    }
+
+    private async void UpdateCheckTimer_Tick(object? sender, EventArgs e)
+    {
+        try
+        {
+            await AppUpdateService.Instance.CheckForUpdatesAsync(GetAppVersion());
+            RefreshUpdateUi();
+            if (AppUpdateService.Instance.Available is not null
+                && !AppUpdateService.Instance.DownloadComplete
+                && !AppUpdateService.Instance.IsDownloading)
+                _ = AppUpdateService.Instance.StartDownloadAsync();
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    private void OnUpdateServiceStateChanged() =>
+        Dispatcher.BeginInvoke(RefreshUpdateUi);
+
+    private void RefreshUpdateUi()
+    {
+        var svc = AppUpdateService.Instance;
+        var hasUpdate = svc.Available is not null;
+        if (SettingsUpdateBadge is not null)
+            SettingsUpdateBadge.Visibility = hasUpdate ? Visibility.Visible : Visibility.Collapsed;
+
+        var showToast = svc.DownloadComplete && hasUpdate && !svc.UserDismissedToast;
+        if (UpdateToast is not null)
+        {
+            UpdateToast.Visibility = showToast ? Visibility.Visible : Visibility.Collapsed;
+            if (showToast && svc.Available is not null)
+            {
+                UpdateToastTitle.Text = $"Update {svc.Available.Version} ready";
+                UpdateToastBody.Text = "Downloaded on this PC. Apply now, or keep working — it installs when you close (unless you turn that off in Settings).";
+            }
+        }
+    }
+
+    private void Settings_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SettingsDialog(GetAppVersion(), RefreshUpdateUi) { Owner = this };
+        dlg.ShowDialog();
+        RefreshUpdateUi();
+    }
+
+    private void UpdateToastLater_Click(object sender, RoutedEventArgs e)
+    {
+        AppUpdateService.Instance.UserDismissedToast = true;
+        RefreshUpdateUi();
+    }
+
+    private void UpdateToastApply_Click(object sender, RoutedEventArgs e)
+    {
+        _applyUpdateOnCloseRequested = true;
+        Close();
+    }
+
+    private void LoadProjectFromPath(string path)
+    {
+        var loaded = SolarProjectSerializer.LoadFromFile(path);
+        ReplaceProject(loaded);
     }
 
     private void RefreshAll()
@@ -255,10 +387,7 @@ public partial class MainWindow : Window
 
         UpdateHud(calc, errors, warnings);
 
-        ProjectNameLabel.Text = FriendlyProjectName();
-        ProjectNameLabel.ToolTip = string.IsNullOrEmpty(_project.FilePath)
-            ? "Not saved yet"
-            : _project.FilePath;
+        UpdateProjectNameChrome();
 
         StringsList.Items.Clear();
         for (var i = 0; i < calc.Strings.Count; i++)
@@ -1574,18 +1703,8 @@ public partial class MainWindow : Window
 
     private void About_Click(object sender, RoutedEventArgs e)
     {
-        var version = GetAppVersion();
-        MessageBox.Show(this,
-            $"solarSim {version}\n\n" +
-            "Visual solar design lab for Windows.\n\n" +
-            "Design / simulation aid only — not stamped electrical, " +
-            "structural, or bankable-yield approval.\n\n" +
-            "Map tracer needs Microsoft Edge WebView2 Runtime.\n" +
-            "https://developer.microsoft.com/microsoft-edge/webview2/\n\n" +
-            "Releases: https://github.com/Salutatorian/solarSim/releases",
-            "About solarSim",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var dlg = new AboutDialog(GetAppVersion()) { Owner = this };
+        dlg.ShowDialog();
     }
 
     private static string GetAppVersion()
@@ -1747,15 +1866,21 @@ public partial class MainWindow : Window
 
     private string FriendlyProjectName()
     {
-        var name = string.IsNullOrWhiteSpace(_project.Name) ? "Untitled Project" : _project.Name.Trim();
+        var name = string.IsNullOrWhiteSpace(_project.Name) ? "Untitled" : _project.Name.Trim();
         if (name.EndsWith(".solarproj", StringComparison.OrdinalIgnoreCase))
             name = name[..^".solarproj".Length];
-        // Strip autosave GUID suffixes like Untitled_edcea4b4...
-        var underscore = name.IndexOf('_');
-        if (underscore > 0 && name.Length - underscore > 8
-            && name[(underscore + 1)..].All(IsHexChar))
-            name = name[..underscore];
-        return string.IsNullOrWhiteSpace(name) ? "Untitled Project" : name;
+        // Strip legacy autosave GUID suffix only: Name_<32 hex chars>
+        var underscore = name.LastIndexOf('_');
+        if (underscore > 0)
+        {
+            var suffix = name[(underscore + 1)..];
+            if (suffix.Length == 32 && suffix.All(IsHexChar))
+                name = name[..underscore];
+        }
+        // Drop legacy " Project" suffix from older defaults
+        if (name.EndsWith(" Project", StringComparison.OrdinalIgnoreCase))
+            name = name[..^" Project".Length].TrimEnd();
+        return string.IsNullOrWhiteSpace(name) ? "Untitled" : name;
     }
 
     private static bool IsHexChar(char c) =>
@@ -2575,6 +2700,38 @@ public partial class MainWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_project.FilePath))
+            {
+                SolarProjectSerializer.SaveToFile(_project, _project.FilePath);
+                RecentProjectsStore.Remember(_project.FilePath);
+                RefreshStatusAndInspector();
+                StatusText.Text = $"Saved  |  {System.IO.Path.GetFileName(_project.FilePath)}";
+                return;
+            }
+
+            var dialog = new SaveFileDialog
+            {
+                Filter = "solarSim Project (*.solarproj)|*.solarproj",
+                FileName = "Untitled.solarproj",
+                AddExtension = true,
+                DefaultExt = ".solarproj",
+            };
+            if (dialog.ShowDialog() != true) return;
+            SolarProjectSerializer.SaveToFile(_project, dialog.FileName);
+            RecentProjectsStore.Remember(dialog.FileName);
+            RefreshStatusAndInspector();
+            StatusText.Text = $"Saved  |  {System.IO.Path.GetFileName(dialog.FileName)}";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void SaveAs_Click(object sender, RoutedEventArgs e)
+    {
         var dialog = new SaveFileDialog
         {
             Filter = "solarSim Project (*.solarproj)|*.solarproj",
@@ -2588,9 +2745,9 @@ public partial class MainWindow : Window
         try
         {
             SolarProjectSerializer.SaveToFile(_project, dialog.FileName);
+            RecentProjectsStore.Remember(dialog.FileName);
             RefreshStatusAndInspector();
             StatusText.Text = $"Saved  |  {System.IO.Path.GetFileName(dialog.FileName)}";
-            MessageBox.Show(this, "Project saved.", "solarSim", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -2608,11 +2765,47 @@ public partial class MainWindow : Window
         {
             // don't block close
         }
+
+        var explicitApply = _applyUpdateOnCloseRequested;
+        var shouldApply = explicitApply
+                          || (AppUpdateService.Instance.ApplyOnExit
+                              && AppUpdateService.Instance.DownloadComplete
+                              && AppUpdateService.Instance.Available is not null
+                              && AppUpdateService.Instance.HasStagedUpdate());
+        if (!shouldApply) return;
+
+        try
+        {
+            if (AppUpdateService.Instance.TryLaunchApplyAndExit(Environment.ProcessId))
+                return;
+
+            if (explicitApply)
+            {
+                e.Cancel = true;
+                _applyUpdateOnCloseRequested = false;
+                MessageBox.Show(this,
+                    "Couldn't start the update installer.\n\n" +
+                    "The download may be missing — open Settings → Check for updates, then try again.",
+                    "Update failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (explicitApply)
+            {
+                e.Cancel = true;
+                _applyUpdateOnCloseRequested = false;
+                MessageBox.Show(this, ex.Message, "Update failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
     }
 
     private void ScheduleAutoSave()
     {
         if (!_autoSaveEnabled) return;
+        if (string.IsNullOrWhiteSpace(_project.FilePath)) return;
         _autoSaveTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
         _autoSaveTimer.Stop();
         _autoSaveTimer.Tick -= AutoSaveTimer_Tick;
@@ -2626,48 +2819,16 @@ public partial class MainWindow : Window
         PerformAutoSave(force: false);
     }
 
-    private static string AutosaveDirectory()
-    {
-        var dir = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "solarSim",
-            "projects");
-        System.IO.Directory.CreateDirectory(dir);
-        return dir;
-    }
-
-    private string EnsureAutosaveFilePath()
-    {
-        if (!string.IsNullOrWhiteSpace(_project.FilePath))
-            return _project.FilePath;
-
-        var name = SanitizeFileName(string.IsNullOrWhiteSpace(_project.Name) ? "Untitled" : _project.Name);
-        var path = System.IO.Path.Combine(AutosaveDirectory(), $"{name}_{_project.ProjectId:N}.solarproj");
-        _project.FilePath = path;
-        return path;
-    }
-
-    private void TryRecoverOrBindAutosavePath()
-    {
-        // Bind a stable autosave path early so the first edit persists without a Save dialog.
-        if (string.IsNullOrWhiteSpace(_project.FilePath))
-            EnsureAutosaveFilePath();
-        RefreshStatusAndInspector();
-    }
-
     private void PerformAutoSave(bool force)
     {
         if (!_autoSaveEnabled && !force) return;
+        if (string.IsNullOrWhiteSpace(_project.FilePath)) return;
         try
         {
-            var path = EnsureAutosaveFilePath();
+            var path = _project.FilePath;
             SolarProjectSerializer.SaveToFile(_project, path);
             _lastAutoSaveError = null;
-            if (ProjectNameLabel is not null)
-            {
-                ProjectNameLabel.Text = FriendlyProjectName();
-                ProjectNameLabel.ToolTip = $"Autosaved · {path}";
-            }
+            UpdateProjectNameChrome($"Autosaved on this PC · {path}");
         }
         catch (Exception ex)
         {
@@ -2675,6 +2836,17 @@ public partial class MainWindow : Window
             if (StatusText is not null)
                 StatusText.Text = $"Autosave failed  |  {ex.Message}";
         }
+    }
+
+    private void UpdateProjectNameChrome(string? tooltipOverride = null)
+    {
+        if (FileMenuButton is null) return;
+        var name = FriendlyProjectName();
+        FileMenuButton.Content = name;
+        FileMenuButton.ToolTip = tooltipOverride
+            ?? (string.IsNullOrEmpty(_project.FilePath)
+                ? "Project menu"
+                : $"Project menu · {_project.FilePath}");
     }
 
     private void Open_Click(object sender, RoutedEventArgs e)
@@ -2689,6 +2861,7 @@ public partial class MainWindow : Window
         {
             var loaded = SolarProjectSerializer.LoadFromFile(dialog.FileName);
             ReplaceProject(loaded);
+            RecentProjectsStore.Remember(dialog.FileName);
         }
         catch (Exception ex)
         {
@@ -4698,12 +4871,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_project.Roofs.Roofs.Any(r => r.HasRoof && r.IsLocked))
-        {
-            StatusText.Text = "ROOF  |  Unlock roof first to rotate";
-            return;
-        }
-
+        // Rotate is intentional (button) — allowed even while locked.
         var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -15.0 : 15.0;
         _project.History.Execute(new RotateRoofsCommand(_project, step));
         RefreshAll();
@@ -4727,8 +4895,8 @@ public partial class MainWindow : Window
         _project.NotifyChanged(lockAll ? "Lock roof" : "Unlock roof");
         RefreshAll();
         StatusText.Text = lockAll
-            ? "ROOF  |  Locked — outline won't move while you wire"
-            : "ROOF  |  Unlocked — drag / rotate / straighten enabled";
+            ? "ROOF  |  Locked — corners/move blocked · ↻ rotate still works"
+            : "ROOF  |  Unlocked — corners, Alt+drag move, and straighten enabled";
     }
 
     private void UpdateLockRoofButton()
@@ -5040,6 +5208,16 @@ public partial class MainWindow : Window
 
     private static void OpenExternalUrl(string url)
     {
+        if (!IsAllowedExternalUrl(url))
+        {
+            MessageBox.Show(
+                "Blocked an unexpected link for safety.\n\nsolarSim only opens known official HTTPS pages.",
+                "solarSim",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
         try
         {
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
@@ -5052,6 +5230,20 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }
+    }
+
+    private static bool IsAllowedExternalUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme != Uri.UriSchemeHttps) return false;
+        var host = uri.Host.ToLowerInvariant();
+        return host is "github.com"
+            or "www.github.com"
+            or "developer.microsoft.com"
+            or "console.cloud.google.com"
+            or "developers.google.com"
+            or "maps.googleapis.com"
+            or "solar.googleapis.com";
     }
 
     private async void ImportGoogleSolar_Click(object sender, RoutedEventArgs e)
@@ -5757,16 +5949,17 @@ public partial class MainWindow : Window
 
         // World Y-up → canvas Y-down: maxY is the bottom edge on screen.
         var (cx, bottomY) = WorldToCanvas(midX, maxY);
-        var handleSize = Math.Clamp(24 * Math.Min(_zoom, 1.15), 22, 28);
-        var gap = Math.Max(10, 14 * Math.Min(_zoom, 1.2));
+        var handleSize = Math.Clamp(28 * Math.Min(_zoom, 1.15), 26, 34);
+        var gap = Math.Max(14, 18 * Math.Min(_zoom, 1.2));
         var handleY = bottomY + gap;
 
         _roofRotateHandle = CreateCanvaRotateHandle(
             handleSize,
-            "Drag to rotate · snaps to 90° when close · Shift = 15° · Alt = free");
+            "Drag to rotate · snaps to 90° / 45° / 15° · Shift = hard 15° · Alt = free");
         Canvas.SetLeft(_roofRotateHandle, cx - handleSize / 2);
         Canvas.SetTop(_roofRotateHandle, handleY);
         Panel.SetZIndex(_roofRotateHandle, 1410);
+        _roofRotateHandle.Cursor = Cursors.Hand;
         _roofRotateHandle.MouseLeftButtonDown += (_, e) =>
         {
             if (e.ChangedButton != MouseButton.Left) return;
@@ -5781,11 +5974,6 @@ public partial class MainWindow : Window
     {
         var roofs = _project.Roofs.Roofs.Where(r => r.HasRoof).ToList();
         if (roofs.Count == 0) return;
-        if (roofs.Any(r => r.IsLocked))
-        {
-            StatusText.Text = "ROOF  |  Unlock roof first to rotate";
-            return;
-        }
 
         _roofRotateBaseline.Clear();
         foreach (var roof in roofs)
@@ -5801,6 +5989,7 @@ public partial class MainWindow : Window
         _rotateMoved = false;
         DesignCanvas.CaptureMouse();
         UpdateRotateDegreeLabel(new Point(cx, cy), 0);
+        StatusText.Text = "ROOF  |  Drag to rotate · snaps at 90° / 45° / 15° (Alt = free)";
     }
 
     private void BeginRoofBodyDrag(Point canvasPos)
@@ -5823,7 +6012,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Free rotation by default; magnetic snap to 0/90/180/270 within 8°.
+    /// Free rotation with magnetic snap: strongest at 90°, then 45°, then 15°.
     /// Shift = hard 15° grid. Alt = fully free (no magnet).
     /// </summary>
     private static double SnapRoofDragDegrees(double delta)
@@ -5834,12 +6023,21 @@ public partial class MainWindow : Window
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
             return Math.Round(delta / 15.0) * 15.0;
 
-        const double magnetDeg = 8.0;
-        var nearestOrtho = Math.Round(delta / 90.0) * 90.0;
-        if (Math.Abs(delta - nearestOrtho) <= magnetDeg)
-            return nearestOrtho;
+        // Prefer stronger magnets (checked in order).
+        if (TryMagnet(delta, step: 90, radius: 12, out var ortho))
+            return ortho;
+        if (TryMagnet(delta, step: 45, radius: 7, out var fortyFive))
+            return fortyFive;
+        if (TryMagnet(delta, step: 15, radius: 4, out var fifteen))
+            return fifteen;
 
         return delta;
+    }
+
+    private static bool TryMagnet(double delta, double step, double radius, out double snapped)
+    {
+        snapped = Math.Round(delta / step) * step;
+        return Math.Abs(delta - snapped) <= radius;
     }
 
     private void ApplyLiveRoofRotation(double degrees)
@@ -6015,11 +6213,11 @@ public partial class MainWindow : Window
                 DesignCanvas.Children.Add(handle);
                 _roofVisuals.Add(handle);
             }
-
-            // Canva-style rotate handle (closed unlocked roofs only).
-            if (roof.IsClosed && vertices.Count >= 3)
-                AddRoofRotateHandle(roof);
         }
+
+        // Rotate handle always available on closed roofs (lock only blocks move/vertex edits).
+        if (isActive && roof.IsClosed && vertices.Count >= 3)
+            AddRoofRotateHandle(roof);
 
         foreach (var obstacle in roof.Obstacles)
         {

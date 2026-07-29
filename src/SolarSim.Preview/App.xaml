@@ -1,7 +1,7 @@
 ﻿<Application x:Class="SolarSim.Preview.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             StartupUri="MainWindow.xaml">
+             StartupUri="HomeWindow.xaml">
     <Application.Resources>
         <!-- Default: neutral dark + amber. ThemeController swaps brush colors live. -->
         <SolidColorBrush x:Key="BgBrush" Color="#0E0F11"/>
@@ -37,6 +37,14 @@
 
         <FontFamily x:Key="UiFont">Bahnschrift, Segoe UI, sans-serif</FontFamily>
         <FontFamily x:Key="DisplayFont">Bahnschrift SemiBold, Bahnschrift, Segoe UI Semibold, sans-serif</FontFamily>
+
+        <BitmapImage x:Key="AppLogoImage" UriSource="pack://application:,,,/Assets/solarsim-logo.png"/>
+        <Style x:Key="AppLogoMark" TargetType="Image">
+            <Setter Property="Source" Value="{StaticResource AppLogoImage}"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality"/>
+        </Style>
 
         <CornerRadius x:Key="RadiusSm">6</CornerRadius>
         <CornerRadius x:Key="RadiusMd">8</CornerRadius>

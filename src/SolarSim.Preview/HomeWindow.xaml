@@ -1,0 +1,99 @@
+<Window x:Class="SolarSim.Preview.HomeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="solarSim"
+        Icon="pack://application:,,,/Assets/solarsim-logo.ico"
+        Width="920" Height="620"
+        MinWidth="760" MinHeight="520"
+        Background="{DynamicResource BgBrush}"
+        FontFamily="{StaticResource UiFont}"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanResize">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="6"
+                            GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="{DynamicResource ChromeBrush}" Height="40"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                    <Image Style="{StaticResource AppLogoMark}" Width="20" Height="20" Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
+                    <TextBlock Text="solarSim" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold"
+                               FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="  ·  local projects only" Foreground="{DynamicResource MutedBrush}"
+                               FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="─" Style="{StaticResource TitleBarButton}" Click="Minimize_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button Content="✕" Style="{StaticResource TitleBarButton}" Click="Close_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Margin="36,28">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.15*"/>
+                <ColumnDefinition Width="28"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <Image Style="{StaticResource AppLogoMark}" Width="88" Height="88" Margin="0,0,0,16"
+                       HorizontalAlignment="Left"/>
+                <TextBlock Text="solarSim" FontFamily="{StaticResource DisplayFont}" FontSize="36"
+                           FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                <TextBlock Text="Create a project file on your computer first — nothing is saved to the cloud."
+                           TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
+                           FontSize="13.5" Margin="0,10,0,28" MaxWidth="420"/>
+
+                <TextBlock Text="Project name" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                <TextBox x:Name="NameBox" Height="36" Text="Untitled" Margin="0,0,0,14"/>
+
+                <TextBlock Text="Save location" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                <Grid Margin="0,0,0,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="PathBox" Height="36" IsReadOnly="True"
+                             Text="Choose where this project lives…"/>
+                    <Button Grid.Column="1" Content="Browse…" Style="{StaticResource ModernButtonBase}"
+                            Margin="8,0,0,0" Padding="14,6" Click="Browse_Click"
+                            VerticalAlignment="Stretch"/>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Create &amp; open" Style="{StaticResource PrimaryButton}"
+                            Padding="18,10" Click="Create_Click" Margin="0,0,10,0"/>
+                    <Button Content="Open existing…" Style="{StaticResource GhostButton}"
+                            Padding="14,10" Click="OpenExisting_Click"/>
+                </StackPanel>
+
+                <TextBlock x:Name="HomeError" Foreground="{DynamicResource DangerBrush}"
+                           TextWrapping="Wrap" Margin="0,14,0,0" FontSize="12.5"/>
+            </StackPanel>
+
+            <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="10" Padding="18">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Recent on this PC"
+                               FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12"/>
+                    <TextBlock x:Name="RecentEmpty" DockPanel.Dock="Top"
+                               Text="No recent projects yet."
+                               Foreground="{DynamicResource MutedBrush}" FontSize="12.5"
+                               Visibility="Collapsed"/>
+                    <ListBox x:Name="RecentList" BorderThickness="0" Background="Transparent"
+                             MouseDoubleClick="RecentList_DoubleClick"/>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

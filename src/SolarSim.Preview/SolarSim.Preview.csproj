@@ -10,12 +10,13 @@
     <AssemblyName>solarSim</AssemblyName>
     <ApplicationTitle>solarSim</ApplicationTitle>
     <Product>solarSim</Product>
-    <Version>0.1.1</Version>
-    <AssemblyVersion>0.1.1.0</AssemblyVersion>
-    <FileVersion>0.1.1.0</FileVersion>
-    <InformationalVersion>0.1.1</InformationalVersion>
+    <Version>0.1.2</Version>
+    <AssemblyVersion>0.1.2.0</AssemblyVersion>
+    <FileVersion>0.1.2.0</FileVersion>
+    <InformationalVersion>0.1.2</InformationalVersion>
     <Company>solarSim</Company>
-    <Description>Visual solar design lab for Windows (design aid — not stamped approval).</Description>
+    <Description>Visual solar design lab for Windows (design aid — not stamped approval). Local projects only; proprietary — see LICENSE.</Description>
+    <ApplicationIcon>Assets\solarsim-logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,6 +30,8 @@
     <None Include="SiteMap\leaflet.css" CopyToOutputDirectory="PreserveNewest" />
     <None Include="SiteMap\leaflet.js" CopyToOutputDirectory="PreserveNewest" />
     <Resource Include="Assets\panel-face.png" />
+    <Resource Include="Assets\solarsim-logo.png" />
+    <Resource Include="Assets\solarsim-logo.ico" />
   </ItemGroup>
 
   <ItemGroup>

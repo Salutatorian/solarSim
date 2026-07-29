@@ -2,9 +2,12 @@
 
 Professional visual solar-system design application for Windows.
 
+**Owner:** Salutatorian — see [LICENSE](LICENSE) and [OWNERSHIP.md](OWNERSHIP.md).  
+Public Releases are for **use**. Please **do not fork** this repository.
+
 **Phase 1 focus: Solar Panel Lab** — place real-sized modules, magnetically snap them, connect PV+/PV− with MC4-style interaction, and see live string calculations (Pmax, Vmp, Voc, Imp, Isc) with no Calculate button.
 
-This is a design and simulation aid, not electrical-code approval software.
+This is a design and simulation aid, not electrical-code approval software. **Your projects stay on your computer** — solarSim does not sync designs to any cloud.
 
 ## Stack
 

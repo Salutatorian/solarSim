@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="Trace roof — free satellite map"
+        Icon="pack://application:,,,/Assets/solarsim-logo.ico"
         Width="960" Height="700"
         MinWidth="720" MinHeight="520"
         WindowStartupLocation="CenterOwner"
@@ -13,17 +14,20 @@
         <Border DockPanel.Dock="Top" Background="#16161A" Padding="12,10" BorderBrush="#27272A" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <DockPanel>
+                <Image Style="{StaticResource AppLogoMark}" Width="22" Height="22" Margin="0,0,10,0"
+                       VerticalAlignment="Center"/>
+                <DockPanel Grid.Column="1">
                     <Button DockPanel.Dock="Right" Content="Search" Style="{StaticResource PrimaryButton}"
                             Padding="14,6" Margin="8,0,0,0" Click="Search_Click"/>
                     <TextBox x:Name="SearchBox" VerticalContentAlignment="Center" Height="32"
                              KeyDown="SearchBox_KeyDown"
                              ToolTip="Free OpenStreetMap address search, or paste lat,lon"/>
                 </DockPanel>
-                <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center"
+                <TextBlock x:Name="StatusText" Grid.Column="2" VerticalAlignment="Center"
                            Foreground="#A1A1AA" FontSize="12.5" Margin="16,0,0,0"
                            Text="Loading map…"/>
             </Grid>
