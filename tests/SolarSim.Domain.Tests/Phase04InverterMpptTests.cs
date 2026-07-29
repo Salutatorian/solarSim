@@ -157,4 +157,18 @@ public class Phase04InverterMpptTests
         Assert.Contains(inv.Ports, p => p.Label == "BAT+");
         Assert.Equal(8, inv.Ports.Count);
     }
+
+    [Fact]
+    public void Anenji_6_5kw_has_two_pv_ac_and_battery()
+    {
+        var project = new SolarProject();
+        var inv = project.AddStringInverter(0, 0, InverterDefinition.CreateAnenji6_5kW2Mppt());
+        Assert.Equal(2, inv.InverterSpecs!.MpptCount);
+        Assert.Equal(6500, inv.InverterSpecs.AcRatedWatts);
+        Assert.Contains(inv.Ports, p => p.Label == "MPPT1+");
+        Assert.Contains(inv.Ports, p => p.Label == "MPPT2-");
+        Assert.Contains(inv.Ports, p => p.Label == "AC IN L");
+        Assert.Contains(inv.Ports, p => p.Label == "BAT+");
+        Assert.Equal(10, inv.Ports.Count);
+    }
 }

@@ -2612,6 +2612,7 @@ public partial class MainWindow : Window
         yield return new("inv5", "Inverter", "5 kW", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
         yield return new("inv76", "Inverter", "7.6 kW", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
         yield return new("inv42", "ANENJI", "4.2 kW hybrid", "◇", "Electrical", () => AddInverterAnenji4_2k_Click(this, new RoutedEventArgs()));
+        yield return new("inv65", "ANENJI", "6.5 kW hybrid", "◇", "Electrical", () => AddInverterAnenji6_5k_Click(this, new RoutedEventArgs()));
         yield return new("inv12", "ANENJI", "12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()));
         yield return new("battery", "ANENJI", "16 kWh battery", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()));
         yield return new("batdisc", "Batt disc.", "Check Amp + wire size", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()));
@@ -4695,6 +4696,12 @@ public partial class MainWindow : Window
         PlaceAndSelectEquipment(_project.AddStringInverter(x, y, InverterDefinition.CreateAnenji4_2kW1Mppt()));
     }
 
+    private void AddInverterAnenji6_5k_Click(object sender, RoutedEventArgs e)
+    {
+        var (x, y) = NextEquipmentPlaceMm(900);
+        PlaceAndSelectEquipment(_project.AddStringInverter(x, y, InverterDefinition.CreateAnenji6_5kW2Mppt()));
+    }
+
     private void RebuildEquipmentVisuals()
     {
         if (!ShowsEquipment)
@@ -5045,9 +5052,12 @@ public partial class MainWindow : Window
 
     private static ImageBrush CreateAnenjiFaceBrush(ElectricalEquipmentInstance equipment)
     {
-        var asset = equipment.InverterSpecs?.DefinitionId == InverterDefinition.Anenji4_2kWDefinitionId
+        var id = equipment.InverterSpecs?.DefinitionId;
+        var asset = id == InverterDefinition.Anenji4_2kWDefinitionId
             ? "inverter-anenji-4_2kw.png"
-            : "inverter-anenji-12kw.png";
+            : id == InverterDefinition.Anenji6_5kWDefinitionId
+                ? "inverter-anenji-6_5kw.png"
+                : "inverter-anenji-12kw.png";
         var bmp = new System.Windows.Media.Imaging.BitmapImage();
         bmp.BeginInit();
         bmp.UriSource = new Uri($"pack://application:,,,/Assets/{asset}", UriKind.Absolute);
@@ -5115,7 +5125,8 @@ public partial class MainWindow : Window
         if (equipment.Kind != EquipmentKind.StringInverter) return false;
         var id = equipment.InverterSpecs?.DefinitionId;
         if (id == InverterDefinition.Anenji12kWDefinitionId
-            || id == InverterDefinition.Anenji4_2kWDefinitionId)
+            || id == InverterDefinition.Anenji4_2kWDefinitionId
+            || id == InverterDefinition.Anenji6_5kWDefinitionId)
             return true;
         return equipment.Ports.Any(p => p.Label.Equals("BAT+", StringComparison.OrdinalIgnoreCase))
             && equipment.Ports.Any(p => p.Label.Equals("AC IN L", StringComparison.OrdinalIgnoreCase));
@@ -5164,7 +5175,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // 12 kW: AC IN / AC OUT left · BAT mid-right · PV1 / PV2 far right.
+        // 6.5 / 12 kW: AC IN / AC OUT left · BAT middle · PV1 / PV2 far right.
         PlacePair("AC IN L", "AC IN N", 0.12 * bodyW);
         PlacePair("AC OUT L", "AC OUT N", 0.28 * bodyW);
         PlacePair("BAT+", "BAT-", 0.55 * bodyW);

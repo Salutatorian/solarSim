@@ -81,6 +81,7 @@ public sealed class InverterDefinition
 
     public static readonly Guid Anenji12kWDefinitionId = Guid.Parse("a1111111-0004-4000-8000-000000000003");
     public static readonly Guid Anenji4_2kWDefinitionId = Guid.Parse("a1111111-0004-4000-8000-000000000004");
+    public static readonly Guid Anenji6_5kWDefinitionId = Guid.Parse("a1111111-0004-4000-8000-000000000005");
 
     /// <summary>ANENJI 12 kW hybrid face — 2 PV inputs, AC in/out, battery ± (design-aid limits).</summary>
     public static InverterDefinition CreateAnenji12kW2Mppt() => new(
@@ -110,11 +111,26 @@ public sealed class InverterDefinition
         maxDcPowerPerMpptWatts: 4500,
         hasHybridTerminals: true);
 
+    /// <summary>ANENJI 6.5 kW hybrid face — AC left, BAT middle, PV1/PV2 right (design-aid limits).</summary>
+    public static InverterDefinition CreateAnenji6_5kW2Mppt() => new(
+        id: Anenji6_5kWDefinitionId,
+        manufacturer: "ANENJI",
+        model: "6.5kW Hybrid",
+        acRatedWatts: 6500,
+        mpptCount: 2,
+        minMpptVolts: 90,
+        maxMpptVolts: 500,
+        maxDcVolts: 500,
+        maxCurrentPerMpptAmps: 18.0,
+        maxDcPowerPerMpptWatts: 4000,
+        hasHybridTerminals: true);
+
     public static IReadOnlyList<InverterDefinition> BuiltInLibrary { get; } =
     [
         CreateGeneric5kW2Mppt(),
         CreateGeneric7_6kW3Mppt(),
         CreateAnenji4_2kW1Mppt(),
+        CreateAnenji6_5kW2Mppt(),
         CreateAnenji12kW2Mppt(),
     ];
 }

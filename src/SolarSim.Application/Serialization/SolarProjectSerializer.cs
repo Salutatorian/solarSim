@@ -707,7 +707,8 @@ public static class SolarProjectSerializer
     private static bool IsHybridInverterFace(EquipmentDto dto)
     {
         if (dto.InverterSpecs?.DefinitionId == InverterDefinition.Anenji12kWDefinitionId
-            || dto.InverterSpecs?.DefinitionId == InverterDefinition.Anenji4_2kWDefinitionId)
+            || dto.InverterSpecs?.DefinitionId == InverterDefinition.Anenji4_2kWDefinitionId
+            || dto.InverterSpecs?.DefinitionId == InverterDefinition.Anenji6_5kWDefinitionId)
             return true;
         var labels = dto.Ports.Select(p => p.Label).ToHashSet(StringComparer.OrdinalIgnoreCase);
         return labels.Contains("BAT+") && labels.Contains("AC IN L");
