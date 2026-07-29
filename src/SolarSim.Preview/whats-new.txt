@@ -1,15 +1,11 @@
-solarSim 0.1.13
-Released: 2026-07-30 07:00
+solarSim 0.1.14
+Released: 2026-07-30 07:05
 
-Equipment
-• Resize any selected equipment with the corner handle (Shift keeps aspect)
-• Battery / solar disconnect defaults are a bit smaller so they don’t dominate the plan
-• Custom sizes save in your .solarproj
-
-Naming
-• “DC isolator” is now labeled Solar disconnect (same PV array disconnect)
+Equipment plan
+• Side rail is placement-only: Select, Wire, and Measure are hidden
+• Click equipment on the canvas to select/move as usual; measure stays on Roof where dimensions matter
 
 Earlier
+• 0.1.13 — resize equipment + Solar disconnect label
 • 0.1.12 — toast jitter fix + What’s new once per version
 • 0.1.11 — What’s new after Home when you open a project
-• 0.1.10 — Update auto-installs at 100%

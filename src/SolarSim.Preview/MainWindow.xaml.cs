@@ -2266,7 +2266,8 @@ public partial class MainWindow : Window
                 _selectedPanelIds.Clear();
                 _selectedObstacleId = null;
                 _layersCategory = LayersCategory.Equipment;
-                if (_uiTool is UiTool.Roof or UiTool.Panel or UiTool.Obstacle)
+                if (_uiTool is UiTool.Roof or UiTool.Panel or UiTool.Obstacle
+                    or UiTool.Wire or UiTool.Measure or UiTool.Select)
                     _uiTool = UiTool.Add;
                 break;
             case WorkspacePlan.Combined:
@@ -2458,12 +2459,20 @@ public partial class MainWindow : Window
         // Equipment plan: only equipment tools — hide roof / panel / obstacle chrome.
         var roofish = ShowsRoofGeometry;
         var panels = ShowsPanels;
+        var equipmentOnly = _workspacePlan == WorkspacePlan.Interior;
         if (ToolRoofButton is not null)
             ToolRoofButton.Visibility = roofish ? Visibility.Visible : Visibility.Collapsed;
         if (ToolPanelButton is not null)
             ToolPanelButton.Visibility = panels ? Visibility.Visible : Visibility.Collapsed;
         if (ToolObstacleButton is not null)
             ToolObstacleButton.Visibility = roofish ? Visibility.Visible : Visibility.Collapsed;
+        // Equipment is a placement planner — no Select / Wire / Measure rail (roof plan keeps those).
+        if (ToolSelectButton is not null)
+            ToolSelectButton.Visibility = equipmentOnly ? Visibility.Collapsed : Visibility.Visible;
+        if (ToolWireButton is not null)
+            ToolWireButton.Visibility = equipmentOnly ? Visibility.Collapsed : Visibility.Visible;
+        if (ToolMeasureButton is not null)
+            ToolMeasureButton.Visibility = equipmentOnly ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private static void StyleToolRail(Button? button, bool active)

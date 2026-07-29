@@ -239,6 +239,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Selected equipment shows a corner resize handle (Shift = keep aspect); size persists in `.solarproj`
 - Catalog label **Solar disconnect** (was “DC isolator”); smaller default sizes for solar / battery disconnects
 
+### Equipment plan tool rail (`0.1.14`)
+- Equipment plan hides Select / Wire / Measure (placement planner only); Roof keeps measure and wiring tools
+
 ---
 
 ## How to verify for submission
