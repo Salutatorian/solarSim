@@ -2070,10 +2070,14 @@ public partial class MainWindow : Window
     private void DuplicateSelectedPanels()
     {
         if (_selectedPanelIds.Count == 0) return;
-        foreach (var id in _selectedPanelIds.ToList())
-            _project.History.Execute(new DuplicatePanelCommand(_project, id));
+        var commands = _selectedPanelIds
+            .Select(id => (SolarSim.Application.Commands.ICommand)new DuplicatePanelCommand(_project, id))
+            .ToList();
+        _project.History.Execute(new CompositeCommand(
+            commands.Count == 1 ? "Duplicated panel" : $"Duplicated {commands.Count} panels",
+            commands));
         RefreshAll();
-        StatusText.Text = $"Duplicated {_selectedPanelIds.Count} panel(s)";
+        StatusText.Text = $"Duplicated {commands.Count} panel(s)";
     }
 
     private void CopySelectedPanels()
@@ -2124,22 +2128,26 @@ public partial class MainWindow : Window
             return;
         }
 
-        var newIds = new List<Guid>();
-        foreach (var item in _panelClipboard)
-        {
-            var panel = new SolarPanelInstance(
+        var panels = _panelClipboard
+            .Select(item => new SolarPanelInstance(
                 Guid.NewGuid(),
                 item.DefinitionId,
                 originMm.X + item.OffsetXMm,
                 originMm.Y + item.OffsetYMm,
-                item.RotationDegrees);
-            _project.History.Execute(new AddPanelCommand(_project, panel));
-            newIds.Add(panel.Id);
-        }
+                item.RotationDegrees))
+            .ToList();
 
-        SetSelection(panels: newIds);
+        var commands = panels
+            .Select(panel => (SolarSim.Application.Commands.ICommand)new AddPanelCommand(_project, panel))
+            .ToList();
+
+        _project.History.Execute(new CompositeCommand(
+            panels.Count == 1 ? "Pasted panel" : $"Pasted {panels.Count} panels",
+            commands));
+
+        SetSelection(panels: panels.Select(p => p.Id).ToList());
         RefreshAll();
-        StatusText.Text = $"Pasted {newIds.Count} panel(s)";
+        StatusText.Text = $"Pasted {panels.Count} panel(s)";
     }
 
     private void Canvas_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
@@ -3493,17 +3501,7 @@ public partial class MainWindow : Window
                 }
 
                 if (!_project.Graph.TryGetPanel(id, out var panel)) continue;
-
-                // Secondary selection members: skip individuals that would leave a valid roof seat.
-                if (_project.Roofs.HasAnyClosedRoof)
-                {
-                    var currentlyValid = _project.EvaluatePanelPlacement(
-                        panel, panel.PositionXMm, panel.PositionYMm).IsValid;
-                    var nextValid = _project.EvaluatePanelPlacement(panel, nx, ny).IsValid;
-                    if (currentlyValid && !nextValid)
-                        continue;
-                }
-
+                // Free drag on the map — setback/roof validity is advisory (HUD), not a hard stop.
                 panel.SetPosition(nx, ny);
             }
 
@@ -3516,8 +3514,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Prefer snapped position when it stays on-roof; fall back to raw drag.
-    /// If the panel is already invalid (e.g. roof drawn after place), allow free drag so it can recover.
+    /// Prefer edge snap when Alt is not held. Setback / roof bounds do not block free drag.
     /// </summary>
     private (double x, double y) ResolvePanelDragPosition(
         SolarPanelInstance panel,
@@ -3527,30 +3524,11 @@ public partial class MainWindow : Window
         double rawY,
         bool allowSnap)
     {
-        var snappedX = rawX;
-        var snappedY = rawY;
-        if (allowSnap)
-            (snappedX, snappedY) = ApplyPanelSnap(panel.Id, rawX, rawY);
-
-        if (!_project.Roofs.HasAnyClosedRoof)
-            return (snappedX, snappedY);
-
-        var currentlyValid = _project.EvaluatePanelPlacement(
-            panel, panel.PositionXMm, panel.PositionYMm).IsValid;
-        var snappedValid = _project.EvaluatePanelPlacement(panel, snappedX, snappedY).IsValid;
-        if (snappedValid)
-            return (snappedX, snappedY);
-
-        var rawValid = _project.EvaluatePanelPlacement(panel, rawX, rawY).IsValid;
-        if (rawValid)
+        if (!allowSnap)
             return (rawX, rawY);
 
-        // Already outside / in setback / on obstacle → let the user drag toward a valid seat.
-        if (!currentlyValid)
-            return (rawX, rawY);
-
-        // Stay put (relative to drag start) rather than freezing mid-gesture on a bad snap.
-        return (originX, originY);
+        var (snappedX, snappedY) = ApplyPanelSnap(panel.Id, rawX, rawY);
+        return (snappedX, snappedY);
     }
 
     private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)

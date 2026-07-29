@@ -180,6 +180,12 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Proprietary [LICENSE](LICENSE) + [OWNERSHIP.md](OWNERSHIP.md) — public use OK, please do not fork
 - External URL allowlist for browser opens
 
+### UX polish (`0.1.3`)
+- Logo asset is transparent (no black square behind the mark)
+- Paste / multi-duplicate undo as one step (`CompositeCommand`)
+- Home Save location text vertically centered (no clipped placeholder)
+- Panel drag no longer hard-stops at the yellow setback — free move on the map
+
 ---
 
 ## How to verify for submission

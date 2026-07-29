@@ -7,6 +7,33 @@ public interface ICommand
     void Undo();
 }
 
+/// <summary>Groups several commands so Undo/Redo treat them as one step.</summary>
+public sealed class CompositeCommand : ICommand
+{
+    private readonly List<ICommand> _commands;
+    private readonly string _description;
+
+    public CompositeCommand(string description, IEnumerable<ICommand> commands)
+    {
+        _description = description;
+        _commands = commands.ToList();
+    }
+
+    public string Description => _description;
+
+    public void Execute()
+    {
+        foreach (var command in _commands)
+            command.Execute();
+    }
+
+    public void Undo()
+    {
+        for (var i = _commands.Count - 1; i >= 0; i--)
+            _commands[i].Undo();
+    }
+}
+
 public sealed class CommandHistory
 {
     private readonly List<ICommand> _undoStack = new();
