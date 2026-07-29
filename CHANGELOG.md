@@ -222,6 +222,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Equipment drag snaps to other equipment (edges / centers / spaced seats), same idea as panels
 - Magenta dotted alignment guides while dragging; Alt = free drag
 
+### Update toast polish (`0.1.10`)
+- Mini toast is Update / Cancel only — no download progress there (bar stays in Settings)
+- Clicking Update once downloads and auto-installs at 100% with no second toast click
+
 ---
 
 ## How to verify for submission

@@ -62,7 +62,7 @@
                            Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" MaxHeight="100"
                            TextTrimming="CharacterEllipsis"/>
 
-                <Grid x:Name="UpdateProgressTrack" Margin="0,4,0,8" Height="14">
+                <Grid x:Name="UpdateProgressTrack" Margin="0,4,0,8" Height="14" Visibility="Collapsed">
                     <Border Background="{DynamicResource SegmentTrackBrush}" CornerRadius="7"/>
                     <Border x:Name="UpdateProgressFill" HorizontalAlignment="Left"
                             Background="#2563EB" CornerRadius="7" Width="0"/>
@@ -79,8 +79,8 @@
                             Padding="10,7" Click="CancelDownload_Click" Visibility="Collapsed"/>
                 </StackPanel>
 
-                <CheckBox x:Name="ApplyOnExitCheck" Content="Also apply a downloaded update when I close the app"
-                          IsChecked="True" Margin="0,14,0,0" Foreground="{DynamicResource TextBrush}"/>
+                <CheckBox x:Name="ApplyOnExitCheck" Content="If an update was downloaded earlier, also install it when I close the app"
+                          IsChecked="True" Margin="0,14,0,0" Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

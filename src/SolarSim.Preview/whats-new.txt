@@ -1,12 +1,12 @@
-solarSim 0.1.9
-Released: 2026-07-30 06:08
+solarSim 0.1.10
+Released: 2026-07-30 06:20
 
-Equipment snap guides
-• Dragging equipment snaps to neighbors (edges, centers, spaced seats) like solar panels
-• Magenta dotted alignment guides appear while you drag
-• Hold Alt to drag freely without snap
+Update UX
+• Mini bottom-right toast is a reminder only — Update or Cancel (no progress bar)
+• Click Update once → download + auto-install at 100% (no second click on the toast)
+• Progress bar stays in Settings only
 
 Earlier
-• 0.1.8 — Add tiles lead with Inverter / Battery type
-• 0.1.7 — cleaned black halo on equipment photos
-• 0.1.6 — Update UX + What’s new dialog
+• 0.1.9 — equipment snap + magenta guides
+• 0.1.8 — Add catalog type labels
+• 0.1.7 — cleaned equipment photo halos

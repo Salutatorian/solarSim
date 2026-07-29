@@ -55,19 +55,27 @@ public partial class SettingsDialog : Window
             UpdateNotesPreview.Text = "";
             DownloadUpdateButton.Visibility = Visibility.Collapsed;
             CancelDownloadButton.Visibility = Visibility.Collapsed;
+            UpdateProgressTrack.Visibility = Visibility.Collapsed;
+            UpdatePercentText.Text = "";
         }
-        else if (svc.IsDownloading)
+        else if (svc.IsDownloading || (svc.AutoApplyWhenReady && svc.DownloadComplete))
         {
-            UpdateStatusText.Text = $"Downloading update {avail.Version}… installs automatically at 100%.";
+            UpdateStatusText.Text = svc.IsDownloading
+                ? $"Downloading update {avail.Version}… installs automatically at 100%."
+                : $"Update {avail.Version} ready — installing and restarting…";
             UpdateNotesPreview.Text = string.IsNullOrWhiteSpace(avail.Notes)
                 ? "(No release notes)"
                 : avail.Notes;
             DownloadUpdateButton.Visibility = Visibility.Collapsed;
             CancelDownloadButton.Visibility = Visibility.Visible;
+            CancelDownloadButton.Content = "Cancel";
+            UpdateProgressTrack.Visibility = Visibility.Visible;
+            var pct = (int)Math.Round(svc.DownloadProgress01 * 100);
+            UpdatePercentText.Text = svc.DownloadProgressIndeterminate ? $"{pct}%…" : $"{pct}%";
         }
         else if (svc.DownloadComplete)
         {
-            UpdateStatusText.Text = $"Update {avail.Version} ready — click Update to install and restart.";
+            UpdateStatusText.Text = $"Update {avail.Version} downloaded — click Update to install and restart.";
             UpdateNotesPreview.Text = string.IsNullOrWhiteSpace(avail.Notes)
                 ? "(No release notes)"
                 : avail.Notes;
@@ -75,6 +83,8 @@ public partial class SettingsDialog : Window
             DownloadUpdateButton.Content = "Update";
             CancelDownloadButton.Visibility = Visibility.Visible;
             CancelDownloadButton.Content = "Cancel";
+            UpdateProgressTrack.Visibility = Visibility.Visible;
+            UpdatePercentText.Text = "100%";
         }
         else
         {
@@ -86,17 +96,11 @@ public partial class SettingsDialog : Window
             DownloadUpdateButton.Content = "Update";
             CancelDownloadButton.Visibility = Visibility.Visible;
             CancelDownloadButton.Content = "Cancel";
+            UpdateProgressTrack.Visibility = Visibility.Collapsed;
+            UpdatePercentText.Text = "";
         }
 
-        CheckUpdateButton.IsEnabled = !svc.IsDownloading;
-
-        var pct = (int)Math.Round(svc.DownloadProgress01 * 100);
-        if (svc.IsDownloading)
-            UpdatePercentText.Text = svc.DownloadProgressIndeterminate ? $"{pct}%…" : $"{pct}%";
-        else if (svc.DownloadComplete && avail is not null)
-            UpdatePercentText.Text = "100%";
-        else
-            UpdatePercentText.Text = "";
+        CheckUpdateButton.IsEnabled = !svc.IsDownloading && !svc.AutoApplyWhenReady;
         LayoutProgress();
         _onStateChanged?.Invoke();
     }
