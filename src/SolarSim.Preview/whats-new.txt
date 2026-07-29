@@ -1,15 +1,10 @@
-solarSim 0.1.15
-Released: 2026-07-30 07:20
+solarSim 0.1.16
+Released: 2026-07-30 07:10
 
-Smart wiring
-• Wires route around equipment bodies (not through them), with clearance
-• Select a wire to get Canva-style white segment pills — drag H runs up/down, V runs left/right
-• Manual segment moves stick (not snapped back to auto)
-
-Battery / disconnect
-• Tall batteries (incl. ANENJI 16 kWh) now have terminals on top
-• Battery can wire to disconnect IN± or OUT± — use the nearer side (bottom OUT when stacked)
+Electrical Add catalog
+• Photo products (combiner, solar disconnect, ANENJI inverters/batteries, batt disconnect) list first
+• Generic icon tiles (MC4 Y±, 5 / 7.6 kW string inverters, AC) sit at the bottom
 
 Earlier
+• 0.1.15 — smart wiring around gear + segment handles + top battery ports
 • 0.1.14 — Equipment plan hides Select / Wire / Measure
-• 0.1.13 — resize equipment + Solar disconnect label

@@ -247,6 +247,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Selected wires show Canva-style white segment handles for H/V run dragging
 - Tall battery terminals on top; battery↔disconnect allowed on IN± or OUT±
 
+### Electrical catalog order (`0.1.16`)
+- Photo equipment tiles list first; generic icon tiles (MC4 Y±, string inverters, AC) at the bottom
+
 ---
 
 ## How to verify for submission

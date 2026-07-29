@@ -3054,10 +3054,6 @@ public partial class MainWindow : Window
         yield return new("custom", "Module", "Custom panel…", "▦", "Solar", () => AddCustom_Click(this, new RoutedEventArgs()));
         yield return new("combiner", "Combiner", "6-string", "▤", "Electrical", () => AddCombiner_Click(this, new RoutedEventArgs()), "combiner-6string.png");
         yield return new("disconnect", "Solar disconnect", "Set Amp rating", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()), "disconnect-pv-isolator.png");
-        yield return new("ypos", "MC4 Y+", "Positive branch", "Y+", "Electrical", () => AddBranchYPos_Click(this, new RoutedEventArgs()));
-        yield return new("yneg", "MC4 Y−", "Negative branch", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
-        yield return new("inv5", "Inverter", "5 kW string", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
-        yield return new("inv76", "Inverter", "7.6 kW string", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
         yield return new("inv42", "Inverter", "ANENJI · 4.2 kW hybrid", "◇", "Electrical", () => AddInverterAnenji4_2k_Click(this, new RoutedEventArgs()), "inverter-anenji-4_2kw.png");
         yield return new("inv65", "Inverter", "ANENJI · 6.5 kW hybrid", "◇", "Electrical", () => AddInverterAnenji6_5k_Click(this, new RoutedEventArgs()), "inverter-anenji-6_5kw.png");
         yield return new("inv12", "Inverter", "ANENJI · 12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()), "inverter-anenji-12kw.png");
@@ -3066,6 +3062,11 @@ public partial class MainWindow : Window
         yield return new("battrack", "Battery", "ANENJI · 5.1 kWh rack", "▣", "Electrical", () => AddBatteryRack_Click(this, new RoutedEventArgs()), "battery-anenji-5_1kwh-rack.png");
         yield return new("batt128", "Battery", "ANENJI · 12.8V 300Ah", "▣", "Electrical", () => AddBattery12_8V_Click(this, new RoutedEventArgs()), "battery-anenji-12_8v-300ah.png");
         yield return new("batdisc", "Batt disconnect", "Set Amp + wire", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()), "battery-disconnect-dhm1b.png");
+        // Generics last — icon-only tiles under photo catalog.
+        yield return new("ypos", "MC4 Y+", "Positive branch", "Y+", "Electrical", () => AddBranchYPos_Click(this, new RoutedEventArgs()));
+        yield return new("yneg", "MC4 Y−", "Negative branch", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
+        yield return new("inv5", "Inverter", "5 kW string", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
+        yield return new("inv76", "Inverter", "7.6 kW string", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
         yield return new("acdisc", "AC disconnect", "AC side", "⏻", "Electrical", () => AddAcDisconnect_Click(this, new RoutedEventArgs()));
         yield return new("aclc", "Load center", "AC panel", "☰", "Electrical", () => AddAcLoadCenter_Click(this, new RoutedEventArgs()));
         yield return new("vent", "Roof vent", "Obstacle", "◇", "Structural", () => AddObstacleMode_Click(this, new RoutedEventArgs()));
