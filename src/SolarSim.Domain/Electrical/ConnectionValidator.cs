@@ -166,7 +166,53 @@ public static class ConnectionValidator
         }
 
         ValidateBatteryInverterOnly(result, start, end, startOwner, endOwner);
+        ValidateDisconnectToInverterPorts(result, start, end, startOwner, endOwner);
         return result;
+    }
+
+    /// <summary>
+    /// Battery disconnect ↔ inverter must land on BAT± (not PV/MPPT).
+    /// Solar disconnect may serve either PV or battery paths — snap scoring picks the bank.
+    /// </summary>
+    private static void ValidateDisconnectToInverterPorts(
+        ConnectionValidationResult result,
+        ElectricalPort start,
+        ElectricalPort end,
+        IElectricalComponent startOwner,
+        IElectricalComponent endOwner)
+    {
+        static bool IsInv(IElectricalComponent o) =>
+            o is ElectricalEquipmentInstance { Kind: EquipmentKind.StringInverter };
+        static bool IsBattDisc(IElectricalComponent o) =>
+            o is ElectricalEquipmentInstance { Kind: EquipmentKind.BatteryDisconnect };
+        static bool IsBatTerminal(ElectricalPort p) =>
+            p.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase);
+
+        if (IsBattDisc(startOwner) && IsInv(endOwner))
+        {
+            if (!IsBatTerminal(end))
+            {
+                result.AddError(
+                    "BATT_DISC_TO_INV",
+                    "Battery disconnect → inverter",
+                    "Connect the battery disconnect to the inverter BAT+ / BAT− terminals (not PV/MPPT).",
+                    start.OwnerComponentId, end.OwnerComponentId);
+            }
+
+            return;
+        }
+
+        if (IsInv(startOwner) && IsBattDisc(endOwner))
+        {
+            if (!IsBatTerminal(start))
+            {
+                result.AddError(
+                    "BATT_DISC_TO_INV",
+                    "Battery disconnect → inverter",
+                    "Connect the battery disconnect to the inverter BAT+ / BAT− terminals (not PV/MPPT).",
+                    start.OwnerComponentId, end.OwnerComponentId);
+            }
+        }
     }
 
     /// <summary>

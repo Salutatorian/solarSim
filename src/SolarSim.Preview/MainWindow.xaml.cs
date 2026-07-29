@@ -1505,6 +1505,19 @@ public partial class MainWindow : Window
 
             laneByConnection.TryGetValue(connection.Id, out var lane);
             var route = BuildPvWireRoute(start, end, p1, p2, connection, obstacles, lane.offset * laneSpacing);
+            // Lock auto-routes into world-mm waypoints so zoom/pan cannot reshuffle paths.
+            if (connection.Wire.Waypoints.Count == 0 && route.PathPoints.Count >= 3)
+            {
+                for (var i = 1; i < route.PathPoints.Count - 1; i++)
+                {
+                    var (xMm, yMm) = CanvasToWorld(new Point(route.PathPoints[i].X, route.PathPoints[i].Y));
+                    connection.Wire.Waypoints.Add(new Point2Mm(xMm, yMm));
+                }
+
+                // Rebuild once with manual geometry so lane offsets don't apply.
+                route = BuildPvWireRoute(start, end, p1, p2, connection, obstacles, 0);
+            }
+
             var pathPoints = route.PathPoints.Select(v => new Point(v.X, v.Y)).ToList();
 
             var visual = new WireCanvasVisual { ConnectionId = connection.Id, HitPoints = pathPoints };
@@ -4717,32 +4730,62 @@ public partial class MainWindow : Window
     {
         var from = _project.Graph.GetPort(fromPortId);
         ElectricalPort? best = null;
-        var bestDist = PortHitRadiusPx * 2.5;
+        var bestScore = double.MaxValue;
 
         IElectricalComponent? fromOwner = null;
         _project.Graph.TryGetComponent(from.OwnerComponentId, out fromOwner);
         if (fromOwner is null) return null;
 
+        var fromBattDisc = fromOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.BatteryDisconnect };
+        var fromPvDisc = fromOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.PvDisconnect };
+        var fromBattery = fromOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.Battery };
+        // Solar disconnects are reused on battery runs — prefer BAT when already tied to a battery.
+        var pvDiscPrefersBattery = fromPvDisc && DisconnectTouchesBattery(fromOwner.Id);
+
+        void Consider(ElectricalPort port, IElectricalComponent owner)
+        {
+            if (port.Id == fromPortId) return;
+            if (port.OwnerComponentId == from.OwnerComponentId) return;
+            if (port.IsOccupied) return;
+
+            var validation = ConnectionValidator.ValidateDcConnection(from, port, fromOwner, owner);
+            if (!validation.IsValid) return;
+
+            var p = GetPortCanvasPoint(port);
+            var dist = Hypot(p.X - canvasPoint.X, p.Y - canvasPoint.Y);
+            // Prefer the electrically correct inverter bank when ports sit close together.
+            var score = dist;
+            var label = port.Label;
+            var preferBat = fromBattDisc || fromBattery || pvDiscPrefersBattery;
+            var preferMppt = fromPvDisc && !pvDiscPrefersBattery
+                && DisconnectTouchesPvSource(fromOwner.Id);
+            if (preferBat)
+            {
+                if (label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
+                    score *= 0.2;
+                else if (label.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase))
+                    score += 120;
+            }
+            else if (preferMppt)
+            {
+                if (label.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase))
+                    score *= 0.2;
+                else if (label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
+                    score += 120;
+            }
+
+            if (score < bestScore && dist < PortHitRadiusPx * 4)
+            {
+                bestScore = score;
+                best = port;
+            }
+        }
+
         foreach (var panel in _project.Graph.Panels.Values)
         {
             if (!ShowsPanels) break;
             foreach (var port in panel.Ports)
-            {
-                if (port.Id == fromPortId) continue;
-                if (port.OwnerComponentId == from.OwnerComponentId) continue;
-                if (port.IsOccupied) continue;
-
-                var validation = ConnectionValidator.ValidateDcConnection(from, port, fromOwner, panel);
-                if (!validation.IsValid) continue;
-
-                var p = GetPortCanvasPoint(port);
-                var dist = Hypot(p.X - canvasPoint.X, p.Y - canvasPoint.Y);
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    best = port;
-                }
-            }
+                Consider(port, panel);
         }
 
         if (ShowsEquipment)
@@ -4750,25 +4793,64 @@ public partial class MainWindow : Window
             foreach (var equipment in _project.Graph.Equipment.Values)
             {
                 foreach (var port in equipment.Ports)
-                {
-                    if (port.Id == fromPortId) continue;
-                    if (port.IsOccupied) continue;
-
-                    var validation = ConnectionValidator.ValidateDcConnection(from, port, fromOwner, equipment);
-                    if (!validation.IsValid) continue;
-
-                    var p = GetPortCanvasPoint(port);
-                    var dist = Hypot(p.X - canvasPoint.X, p.Y - canvasPoint.Y);
-                    if (dist < bestDist)
-                    {
-                        bestDist = dist;
-                        best = port;
-                    }
-                }
+                    Consider(port, equipment);
             }
         }
 
         return best;
+    }
+
+    /// <summary>True when any wire on this component already lands on a battery.</summary>
+    private bool DisconnectTouchesBattery(Guid disconnectId)
+    {
+        foreach (var connection in _project.Graph.Connections.Values)
+        {
+            if (!_project.Graph.TryGetPort(connection.StartPortId, out var a)
+                || !_project.Graph.TryGetPort(connection.EndPortId, out var b))
+                continue;
+            Guid otherOwner;
+            if (a.OwnerComponentId == disconnectId) otherOwner = b.OwnerComponentId;
+            else if (b.OwnerComponentId == disconnectId) otherOwner = a.OwnerComponentId;
+            else continue;
+
+            if (_project.Graph.TryGetComponent(otherOwner, out var other)
+                && other is ElectricalEquipmentInstance { Kind: EquipmentKind.Battery })
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>True when any wire on this component already lands on PV source gear.</summary>
+    private bool DisconnectTouchesPvSource(Guid disconnectId)
+    {
+        foreach (var connection in _project.Graph.Connections.Values)
+        {
+            if (!_project.Graph.TryGetPort(connection.StartPortId, out var a)
+                || !_project.Graph.TryGetPort(connection.EndPortId, out var b))
+                continue;
+            Guid otherOwner;
+            if (a.OwnerComponentId == disconnectId) otherOwner = b.OwnerComponentId;
+            else if (b.OwnerComponentId == disconnectId) otherOwner = a.OwnerComponentId;
+            else continue;
+
+            if (_project.Graph.TryGetPanel(otherOwner, out _))
+                return true;
+            if (_project.Graph.TryGetComponent(otherOwner, out var other)
+                && other is ElectricalEquipmentInstance eq
+                && eq.Kind is EquipmentKind.CombinerBox or EquipmentKind.StringInverter)
+            {
+                // Already on an inverter MPPT/PV terminal counts as PV path.
+                var otherPort = a.OwnerComponentId == disconnectId ? b : a;
+                if (eq.Kind == EquipmentKind.StringInverter
+                    && otherPort.Label.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (eq.Kind == EquipmentKind.CombinerBox)
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private void ShowHoverPort(Point canvasPoint, Polarity polarity)
@@ -6092,9 +6174,9 @@ public partial class MainWindow : Window
         double portSize,
         double half)
     {
-        // Sit on the bottom seam (slightly overlapping the face edge).
-        var y = bodyH - half;
-        var pairGap = Math.Min(portSize * 0.75, bodyW * 0.018);
+        // Sit on the bottom seam — center Y must not depend on portSize or zoom drifts terminals.
+        var y = bodyH - 2;
+        var pairGap = Math.Max(bodyW * 0.022, 10);
         var placed = new HashSet<Guid>();
         var hybrid = equipment.Ports.Any(p =>
             p.Label.Equals("AC IN L", StringComparison.OrdinalIgnoreCase));
@@ -6118,7 +6200,7 @@ public partial class MainWindow : Window
             if (visual.PortLabels.TryGetValue(port.Id, out var tb))
                 tb.Text = FormatEquipmentPortLabel(label);
             Canvas.SetLeft(ellipse, centerX - half);
-            Canvas.SetTop(ellipse, y);
+            Canvas.SetTop(ellipse, y - half);
             placed.Add(port.Id);
         }
 
@@ -6141,21 +6223,21 @@ public partial class MainWindow : Window
         {
             PlaceLng("AC IN", 0.10 * bodyW);
             PlaceLng("AC OUT", 0.28 * bodyW);
-            PlacePair("MPPT1+", "MPPT1-", 0.48 * bodyW);
-            PlacePair("BAT+", "BAT-", 0.72 * bodyW);
+            PlacePair("MPPT1+", "MPPT1-", 0.50 * bodyW);
+            PlacePair("BAT+", "BAT-", 0.78 * bodyW);
         }
         else if (hybrid)
         {
-            // AC left · BAT · PV1 / PV2 right — rightmost is PV2.
-            PlaceLng("AC IN", 0.10 * bodyW);
-            PlaceLng("AC OUT", 0.26 * bodyW);
-            PlacePair("BAT+", "BAT-", 0.44 * bodyW);
-            PlacePair("MPPT1+", "MPPT1-", 0.66 * bodyW);
-            PlacePair("MPPT2+", "MPPT2-", 0.86 * bodyW);
+            // AC left · BAT · gap · PV1 / PV2 right — keep BAT clearly away from PV snap.
+            PlaceLng("AC IN", 0.09 * bodyW);
+            PlaceLng("AC OUT", 0.24 * bodyW);
+            PlacePair("BAT+", "BAT-", 0.40 * bodyW);
+            PlacePair("MPPT1+", "MPPT1-", 0.68 * bodyW);
+            PlacePair("MPPT2+", "MPPT2-", 0.90 * bodyW);
             for (var i = 3; i <= mpptCount; i++)
             {
-                var t = 0.86 + (i - 2) * 0.06;
-                if (t > 0.96) t = 0.96;
+                var t = 0.90 + (i - 2) * 0.05;
+                if (t > 0.97) t = 0.97;
                 PlacePair($"MPPT{i}+", $"MPPT{i}-", t * bodyW);
             }
         }

@@ -1,14 +1,14 @@
-solarSim 0.1.25
+solarSim 0.1.26
 Released: 2026-07-30
 
-Battery + wiring
-• 16 kWh battery terminals on the TOP edge (not bottom)
-• Drag a wire on first click to move runs (no need to select first)
-• Zoom / fit no longer wipes straightened wire paths
-• Resize scales size with locked aspect — no more squash-to-square at the min size
+Battery wiring + zoom
+• Battery disconnect snaps/validates to inverter BAT± — not PV1/PV2
+• Solar disconnect already on a battery also prefers BAT terminals
+• Hybrid BAT bank spaced farther from PV so snap does not steal the hit
+• Auto wire routes lock into world waypoints — zoom no longer moves cables around
 
-Tip: if an old battery wire still looks odd, click it once and drag the white pills, or delete/reconnect.
+Tip: reconnect any old battery→PV mis-wires once; then zoom freely.
 
 Earlier
+• 0.1.25 — battery top ports, wire drag, aspect resize
 • 0.1.24 — XAML resource guards
-• 0.1.23 — duplicate ComboBox crash fix

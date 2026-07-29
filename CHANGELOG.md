@@ -287,6 +287,12 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Zoom/fit keep manual waypoints (no auto wipe)
 - Equipment corner resize scales uniformly with min/max scale clamp (no square squash)
 
+### Battery snap + sticky zoom wires (`0.1.26`)
+- Battery disconnect → inverter must land on BAT± (MPPT/PV rejected)
+- Snap prefers BAT when wiring from battery / battery disconnect / solar disconnect already on a battery
+- Hybrid inverter layout spaces BAT away from PV1/PV2
+- Auto-routed cables bake to world-mm waypoints so zoom no longer reshuffles paths
+
 ---
 
 ## How to verify for submission

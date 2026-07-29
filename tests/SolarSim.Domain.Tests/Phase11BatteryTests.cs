@@ -96,6 +96,22 @@ public class Phase11BatteryTests
     }
 
     [Fact]
+    public void Battery_disconnect_connects_to_inverter_bat_not_mppt()
+    {
+        var project = new SolarProject();
+        var disc = project.AddBatteryDisconnect(0, 0);
+        var inv = project.AddStringInverter(2000, 0, InverterDefinition.CreateAnenji12kW2Mppt());
+
+        var discOutPos = disc.Ports.First(p => p.Label == "OUT+");
+        var discOutNeg = disc.Ports.First(p => p.Label == "OUT-");
+        var batPos = inv.Ports.First(p => p.Label == "BAT+");
+        var mpptNeg = inv.Ports.First(p => p.Label == "MPPT1-");
+
+        Assert.True(project.Graph.TryConnect(discOutPos.Id, batPos.Id, null, out _).IsValid);
+        Assert.False(project.Graph.TryConnect(discOutNeg.Id, mpptNeg.Id, null, out _).IsValid);
+    }
+
+    [Fact]
     public void Battery_cannot_mix_with_ac_ports()
     {
         var project = new SolarProject();
