@@ -153,9 +153,12 @@ Full phase-by-phase history: **[CHANGELOG.md](CHANGELOG.md)** (keep updated for 
 - Design aid — segment boxes are approximations, not surveyed footprints
 
 **Phase 2.4 — Satellite house picker:** done
-- **Satellite map…** / empty-state **Satellite map**: Esri satellite imagery in WebView2
-- Search or click the house → **Import this building** → same Google Solar roof import as 2.0
-- Still needs Solar API key for roof geometry; map tiles themselves do not
+- **Trace roof on map…** / empty-state **Trace on map**: WebView2 + Leaflet; **Google satellite** by default (sharper), Esri fallback toggle — no Google billing for this path
+- Search (OpenStreetMap) or paste lat,lon → zoom → click corners → **drag handles**, Undo/Ctrl+Z, live edge lengths (m)
+- **New section** for L/T multi-wing roofs (imports as multiple roof layers)
+- After import: edges auto-straightened; drag roof to move; ↻ rotate (snaps near 90°); corner drag snaps H/V (Alt = free)
+- Canvas **Measure** tool (↔): live edge lengths like Draw roof
+- Optional Google Solar API remains under ⋯ for power users
 
 **Phase 2.1 — Detailed monthly production estimate:** done
 - Site **tilt / azimuth** + latitude seasonality (NH/SH) for monthly kWh

@@ -69,7 +69,8 @@
                                 <MenuItem Header="BOM / Wire Schedule" Click="BomSchedule_Click"/>
                                 <MenuItem Header="Export Report (HTML/PDF)…" Click="ExportReport_Click"/>
                                 <Separator/>
-                                <MenuItem Header="Integrations — Google Solar…" Click="SetGoogleApiKey_Click"/>
+                                <MenuItem Header="Google Solar import (optional paid)…" Click="ImportGoogleSolar_Click"/>
+                                <MenuItem Header="Google API key (optional)…" Click="SetGoogleApiKey_Click"/>
                                 <MenuItem Header="pvlib Status…" Click="PvlibStatus_Click"/>
                                 <Separator/>
                                 <MenuItem Header="Demo Roof (12×8 m)" Click="DemoRoof_Click"/>
@@ -159,22 +160,23 @@
                             <!-- Roof -->
                             <StackPanel x:Name="RoofContextPanel" Visibility="Collapsed">
                                 <Button x:Name="DrawRoofButton" Content="Draw roof" Style="{StaticResource PaletteRowButton}" Click="DrawRoof_Click"/>
-                                <Button Content="Import roof" Style="{StaticResource PaletteRowButton}" Click="ShowImportRoof_Click"/>
-                                <Button Content="Satellite map…" Style="{StaticResource PaletteRowButton}" Click="SatelliteMap_Click"/>
+                                <Button Content="Trace roof on map…" Style="{StaticResource PaletteRowButton}" Click="SatelliteMap_Click"/>
                                 <Button Content="New roof layer" Style="{StaticResource PaletteRowButton}" Click="NewRoofLayer_Click"/>
                                 <Button Content="Close polygon" Style="{StaticResource PaletteRowButton}" Click="CloseRoof_Click"/>
+                                <Button Content="Straighten edges" Style="{StaticResource PaletteRowButton}" Click="StraightenRoof_Click"
+                                        ToolTip="One-click: align house + snap every edge horizontal/vertical. Also runs automatically after map import. Dragging corners snaps to straight (Alt = free)."/>
+                                <Button Content="Rotate roof 15°" Style="{StaticResource PaletteRowButton}" Click="RotateRoof15_Click"
+                                        ToolTip="Nudge 15° (Shift = −15°). Or drag the ↻ button — snaps to 90° when close."/>
+                                <Button x:Name="LockRoofButton" Content="Unlock roof" Style="{StaticResource PaletteRowButton}" Click="ToggleRoofLock_Click"
+                                        ToolTip="Import locks the roof so box-select and wiring don't move it. Unlock to edit corners/rotate. Even unlocked: Alt+drag moves the house — plain drag is always marquee."/>
                                 <TextBlock Text="Setback" Style="{StaticResource FieldLabel}" Margin="0,12,0,6"/>
                                 <DockPanel>
                                     <TextBlock x:Name="SetbackLabel" DockPanel.Dock="Right" Text="mm" Style="{StaticResource FieldLabel}" Margin="8,0,0,0"/>
                                     <TextBox x:Name="SetbackBox" Text="457.2" LostFocus="SetbackBox_LostFocus" KeyDown="SetbackBox_KeyDown"/>
                                 </DockPanel>
                                 <StackPanel x:Name="ImportRoofPanel" Visibility="Collapsed" Margin="0,14,0,0">
-                                    <TextBlock Text="Address or lat,lon" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                                    <TextBox x:Name="GoogleSolarAddressBox" Margin="0,0,0,8"/>
-                                    <Button Content="Find property" Style="{StaticResource PrimaryButton}"
-                                            HorizontalAlignment="Stretch" Click="ImportGoogleSolar_Click" Margin="0,0,0,8"/>
-                                    <Button Content="Open satellite map…" Style="{StaticResource GhostButton}"
-                                            HorizontalAlignment="Stretch" Click="SatelliteMap_Click"/>
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12.5"
+                                               Text="Free map: search address → zoom → click each roof corner → Import. No Google billing."/>
                                 </StackPanel>
                             </StackPanel>
 
@@ -251,7 +253,7 @@
 
                             <StackPanel x:Name="MeasureContextPanel" Visibility="Collapsed">
                                 <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12.5"
-                                           Text="Live edge lengths appear while drawing a roof. Use the Roof → Draw tool."/>
+                                           Text="Click two or more points on the canvas. Live edge lengths appear as you move — same style as Draw roof. Esc clears the measure."/>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
@@ -267,7 +269,8 @@
                             MouseDown="Canvas_MouseDown"
                             MouseMove="Canvas_MouseMove"
                             MouseUp="Canvas_MouseUp"
-                            MouseLeave="Canvas_MouseLeave"/>
+                            MouseLeave="Canvas_MouseLeave"
+                            MouseRightButtonUp="Canvas_MouseRightButtonUp"/>
 
                     <!-- Soft empty state — no card -->
                     <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -360,6 +363,8 @@
                                 <TextBox x:Name="ArrayTiltBox" Text="20" Margin="0,0,0,6" LostFocus="SiteField_LostFocus" KeyDown="SiteField_KeyDown"/>
                                 <TextBlock Text="Azimuth °" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
                                 <TextBox x:Name="ArrayAzimuthBox" Text="180" Margin="0,0,0,8" LostFocus="SiteField_LostFocus" KeyDown="SiteField_KeyDown"/>
+                                <TextBlock Text="Panel color" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" Visibility="Collapsed"/>
+                                <ComboBox x:Name="PanelColorCombo" Margin="0,0,0,8" SelectionChanged="PanelColorCombo_SelectionChanged" Visibility="Collapsed"/>
                                 <Button Content="Run pvlib yield" Style="{StaticResource PaletteRowButton}" Click="RunPvlibEstimate_Click"/>
                             </StackPanel>
 

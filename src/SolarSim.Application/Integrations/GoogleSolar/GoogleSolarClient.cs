@@ -99,7 +99,20 @@ public sealed class GoogleSolarClient
         if (!string.Equals(geo.Status, "OK", StringComparison.OrdinalIgnoreCase)
             || geo.Results is null
             || geo.Results.Count == 0)
-            throw new InvalidOperationException($"Geocoding status: {geo.Status ?? "unknown"} — {geo.ErrorMessage ?? "no results"}.");
+        {
+            var detail = geo.ErrorMessage ?? "no results";
+            if (string.Equals(geo.Status, "REQUEST_DENIED", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Geocoding REQUEST_DENIED — enable Geocoding API for this Google Cloud key "
+                    + "(and billing), or paste lat,lon / click the house on the map instead.\n\n"
+                    + "Enable: https://console.cloud.google.com/apis/library/geocoding-backend.googleapis.com\n\n"
+                    + detail);
+            }
+
+            throw new InvalidOperationException(
+                $"Geocoding status: {geo.Status ?? "unknown"} — {detail}.");
+        }
 
         var loc = geo.Results[0].Geometry?.Location
                   ?? throw new InvalidOperationException("Geocoding result missing location.");
@@ -121,11 +134,57 @@ public sealed class GoogleSolarClient
         using var response = await _http.GetAsync(url, ct).ConfigureAwait(false);
         var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Solar API failed ({(int)response.StatusCode}): {TrimBody(body)}");
+            throw new InvalidOperationException(FormatSolarHttpError((int)response.StatusCode, body));
 
         var insights = JsonSerializer.Deserialize<BuildingInsightsDto>(body, JsonOptions)
                        ?? throw new InvalidOperationException("Solar API returned empty JSON.");
         return insights;
+    }
+
+    private static string FormatSolarHttpError(int statusCode, string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("error", out var err))
+            {
+                var message = err.TryGetProperty("message", out var msg) ? msg.GetString() : null;
+                var status = err.TryGetProperty("status", out var st) ? st.GetString() : null;
+
+                if (statusCode == 403
+                    || string.Equals(status, "PERMISSION_DENIED", StringComparison.OrdinalIgnoreCase))
+                {
+                    var enableUrl = "https://console.cloud.google.com/apis/library/solar.googleapis.com";
+                    // Prefer project-specific URL from Google's message when present.
+                    if (!string.IsNullOrWhiteSpace(message))
+                    {
+                        var marker = "https://console.developers.google.com/apis/api/solar.googleapis.com";
+                        var idx = message.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+                        if (idx >= 0)
+                        {
+                            var end = message.IndexOfAny([' ', '"', '\n', '\r'], idx);
+                            enableUrl = end > idx ? message[idx..end] : message[idx..];
+                        }
+                    }
+
+                    return
+                        "Solar API is not enabled for this Google Cloud project (or billing is off).\n\n"
+                        + "1. Open: " + enableUrl + "\n"
+                        + "2. Click Enable\n"
+                        + "3. Wait 1–2 minutes, then Import again\n\n"
+                        + "Also required on the same key: billing + Maps JavaScript (map) + Geocoding (address search).";
+                }
+
+                if (!string.IsNullOrWhiteSpace(message))
+                    return $"Solar API failed ({statusCode}): {message}";
+            }
+        }
+        catch
+        {
+            // Fall through to raw trim.
+        }
+
+        return $"Solar API failed ({statusCode}): {TrimBody(body)}";
     }
 
     public static GoogleSolarImportResult BuildRoofImport(BuildingInsightsDto insights, string? locationLabel = null)

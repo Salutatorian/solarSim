@@ -20,6 +20,9 @@
   <ItemGroup>
     <None Include="..\..\Tools\pvlib_estimate.py" Link="Tools\pvlib_estimate.py" CopyToOutputDirectory="PreserveNewest" />
     <None Include="SiteMap\satellite-picker.html" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SiteMap\leaflet.css" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SiteMap\leaflet.js" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="Assets\panel-face.png" />
   </ItemGroup>
 
   <ItemGroup>

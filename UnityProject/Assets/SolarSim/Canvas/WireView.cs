@@ -8,6 +8,8 @@ namespace SolarSim.Unity.Canvas
         private LineRenderer? _leadA;
         private LineRenderer? _leadB;
         private SpriteRenderer? _plug;
+        private Transform? _plugAnchor;
+        private Mc4ConnectionPresenter? _mc4;
 
         public System.Guid ConnectionId { get; private set; }
 
@@ -27,11 +29,20 @@ namespace SolarSim.Unity.Canvas
             _leadB = CreateLead("LeadB");
             var plugGo = new GameObject("Plug");
             plugGo.transform.SetParent(transform, false);
+            _plugAnchor = plugGo.transform;
             _plug = plugGo.AddComponent<SpriteRenderer>();
             _plug.sprite = WhiteSprite;
             _plug.color = new Color(0.07f, 0.07f, 0.07f);
             _plug.sortingOrder = 5;
             plugGo.transform.localScale = new Vector3(0.07f, 0.07f, 1f);
+
+            // Prefer the GrabCAD MC4 prefab when the Art pipeline has been set up.
+            _mc4 = Mc4ConnectionPresenter.TryCreate(_plugAnchor);
+            if (_mc4 != null)
+            {
+                _plug.enabled = false;
+                _mc4.PlayConnect();
+            }
         }
 
         private LineRenderer CreateLead(string name)
@@ -78,8 +89,8 @@ namespace SolarSim.Unity.Canvas
                 _leadB.SetPosition(0, to);
                 _leadB.SetPosition(1, mid);
             }
-            if (_plug != null)
-                _plug.transform.position = mid;
+            if (_plugAnchor != null)
+                _plugAnchor.position = mid;
         }
     }
 }

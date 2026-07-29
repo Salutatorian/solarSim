@@ -58,6 +58,67 @@ public static class RoofGeometry
             alignYSource?.Y ?? point.Y);
     }
 
+    /// <summary>
+    /// While dragging a roof corner: snap so adjacent edges prefer horizontal/vertical
+    /// (map traces are never square). Alt/freeAngle skips snap. Also locks onto other
+    /// vertices' X/Y so opposite sides stay even.
+    /// </summary>
+    public static Point2Mm SnapEditVertex(
+        int index,
+        Point2Mm raw,
+        IReadOnlyList<Point2Mm> vertices,
+        double axisToleranceMm,
+        bool freeAngle,
+        out Point2Mm? alignXSource,
+        out Point2Mm? alignYSource)
+    {
+        alignXSource = null;
+        alignYSource = null;
+        if (freeAngle || vertices.Count < 2 || index < 0 || index >= vertices.Count)
+            return raw;
+
+        var n = vertices.Count;
+        var prev = vertices[(index - 1 + n) % n];
+        var next = vertices[(index + 1) % n];
+
+        // Both adjacent edges axis-aligned (true rectangle corner) — strongest magnet.
+        var dualTol = Math.Max(axisToleranceMm * 1.75, 40.0);
+        var cornerA = new Point2Mm(prev.X, next.Y);
+        var cornerB = new Point2Mm(next.X, prev.Y);
+        if (raw.DistanceTo(cornerA) <= dualTol)
+        {
+            alignXSource = Math.Abs(cornerA.X - prev.X) < 0.01 ? prev : next;
+            alignYSource = Math.Abs(cornerA.Y - next.Y) < 0.01 ? next : prev;
+            return cornerA;
+        }
+
+        if (raw.DistanceTo(cornerB) <= dualTol)
+        {
+            alignXSource = Math.Abs(cornerB.X - next.X) < 0.01 ? next : prev;
+            alignYSource = Math.Abs(cornerB.Y - prev.Y) < 0.01 ? prev : next;
+            return cornerB;
+        }
+
+        // Default CAD: lock to H or V from the nearer neighbor.
+        var fromPrev = SnapOrthogonal(prev, raw);
+        var fromNext = SnapOrthogonal(next, raw);
+        var point = raw.DistanceTo(fromPrev) <= raw.DistanceTo(fromNext) ? fromPrev : fromNext;
+
+        for (var i = 0; i < n; i++)
+        {
+            if (i == index) continue;
+            var v = vertices[i];
+            if (alignXSource is null && Math.Abs(point.X - v.X) <= axisToleranceMm)
+                alignXSource = v;
+            if (alignYSource is null && Math.Abs(point.Y - v.Y) <= axisToleranceMm)
+                alignYSource = v;
+        }
+
+        return new Point2Mm(
+            alignXSource?.X ?? point.X,
+            alignYSource?.Y ?? point.Y);
+    }
+
     public static double PolygonAreaSquareMm(IReadOnlyList<Point2Mm> vertices)
     {
         if (vertices.Count < 3) return 0;
@@ -282,6 +343,110 @@ public static class RoofGeometry
             result.Add(new Point2Mm(curr.X + bx * scale, curr.Y + by * scale));
         }
 
+        return result;
+    }
+
+    public static Point2Mm Centroid(IReadOnlyList<Point2Mm> vertices)
+    {
+        if (vertices.Count == 0) return new Point2Mm(0, 0);
+        double sx = 0, sy = 0;
+        foreach (var v in vertices)
+        {
+            sx += v.X;
+            sy += v.Y;
+        }
+        return new Point2Mm(sx / vertices.Count, sy / vertices.Count);
+    }
+
+    public static Point2Mm RotatePoint(Point2Mm point, Point2Mm pivot, double degrees)
+    {
+        var rad = degrees * (Math.PI / 180.0);
+        var cos = Math.Cos(rad);
+        var sin = Math.Sin(rad);
+        var dx = point.X - pivot.X;
+        var dy = point.Y - pivot.Y;
+        return new Point2Mm(
+            pivot.X + dx * cos - dy * sin,
+            pivot.Y + dx * sin + dy * cos);
+    }
+
+    public static List<Point2Mm> RotateVertices(
+        IReadOnlyList<Point2Mm> vertices,
+        Point2Mm pivot,
+        double degrees)
+    {
+        var result = new List<Point2Mm>(vertices.Count);
+        foreach (var v in vertices)
+            result.Add(RotatePoint(v, pivot, degrees));
+        return result;
+    }
+
+    /// <summary>
+    /// Degrees to rotate so the longest edge becomes horizontal (axis-aligned work plane).
+    /// </summary>
+    public static double StraightenDegrees(IReadOnlyList<Point2Mm> vertices)
+    {
+        if (vertices.Count < 2) return 0;
+        var bestLen = -1.0;
+        var bestAngleDeg = 0.0;
+        var n = vertices.Count;
+        for (var i = 0; i < n; i++)
+        {
+            var a = vertices[i];
+            var b = vertices[(i + 1) % n];
+            var len = a.DistanceTo(b);
+            if (len <= bestLen) continue;
+            bestLen = len;
+            bestAngleDeg = Math.Atan2(b.Y - a.Y, b.X - a.X) * (180.0 / Math.PI);
+        }
+
+        // Prefer the smaller absolute rotation (±90° wrap).
+        var delta = -bestAngleDeg;
+        while (delta > 90) delta -= 180;
+        while (delta < -90) delta += 180;
+        return delta;
+    }
+
+    /// <summary>
+    /// Squash nearly-horizontal / nearly-vertical edges to exact axis-aligned lines.
+    /// Fixes wobbly map traces after the user rotates the house roughly upright.
+    /// </summary>
+    public static List<Point2Mm> OrthogonalizeEdges(IReadOnlyList<Point2Mm> vertices)
+    {
+        if (vertices.Count < 3)
+            return vertices.ToList();
+
+        var n = vertices.Count;
+        var result = new List<Point2Mm>(n) { vertices[0] };
+        for (var i = 1; i < n; i++)
+        {
+            var prev = result[i - 1];
+            var raw = vertices[i];
+            var dx = Math.Abs(raw.X - prev.X);
+            var dy = Math.Abs(raw.Y - prev.Y);
+            result.Add(dx >= dy
+                ? new Point2Mm(raw.X, prev.Y)
+                : new Point2Mm(prev.X, raw.Y));
+        }
+
+        // Close the loop with an L-corner from the previous point to the first.
+        var prevLast = result[^2];
+        var first = result[0];
+        var c1 = new Point2Mm(first.X, prevLast.Y);
+        var c2 = new Point2Mm(prevLast.X, first.Y);
+        var origLast = vertices[^1];
+        result[^1] = origLast.DistanceTo(c1) <= origLast.DistanceTo(c2) ? c1 : c2;
+        return result;
+    }
+
+    public static List<Point2Mm> TranslateVertices(
+        IReadOnlyList<Point2Mm> vertices,
+        double dxMm,
+        double dyMm)
+    {
+        var result = new List<Point2Mm>(vertices.Count);
+        foreach (var v in vertices)
+            result.Add(new Point2Mm(v.X + dxMm, v.Y + dyMm));
         return result;
     }
 

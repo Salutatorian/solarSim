@@ -2,41 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>solarSim satellite picker</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzPyD7ylctQs2lzC+Xt0QbGOP4="
-        crossorigin="" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>solarSim roof tracer</title>
+  <link rel="stylesheet" href="leaflet.css" />
   <style>
-    html, body, #map { margin: 0; height: 100%; width: 100%; background: #0e0e10; }
-    .leaflet-container { background: #0e0e10; font: 13px Bahnschrift, Segoe UI, sans-serif; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden !important; background: #0e0e10;
+      overscroll-behavior: none; touch-action: none;
+    }
+    #map {
+      position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+    }
+    .leaflet-container {
+      width: 100% !important; height: 100% !important;
+      background: #0e0e10;
+      font: 13px Bahnschrift, "Segoe UI", sans-serif;
+      cursor: crosshair;
+    }
+    .leaflet-container.leaflet-drag-target,
+    .leaflet-container.leaflet-dragging {
+      cursor: default;
+    }
+    .leaflet-grab { cursor: crosshair; }
+    .leaflet-dragging .leaflet-grab { cursor: default; }
+    .leaflet-tile { border: none; outline: none; }
+    .hint, .scale, .measure-hud {
+      position: absolute; z-index: 1000; pointer-events: none;
+      background: rgba(24, 24, 27, 0.92);
+      border: 1px solid #3f3f46; border-radius: 8px;
+    }
     .hint {
-      position: absolute; z-index: 1000; left: 12px; bottom: 12px;
-      background: rgba(24, 24, 27, 0.88); color: #e4e4e7; padding: 8px 12px;
-      border-radius: 8px; border: 1px solid #3f3f46; pointer-events: none;
-      max-width: min(360px, calc(100% - 24px));
+      left: 12px; bottom: 12px; color: #e4e4e7; padding: 8px 12px;
+      max-width: min(460px, calc(100% - 24px));
+    }
+    .scale {
+      right: 12px; bottom: 12px; color: #a1a1aa; padding: 6px 10px;
+      font-variant-numeric: tabular-nums;
+    }
+    .measure-hud {
+      left: 12px; top: 12px; color: #fbbf24; padding: 8px 12px;
+      font-variant-numeric: tabular-nums; font-weight: 600;
+      max-width: min(520px, calc(100% - 24px));
+    }
+    .edge-label {
+      background: rgba(255,255,255,0.92); color: #1f2937;
+      border: 1px solid #f59e0b; border-radius: 4px;
+      padding: 1px 5px; font: 600 11px Bahnschrift, "Segoe UI", sans-serif;
+      white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    }
+    .corner-marker {
+      width: 6px; height: 6px; margin-left: -3px; margin-top: -3px;
+      border-radius: 50%; background: #f59e0b; border: 1.5px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
+      cursor: default;
+    }
+    .corner-marker.first-closable {
+      box-shadow: 0 0 0 2px #22c55e, 0 0 0 1px rgba(0,0,0,0.35);
+      cursor: default;
+    }
+    .corner-marker:active { cursor: default; }
+    .basemap-toggle {
+      position: absolute; z-index: 1000; right: 12px; top: 12px;
+      display: flex; gap: 4px; pointer-events: auto;
+    }
+    .basemap-toggle button {
+      background: rgba(24,24,27,0.92); color: #e4e4e7; border: 1px solid #3f3f46;
+      border-radius: 6px; padding: 6px 10px; font: 12px Bahnschrift, "Segoe UI", sans-serif;
+      cursor: default;
+    }
+    .basemap-toggle button.active {
+      border-color: #f59e0b; color: #fbbf24;
     }
   </style>
+  <script>
+    try {
+      Object.defineProperty(window, 'devicePixelRatio', {
+        configurable: true, get: function () { return 1; }
+      });
+    } catch (e) { /* ignore */ }
+  </script>
+  <script src="leaflet.js"></script>
 </head>
 <body>
   <div id="map"></div>
-  <div class="hint" id="hint">Click the house on the satellite image to drop a pin.</div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-          crossorigin=""></script>
+  <div class="basemap-toggle">
+    <button type="button" id="btnGoogle" class="active" title="Sharp satellite (Google)">Sharp</button>
+    <button type="button" id="btnEsri" title="Esri World Imagery">Esri</button>
+  </div>
+  <div class="measure-hud" id="measureHud">Click roof corners — drag handles to adjust</div>
+  <div class="hint" id="hint">Search → zoom → click every corner (any count). Click the first point (green ring) to close — roofs are not forced to 4 sides.</div>
+  <div class="scale" id="scale">—</div>
   <script>
-    const map = L.map('map', { zoomControl: true, attributionControl: true })
-      .setView([-25.2744, 133.7751], 4);
+    // Google sat tiles are sharp to ~z20. Esri often grays out / forces overzoom blur.
+    const MIN_ZOOM = 2;
+    const VISUAL_MAX = 21;
+    const HOUSE_ZOOM = 19;
+    const ESRI_NATIVE = 17;
 
-    L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      {
-        maxZoom: 19,
-        attribution: 'Tiles &copy; Esri'
-      }
-    ).addTo(map);
+    let map = null;
+    let googleLayer = null;
+    let esriLayer = null;
+    let activeBasemap = 'google';
 
-    let marker = null;
+    // rings[i] = [{lat,lon}, ...] — any number of sides; closedFlags[i] = finished fill
+    const rings = [[]];
+    const closedFlags = [false];
+    let activeRing = 0;
+    const CLOSE_PX = 22;
+    let polyLayers = [];
+    let markers = [];
+    let edgeLabels = [];
+    let rubberLine = null;
+    let rubberLabel = null;
+    let closePreview = null;
+    let dragging = false;
+    let invalidateTimer = null;
+    let lastSize = { w: 0, h: 0 };
 
     function post(msg) {
       try {
@@ -45,46 +127,527 @@
       } catch (e) { /* host not ready */ }
     }
 
-    function setPin(lat, lon, fly) {
-      const ll = L.latLng(lat, lon);
-      if (!marker) {
-        marker = L.marker(ll, { draggable: true }).addTo(map);
-        marker.on('dragend', () => {
-          const p = marker.getLatLng();
-          post({ type: 'pin', lat: p.lat, lon: p.lng });
-        });
-      } else {
-        marker.setLatLng(ll);
-      }
-      if (fly) map.setView(ll, Math.max(map.getZoom(), 18));
-      post({ type: 'pin', lat: lat, lon: lon });
-      document.getElementById('hint').textContent =
-        'Pin set — drag to fine-tune, then Import this building.';
+    function metersPerPixel() {
+      if (!map) return 0;
+      const z = map.getZoom();
+      const lat = map.getCenter().lat;
+      return (156543.03392804097 / Math.pow(2, z)) * Math.cos(lat * Math.PI / 180);
     }
 
-    map.on('click', (e) => {
-      setPin(e.latlng.lat, e.latlng.lng, false);
-    });
+    // Haversine edge length (m) — matches survey-style Google measure closely enough for design aid.
+    function haversineM(a, b) {
+      const R = 6371000;
+      const toRad = Math.PI / 180;
+      const dLat = (b.lat - a.lat) * toRad;
+      const dLon = (b.lon - a.lon) * toRad;
+      const la1 = a.lat * toRad;
+      const la2 = b.lat * toRad;
+      const h = Math.sin(dLat / 2) ** 2
+        + Math.cos(la1) * Math.cos(la2) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+
+    function ringMetrics(corners, closed) {
+      if (!corners || corners.length < 2) {
+        return { edges: [], area: 0, perimeter: 0 };
+      }
+      const edges = [];
+      const n = corners.length;
+      // Open trace: only real clicked sides. Closed: include last→first.
+      const edgeCount = closed ? n : Math.max(0, n - 1);
+      for (var e = 0; e < edgeCount; e++) {
+        edges.push(haversineM(corners[e], corners[(e + 1) % n]));
+      }
+      var perimeter = edges.reduce(function (s, x) { return s + x; }, 0);
+      var area = 0;
+      if (n >= 3) {
+        const lat0 = corners.reduce(function (s, c) { return s + c.lat; }, 0) / n;
+        const lon0 = corners.reduce(function (s, c) { return s + c.lon; }, 0) / n;
+        const cos = Math.cos(lat0 * Math.PI / 180);
+        const mPerDegLat = 111320;
+        const mPerDegLon = 111320 * cos;
+        var sum = 0;
+        for (var j = 0; j < n; j++) {
+          const p = corners[j];
+          const q = corners[(j + 1) % n];
+          const x1 = (p.lon - lon0) * mPerDegLon;
+          const y1 = (p.lat - lat0) * mPerDegLat;
+          const x2 = (q.lon - lon0) * mPerDegLon;
+          const y2 = (q.lat - lat0) * mPerDegLat;
+          sum += x1 * y2 - x2 * y1;
+        }
+        area = Math.abs(sum) * 0.5;
+      }
+      return { edges: edges, area: area, perimeter: perimeter };
+    }
+
+    function isClosed(i) {
+      return !!closedFlags[i];
+    }
+
+    function allImportableRings() {
+      return rings.filter(function (r) { return r.length >= 3; });
+    }
+
+    function nearFirstCorner(latlng, corners) {
+      if (!map || !corners || corners.length < 3) return false;
+      const p = map.latLngToContainerPoint(latlng);
+      const f = map.latLngToContainerPoint([corners[0].lat, corners[0].lon]);
+      const dx = p.x - f.x;
+      const dy = p.y - f.y;
+      return (dx * dx + dy * dy) <= CLOSE_PX * CLOSE_PX;
+    }
+
+    // Corner handles shrink as you zoom in so roof edges stay visible under the tip.
+    function cornerMarkerPx() {
+      if (!map) return 6;
+      const z = map.getZoom();
+      if (z >= 20) return 4;
+      if (z >= 19) return 5;
+      if (z >= 17) return 6;
+      return 7;
+    }
+
+    function updateScale() {
+      const m = metersPerPixel();
+      const el = document.getElementById('scale');
+      if (!el || !m) return;
+      const z = map.getZoom();
+      if (z >= VISUAL_MAX) el.textContent = '~' + m.toFixed(2) + ' m/px — max zoom';
+      else if (m < 0.4) el.textContent = '~' + m.toFixed(2) + ' m/px — good for corners';
+      else if (m < 1.5) el.textContent = '~' + m.toFixed(2) + ' m/px — zoom in more';
+      else el.textContent = '~' + m.toFixed(1) + ' m/px — drag / scroll';
+    }
+
+    function updateMeasureHud() {
+      const hud = document.getElementById('measureHud');
+      const hint = document.getElementById('hint');
+      const active = rings[activeRing] || [];
+      const activeClosed = isClosed(activeRing);
+      const parts = [];
+      var totalArea = 0;
+      rings.forEach(function (r, idx) {
+        if (r.length < 3) return;
+        const m = ringMetrics(r, isClosed(idx) || idx !== activeRing);
+        totalArea += m.area;
+        parts.push('S' + (idx + 1) + ': ' + r.length + ' pts · ' + m.area.toFixed(1) + ' m²');
+      });
+      if (active.length === 1) {
+        parts.push('keep clicking corners…');
+      } else if (active.length === 2) {
+        parts.push(haversineM(active[0], active[1]).toFixed(2) + ' m');
+      } else if (active.length >= 3 && !activeClosed) {
+        const m = ringMetrics(active, false);
+        const edgeTxt = m.edges.map(function (x) { return x.toFixed(2) + ' m'; }).join(' · ');
+        parts.push(active.length + ' corners open · ' + edgeTxt + ' · click first point to close');
+      }
+      if (totalArea > 0) parts.push('Σ ' + totalArea.toFixed(1) + ' m²');
+      hud.textContent = parts.length ? parts.join('  |  ') : 'Click every roof corner — any number of sides';
+
+      if (active.length === 0 && allImportableRings().length === 0)
+        hint.textContent = 'Search → zoom → click every corner (3, 5, 8… whatever the roof needs). Ctrl+Z undo.';
+      else if (active.length > 0 && active.length < 3)
+        hint.textContent = active.length + ' point(s) — keep clicking. Need ≥ 3 before you can close.';
+      else if (active.length >= 3 && !activeClosed)
+        hint.textContent = active.length + ' corners — keep clicking more sides, or click the first point (green) / Finish to close. Not limited to 4.';
+      else if (activeClosed)
+        hint.textContent = 'Section closed (' + active.length + ' sides). New section for another wing, or Import.';
+      else
+        hint.textContent = allImportableRings().length + ' section(s) ready — New section or Import.';
+    }
+
+    function emitOutline() {
+      const payloadRings = [];
+      rings.forEach(function (r) {
+        if (r.length >= 3) payloadRings.push(r.map(function (c) { return { lat: c.lat, lon: c.lon }; }));
+      });
+
+      const active = rings[activeRing];
+      post({
+        type: 'outline',
+        rings: payloadRings,
+        corners: payloadRings.length ? payloadRings[0] : [],
+        mPerPx: metersPerPixel(),
+        zoom: map ? map.getZoom() : 0,
+        canNewSection: !!(active && active.length >= 3),
+        canFinish: !!(active && active.length >= 3 && !isClosed(activeRing)),
+        activeClosed: isClosed(activeRing),
+        activeCorners: active ? active.length : 0,
+      });
+      updateMeasureHud();
+    }
+
+    function clearGraphics() {
+      polyLayers.forEach(function (l) { map.removeLayer(l); });
+      polyLayers = [];
+      markers.forEach(function (m) { map.removeLayer(m); });
+      markers = [];
+      edgeLabels.forEach(function (l) { map.removeLayer(l); });
+      edgeLabels = [];
+      if (rubberLine) { map.removeLayer(rubberLine); rubberLine = null; }
+      if (rubberLabel) { map.removeLayer(rubberLabel); rubberLabel = null; }
+      if (closePreview) { map.removeLayer(closePreview); closePreview = null; }
+    }
+
+    function addEdgeLabel(a, b, text) {
+      const mid = L.latLng((a.lat + b.lat) / 2, (a.lon + b.lon) / 2);
+      const icon = L.divIcon({
+        className: '',
+        html: '<div class="edge-label">' + text + '</div>',
+        iconSize: null,
+      });
+      const marker = L.marker(mid, { icon: icon, interactive: false, keyboard: false }).addTo(map);
+      edgeLabels.push(marker);
+    }
+
+    function rebuildGraphics() {
+      if (!map) return;
+      clearGraphics();
+
+      rings.forEach(function (corners, ringIndex) {
+        if (!corners.length) return;
+        const latlngs = corners.map(function (c) { return [c.lat, c.lon]; });
+        const isActive = ringIndex === activeRing;
+        const closed = isClosed(ringIndex);
+        const color = isActive ? '#f59e0b' : '#fbbf24';
+        const m = ringMetrics(corners, closed);
+
+        if (closed && corners.length >= 3) {
+          // Finished section only — filled closed polygon
+          polyLayers.push(L.polygon(latlngs, {
+            color: color, weight: isActive ? 2.5 : 1.75,
+            fillColor: color, fillOpacity: isActive ? 0.22 : 0.12,
+            interactive: false,
+          }).addTo(map));
+          for (var i = 0; i < corners.length; i++) {
+            addEdgeLabel(corners[i], corners[(i + 1) % corners.length], m.edges[i].toFixed(2) + ' m');
+          }
+        } else if (corners.length >= 2) {
+          // Open trace — polyline only (no auto 4th / closing side)
+          polyLayers.push(L.polyline(latlngs, {
+            color: color, weight: isActive ? 2.5 : 1.75, interactive: false,
+          }).addTo(map));
+          for (var j = 0; j < corners.length - 1; j++) {
+            addEdgeLabel(corners[j], corners[j + 1], m.edges[j].toFixed(2) + ' m');
+          }
+        }
+
+        corners.forEach(function (c, idx) {
+          if (!isActive) {
+            markers.push(L.circleMarker([c.lat, c.lon], {
+              radius: Math.max(2, cornerMarkerPx() / 2),
+              color: '#fff', weight: 1,
+              fillColor: color, fillOpacity: 0.9, interactive: false,
+            }).addTo(map));
+            return;
+          }
+
+          const canClose = !closed && idx === 0 && corners.length >= 3;
+          const sz = cornerMarkerPx();
+          const half = sz / 2;
+          const cls = canClose ? 'corner-marker first-closable' : 'corner-marker';
+          const icon = L.divIcon({
+            className: 'corner-icon',
+            html: '<div class="' + cls + '" style="width:' + sz + 'px;height:' + sz + 'px;margin-left:-' + half + 'px;margin-top:-' + half + 'px;" title="' + (canClose ? 'Click to close outline' : '') + '"></div>',
+            iconSize: [sz, sz],
+            iconAnchor: [half, half],
+          });
+          const mk = L.marker([c.lat, c.lon], {
+            icon: icon, draggable: true, autoPan: true, keyboard: false,
+          }).addTo(map);
+          if (mk.getElement()) mk.getElement().style.cursor = 'default';
+          mk.on('dragstart', function () { dragging = true; map.dragging.disable(); });
+          mk.on('drag', function (ev) {
+            const ll = ev.target.getLatLng();
+            corners[idx] = { lat: ll.lat, lon: ll.lng };
+            closedFlags[ringIndex] = false;
+            refreshActiveGeometryOnly();
+          });
+          mk.on('dragend', function (ev) {
+            const ll = ev.target.getLatLng();
+            corners[idx] = { lat: ll.lat, lon: ll.lng };
+            dragging = false;
+            map.dragging.enable();
+            rebuildGraphics();
+          });
+          if (canClose) {
+            mk.on('click', function (ev) {
+              L.DomEvent.stopPropagation(ev);
+              finishActiveRing();
+            });
+          }
+          markers.push(mk);
+        });
+      });
+
+      emitOutline();
+    }
+
+    function refreshActiveGeometryOnly() {
+      emitOutline();
+    }
+
+    function pushCorner(lat, lon) {
+      if (!rings[activeRing]) rings[activeRing] = [];
+      // Adding another corner re-opens if it was closed
+      closedFlags[activeRing] = false;
+      rings[activeRing].push({ lat: lat, lon: lon });
+      rebuildGraphics();
+    }
+
+    function finishActiveRing() {
+      const active = rings[activeRing];
+      if (!active || active.length < 3) return false;
+      closedFlags[activeRing] = true;
+      rebuildGraphics();
+      return true;
+    }
+
+    function undoCorner() {
+      const active = rings[activeRing];
+      if (active && isClosed(activeRing)) {
+        closedFlags[activeRing] = false;
+        rebuildGraphics();
+        return;
+      }
+      if (active && active.length > 0) {
+        active.pop();
+        closedFlags[activeRing] = false;
+        rebuildGraphics();
+        return;
+      }
+      if (activeRing > 0) {
+        rings.pop();
+        closedFlags.pop();
+        activeRing -= 1;
+        closedFlags[activeRing] = false;
+        const prev = rings[activeRing];
+        if (prev && prev.length) prev.pop();
+        rebuildGraphics();
+      }
+    }
+
+    function clearAll() {
+      rings.length = 0;
+      closedFlags.length = 0;
+      rings.push([]);
+      closedFlags.push(false);
+      activeRing = 0;
+      rebuildGraphics();
+    }
+
+    function newSection() {
+      const active = rings[activeRing];
+      if (!active || active.length < 3) return false;
+      closedFlags[activeRing] = true;
+      rings.push([]);
+      closedFlags.push(false);
+      activeRing = rings.length - 1;
+      rebuildGraphics();
+      return true;
+    }
+
+    function onMapClick(e) {
+      if (dragging) return;
+      const active = rings[activeRing] || [];
+      // Explicit close only — click near / on first corner (any side count ≥ 3)
+      if (active.length >= 3 && !isClosed(activeRing) && nearFirstCorner(e.latlng, active)) {
+        finishActiveRing();
+        return;
+      }
+      pushCorner(e.latlng.lat, e.latlng.lng);
+    }
+
+    function onMapMouseMove(e) {
+      const active = rings[activeRing];
+      if (!active || active.length === 0 || dragging || isClosed(activeRing)) {
+        if (rubberLine) { map.removeLayer(rubberLine); rubberLine = null; }
+        if (rubberLabel) { map.removeLayer(rubberLabel); rubberLabel = null; }
+        if (closePreview) { map.removeLayer(closePreview); closePreview = null; }
+        return;
+      }
+      const last = active[active.length - 1];
+      const cur = { lat: e.latlng.lat, lon: e.latlng.lng };
+      const closing = active.length >= 3 && nearFirstCorner(e.latlng, active);
+      const dist = closing
+        ? haversineM(last, active[0])
+        : haversineM(last, cur);
+      const end = closing ? active[0] : cur;
+
+      if (!rubberLine) {
+        rubberLine = L.polyline([[last.lat, last.lon], [end.lat, end.lon]], {
+          color: closing ? '#22c55e' : '#f59e0b',
+          weight: 2, dashArray: '6 4', interactive: false,
+        }).addTo(map);
+      } else {
+        rubberLine.setLatLngs([[last.lat, last.lon], [end.lat, end.lon]]);
+        rubberLine.setStyle({ color: closing ? '#22c55e' : '#f59e0b' });
+      }
+
+      if (closePreview) { map.removeLayer(closePreview); closePreview = null; }
+      if (closing) {
+        closePreview = L.polygon(
+          active.map(function (c) { return [c.lat, c.lon]; }),
+          {
+            color: '#22c55e', weight: 1.5, dashArray: '4 6',
+            fillColor: '#22c55e', fillOpacity: 0.08, interactive: false,
+          }
+        ).addTo(map);
+      }
+
+      const mid = L.latLng((last.lat + end.lat) / 2, (last.lon + end.lon) / 2);
+      const labelHtml = '<div class="edge-label">'
+        + (closing ? 'Close · ' : '')
+        + dist.toFixed(2) + ' m</div>';
+      if (!rubberLabel) {
+        rubberLabel = L.marker(mid, {
+          icon: L.divIcon({ className: '', html: labelHtml, iconSize: null }),
+          interactive: false, keyboard: false,
+        }).addTo(map);
+      } else {
+        rubberLabel.setLatLng(mid);
+        rubberLabel.setIcon(L.divIcon({ className: '', html: labelHtml, iconSize: null }));
+      }
+    }
+
+    function setBasemap(name) {
+      activeBasemap = name;
+      if (!map) return;
+      if (name === 'google') {
+        if (!map.hasLayer(googleLayer)) map.addLayer(googleLayer);
+        if (map.hasLayer(esriLayer)) map.removeLayer(esriLayer);
+      } else {
+        if (!map.hasLayer(esriLayer)) map.addLayer(esriLayer);
+        if (map.hasLayer(googleLayer)) map.removeLayer(googleLayer);
+      }
+      document.getElementById('btnGoogle').classList.toggle('active', name === 'google');
+      document.getElementById('btnEsri').classList.toggle('active', name === 'esri');
+    }
+
+    function scheduleInvalidate() {
+      if (!map) return;
+      if (invalidateTimer) clearTimeout(invalidateTimer);
+      invalidateTimer = setTimeout(function () {
+        invalidateTimer = null;
+        const el = map.getContainer();
+        const w = el.clientWidth, h = el.clientHeight;
+        if (w < 40 || h < 40) return;
+        lastSize = { w: w, h: h };
+        map.invalidateSize(false);
+        updateScale();
+      }, 60);
+    }
+
+    function startMap() {
+      const el = document.getElementById('map');
+      if (!el || el.clientWidth < 100 || el.clientHeight < 100) {
+        requestAnimationFrame(startMap);
+        return;
+      }
+      if (map) { scheduleInvalidate(); return; }
+
+      map = L.map(el, {
+        crs: L.CRS.EPSG3857,
+        zoomControl: true,
+        attributionControl: true,
+        doubleClickZoom: false,
+        boxZoom: false,
+        zoomSnap: 1,
+        zoomDelta: 1,
+        wheelPxPerZoomLevel: 80,
+        fadeAnimation: false,
+        zoomAnimation: false,
+        trackResize: true,
+        maxBounds: [[-85, -180], [85, 180]],
+        maxBoundsViscosity: 0.8,
+      }).setView([-25.2744, 133.7751], 4);
+
+      googleLayer = L.tileLayer(
+        'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        {
+          subdomains: ['0', '1', '2', '3'],
+          minZoom: MIN_ZOOM,
+          maxZoom: VISUAL_MAX,
+          maxNativeZoom: 20,
+          detectRetina: false,
+          updateWhenZooming: false,
+          updateWhenIdle: true,
+          attribution: 'Imagery © Google',
+        }
+      );
+
+      esriLayer = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+          minZoom: MIN_ZOOM,
+          maxZoom: VISUAL_MAX,
+          maxNativeZoom: ESRI_NATIVE,
+          detectRetina: false,
+          updateWhenZooming: false,
+          updateWhenIdle: true,
+          attribution: 'Tiles © Esri',
+        }
+      );
+
+      googleLayer.addTo(map);
+      map.setMinZoom(MIN_ZOOM);
+      map.setMaxZoom(VISUAL_MAX);
+
+      map.on('click', onMapClick);
+      map.on('mousemove', onMapMouseMove);
+      map.on('zoomend', function () {
+        updateScale();
+        if (!dragging) rebuildGraphics();
+        post({ type: 'view', mPerPx: metersPerPixel(), zoom: map.getZoom() });
+      });
+      map.on('moveend', function () {
+        updateScale();
+        post({ type: 'view', mPerPx: metersPerPixel(), zoom: map.getZoom() });
+      });
+
+      document.getElementById('btnGoogle').onclick = function () { setBasemap('google'); };
+      document.getElementById('btnEsri').onclick = function () { setBasemap('esri'); };
+
+      document.addEventListener('keydown', function (ev) {
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'z' || ev.key === 'Z')) {
+          ev.preventDefault();
+          undoCorner();
+        }
+      });
+
+      scheduleInvalidate();
+      setTimeout(scheduleInvalidate, 120);
+      setTimeout(scheduleInvalidate, 400);
+      updateScale();
+      updateMeasureHud();
+      post({ type: 'ready' });
+    }
 
     window.solarSimMap = {
       flyTo: function (lat, lon, zoom) {
-        const z = typeof zoom === 'number' ? zoom : 18;
-        map.setView([lat, lon], z);
+        if (!map) return;
+        var z = typeof zoom === 'number' ? zoom : HOUSE_ZOOM;
+        z = Math.max(MIN_ZOOM, Math.min(VISUAL_MAX, Math.round(z)));
+        map.setView([lat, lon], z, { animate: false });
+        scheduleInvalidate();
       },
-      setPin: function (lat, lon, fly) {
-        setPin(lat, lon, fly !== false);
+      undoCorner: function () { undoCorner(); },
+      clearOutline: function () { clearAll(); },
+      newSection: function () { return newSection(); },
+      finishOutline: function () { return finishActiveRing(); },
+      getCorners: function () {
+        const active = rings[activeRing] || [];
+        return active.slice();
       },
-      clearPin: function () {
-        if (marker) {
-          map.removeLayer(marker);
-          marker = null;
-        }
-        document.getElementById('hint').textContent =
-          'Click the house on the satellite image to drop a pin.';
-      }
+      invalidate: function () { scheduleInvalidate(); }
     };
 
-    post({ type: 'ready' });
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { scheduleInvalidate(); })
+        .observe(document.getElementById('map'));
+    }
+    window.addEventListener('resize', function () { scheduleInvalidate(); });
+    startMap();
   </script>
 </body>
 </html>

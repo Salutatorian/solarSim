@@ -131,6 +131,8 @@ public sealed class RoofSurface
 
     public void MoveVertex(int index, Point2Mm point)
     {
+        if (IsLocked)
+            throw new InvalidOperationException("Roof layer is locked.");
         if (index < 0 || index >= _vertices.Count)
             throw new ArgumentOutOfRangeException(nameof(index));
         _vertices[index] = point;

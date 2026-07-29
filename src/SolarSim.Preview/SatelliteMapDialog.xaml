@@ -2,12 +2,13 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        Title="Satellite map — mark your house"
+        Title="Trace roof — free satellite map"
         Width="960" Height="700"
         MinWidth="720" MinHeight="520"
         WindowStartupLocation="CenterOwner"
         Background="#0E0E10"
-        FontFamily="{StaticResource UiFont}">
+        FontFamily="{StaticResource UiFont}"
+        PreviewKeyDown="Window_PreviewKeyDown">
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="#16161A" Padding="12,10" BorderBrush="#27272A" BorderThickness="0,0,0,1">
             <Grid>
@@ -20,7 +21,7 @@
                             Padding="14,6" Margin="8,0,0,0" Click="Search_Click"/>
                     <TextBox x:Name="SearchBox" VerticalContentAlignment="Center" Height="32"
                              KeyDown="SearchBox_KeyDown"
-                             ToolTip="Address or lat,lon"/>
+                             ToolTip="Free OpenStreetMap address search, or paste lat,lon"/>
                 </DockPanel>
                 <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center"
                            Foreground="#A1A1AA" FontSize="12.5" Margin="16,0,0,0"
@@ -31,16 +32,33 @@
         <Border DockPanel.Dock="Bottom" Background="#16161A" Padding="12,10" BorderBrush="#27272A" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Cancel" Style="{StaticResource GhostButton}" Width="96" Margin="0,0,8,0"
+                    <Button Content="Undo" Style="{StaticResource GhostButton}" Padding="12,6" Margin="0,0,8,0"
+                            ToolTip="Undo last corner (Ctrl+Z)" Click="UndoCorner_Click"/>
+                    <Button x:Name="FinishOutlineButton" Content="Finish outline" Style="{StaticResource GhostButton}"
+                            Padding="12,6" Margin="0,0,8,0" IsEnabled="False"
+                            ToolTip="Close the current outline (any number of sides). Or click the first corner on the map."
+                            Click="FinishOutline_Click"/>
+                    <Button x:Name="NewSectionButton" Content="New section" Style="{StaticResource GhostButton}"
+                            Padding="12,6" Margin="0,0,8,0" IsEnabled="False"
+                            ToolTip="Lock this outline and start another wing / layer"
+                            Click="NewSection_Click"/>
+                    <Button Content="Clear" Style="{StaticResource GhostButton}" Padding="12,6" Margin="0,0,8,0"
+                            Click="ClearOutline_Click"/>
+                    <Button Content="Cancel" Style="{StaticResource GhostButton}" Width="88" Margin="0,0,8,0"
                             Click="Cancel_Click"/>
-                    <Button x:Name="ImportButton" Content="Import this building" Style="{StaticResource PrimaryButton}"
+                    <Button x:Name="ImportButton" Content="Import traced roof" Style="{StaticResource PrimaryButton}"
                             Padding="16,8" IsEnabled="False" Click="Import_Click"/>
                 </StackPanel>
                 <TextBlock x:Name="PinLabel" VerticalAlignment="Center" Foreground="#D4D4D8" FontSize="12.5"
-                           Text="Click the satellite image to place a pin on the house."/>
+                           Text="Click every corner (any count) · click first point / Finish to close · not limited to 4 sides"/>
             </DockPanel>
         </Border>
 
-        <wv2:WebView2 x:Name="MapView"/>
+        <Grid ClipToBounds="True">
+            <wv2:WebView2 x:Name="MapView"
+                          DefaultBackgroundColor="#FF0E0E10"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"/>
+        </Grid>
     </DockPanel>
 </Window>

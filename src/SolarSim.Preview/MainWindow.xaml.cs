@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using SolarSim.Application.Commands;
 using SolarSim.Application.Integrations.GoogleSolar;
+using SolarSim.Application.Integrations.OpenMap;
 using SolarSim.Application.Integrations.Pvlib;
 using SolarSim.Application.Project;
 using SolarSim.Application.Serialization;
@@ -28,9 +29,14 @@ public partial class MainWindow : Window
     private readonly Dictionary<Guid, WireCanvasVisual> _wireVisuals = new();
 
     private const double MmToPx = 0.12; // 1 mm → 0.12 px (keeps modules readable)
-    private const double SnapThresholdMm = 40;
+    /// <summary>Catch radius per axis (mm). Independent X/Y so top/bottom snaps without needing perfect column align.</summary>
+    private const double SnapThresholdMm = 70;
     private const double PortHitRadiusPx = 14;
-    private const double PanelSpacingMm = 20;
+    private const double PanelGapXMm = 40;
+    /// <summary>Body-to-body vertical gap (mm): clears bottom PV leads + a little air. Fixed in world space (not zoom).</summary>
+    private static double PanelGapYMm => PanelPortLayoutService.LeadLengthMm + 52;
+
+    private readonly List<UIElement> _panelPortLeadVisuals = new();
 
     private double _zoom = 1.0;
     private Point _panOffset = new(80, 120);
@@ -49,9 +55,29 @@ public partial class MainWindow : Window
     private double _rotateStartMouseAngleDeg;
     private double _rotateStartEquipmentDeg;
     private bool _rotateMoved;
+    private bool _rotatingRoof;
+    private bool _draggingRoofBody;
+    private Point _roofDragStartCanvas;
+    private double _roofDragDxMm;
+    private double _roofDragDyMm;
+    private Point2Mm _roofRotatePivot;
+    private double _roofRotateStartMouseDeg;
+    private double _roofRotateLiveDegrees;
+    private readonly Dictionary<Guid, List<Point2Mm>> _roofRotateBaseline = new();
+    private Border? _roofRotateHandle;
+
+    private sealed record PanelClipboardItem(
+        Guid DefinitionId,
+        double OffsetXMm,
+        double OffsetYMm,
+        int RotationDegrees);
+
+    private List<PanelClipboardItem>? _panelClipboard;
+    private Point? _contextMenuCanvasPoint;
     private Point _dragStartMouse;
     private readonly Dictionary<Guid, (double x, double y)> _dragOrigins = new();
     private bool _dragMoved;
+    private readonly List<UIElement> _alignmentGuideVisuals = new();
 
     private bool _isMarqueeSelecting;
     private Point _marqueeStart;
@@ -84,6 +110,7 @@ public partial class MainWindow : Window
         Select,
         DrawRoof,
         PlaceObstacle,
+        Measure,
     }
 
     private CanvasTool _tool = CanvasTool.Select;
@@ -118,6 +145,10 @@ public partial class MainWindow : Window
     private TextBlock? _roofLevelBadge;
     private Line? _roofLevelGuideH;
     private Line? _roofLevelGuideV;
+    private readonly List<Point2Mm> _measurePoints = new();
+    private readonly List<UIElement> _measureVisuals = new();
+    private Line? _measureRubberBand;
+    private TextBlock? _measureLiveLabel;
     private TextBlock? _rotateDegreeLabel;
     private readonly List<UIElement> _rackingVisuals = new();
     private bool _showAttachments = false;
@@ -130,6 +161,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         PopulateUnitsCombo();
         PopulateClimatePresetCombo();
+        PanelAppearance.Load();
+        PanelAppearance.ApplyBrushes();
+        PopulatePanelColorCombo();
         DesignCanvas.Focusable = true;
         // BeginInvoke avoids re-entrant rebuild crashes when mutations fire ProjectChanged mid-refresh.
         _project.ProjectChanged += _ =>
@@ -175,6 +209,7 @@ public partial class MainWindow : Window
             UpdateRackingBoxes();
             UpdateLayersTabStyles();
             ApplyWorkspacePlanUi();
+            UpdateLockRoofButton();
         }
         catch (Exception ex)
         {
@@ -224,10 +259,22 @@ public partial class MainWindow : Window
             : _project.FilePath;
 
         StringsList.Items.Clear();
-        foreach (var s in calc.Strings)
+        for (var i = 0; i < calc.Strings.Count; i++)
         {
-            StringsList.Items.Add(new StringListItem(s.StringId,
-                $"{s.DisplayName}  —  {s.PanelCount} mod  {s.TotalPmaxWatts:0.##} W  Vmp {s.VmpVolts:0.##} V"));
+            var s = calc.Strings[i];
+            var colorIndex = IndexOfStringId(s.StringId);
+            var row = new ListBoxItem
+            {
+                Content = new StringListItem(s.StringId,
+                    $"{s.DisplayName}  —  {s.PanelCount} mod  {s.TotalPmaxWatts:0.##} W  Vmp {s.VmpVolts:0.##} V"),
+                Foreground = StringColorPalette.BrushForIndex(colorIndex),
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 12.5,
+                Padding = new Thickness(4, 4, 4, 4),
+                BorderThickness = new Thickness(0),
+                Background = Brushes.Transparent,
+            };
+            StringsList.Items.Add(row);
         }
 
         UpdateInspector();
@@ -627,7 +674,8 @@ public partial class MainWindow : Window
         {
             Text = name,
             Style = (Style)FindResource("InspectorRowLabel"),
-            Foreground = (Brush)FindResource("TextBrush"),
+            Foreground = StringColorPalette.BrushForIndex(index),
+            FontWeight = FontWeights.SemiBold,
         };
         Grid.SetColumn(nameBlock, 1);
 
@@ -681,16 +729,15 @@ public partial class MainWindow : Window
     private PanelVisual CreatePanelVisual(SolarPanelInstance panel)
     {
         var def = _project.RequireDefinition(panel.DefinitionId);
-        var root = new Canvas { Cursor = Cursors.SizeAll };
+        var root = new Canvas { Cursor = Cursors.Arrow };
 
         var body = new Border
         {
-            Background = (Brush)FindResource("PanelFillBrush"),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0x3A, 0x4A, 0x60)),
-            BorderThickness = new Thickness(2),
-            CornerRadius = new CornerRadius(3),
+            Background = GetPanelFaceBrush(),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(2),
             ClipToBounds = true,
-            Child = CreateCellGrid(),
         };
 
         // Sibling of Body (not clipped by panel bounds) so "270 W" stays readable when zoomed out.
@@ -701,6 +748,7 @@ public partial class MainWindow : Window
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
             IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
         };
 
         var label = new TextBlock
@@ -709,6 +757,7 @@ public partial class MainWindow : Window
             FontSize = 11,
             Foreground = (Brush)FindResource("MutedBrush"),
             IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
         };
 
         var pos = CreatePortDot(true);
@@ -724,13 +773,42 @@ public partial class MainWindow : Window
         root.Children.Add(posLabel);
         root.Children.Add(negLabel);
 
-        var visual = new PanelVisual(panel.Id, root, body, powerLabel, label, pos, neg, posLabel, negLabel);
+        var rotateStem = new Line
+        {
+            Visibility = Visibility.Collapsed,
+            IsHitTestVisible = false,
+        };
+        var rotateHandle = CreateCanvaRotateHandle(
+            22,
+            "Rotate 90° (or press R)");
+        rotateHandle.Visibility = Visibility.Collapsed;
+        root.Children.Add(rotateStem);
+        root.Children.Add(rotateHandle);
+
+        var visual = new PanelVisual(
+            panel.Id, root, body, powerLabel, label, pos, neg, posLabel, negLabel, rotateHandle, rotateStem);
+
+        rotateHandle.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ChangedButton != MouseButton.Left) return;
+            // Select this panel if needed, then rotate — Canva-style affordance.
+            if (!_selectedPanelIds.Contains(panel.Id))
+                SetSelection(panels: new[] { panel.Id });
+            var current = _project.Graph.GetPanel(panel.Id);
+            _project.History.Execute(new RotatePanelCommand(
+                _project, panel.Id, current.RotationDegrees, current.RotationDegrees + 90));
+            e.Handled = true;
+        };
         // Ports are drawn as high-Z canvas overlays (above wires). In-panel dots are position anchors only.
         pos.IsHitTestVisible = false;
         neg.IsHitTestVisible = false;
         pos.Visibility = Visibility.Collapsed;
         neg.Visibility = Visibility.Collapsed;
-        root.MouseEnter += (_, _) => SetPortsVisible(visual, true);
+        root.MouseEnter += (_, _) =>
+        {
+            SetPortsVisible(visual, true);
+            RebuildPanelPortHitOverlays();
+        };
         root.MouseLeave += (_, _) =>
         {
             // Defer: moving toward a terminal used to cross empty canvas and instantly hide ports.
@@ -740,39 +818,110 @@ public partial class MainWindow : Window
                 if (_selectedPanelIds.Contains(visual.InstanceId) || _wireFromPortId is not null)
                 {
                     SetPortsVisible(visual, true);
+                    RebuildPanelPortHitOverlays();
                     return;
                 }
                 SetPortsVisible(visual, false);
+                RebuildPanelPortHitOverlays();
             }, System.Windows.Threading.DispatcherPriority.Input);
         };
         return visual;
     }
 
-    private static UIElement CreateCellGrid()
+    private static ImageBrush? _panelFaceBrush;
+
+    private static ImageBrush GetPanelFaceBrush()
     {
-        var grid = new UniformGrid { Rows = 4, Columns = 6, Margin = new Thickness(6) };
-        for (var i = 0; i < 24; i++)
+        if (_panelFaceBrush is not null)
+            return _panelFaceBrush;
+
+        var bmp = new System.Windows.Media.Imaging.BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri("pack://application:,,,/Assets/panel-face.png", UriKind.Absolute);
+        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+
+        _panelFaceBrush = new ImageBrush(bmp)
         {
-            grid.Children.Add(new Border
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
+        };
+        _panelFaceBrush.Freeze();
+        return _panelFaceBrush;
+    }
+
+    /// <summary>
+    /// Canva-style rotate control: white circle + clear refresh/rotate arrows (not a blob).
+    /// </summary>
+    private static Border CreateCanvaRotateHandle(double size, string toolTip)
+    {
+        var iconBox = Math.Max(12, size * 0.56);
+        // Lucide-style refresh-cw — two arcs with corner arrowheads. Reads as "rotate".
+        var arrows = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse(
+                "M21,2 L21,8 L15,8 " +
+                "M3,12 A9,9 0 0 1 18.36,5.64 L21,8 " +
+                "M3,22 L3,16 L9,16 " +
+                "M21,12 A9,9 0 0 1 5.64,18.36 L3,16"),
+            Stroke = new SolidColorBrush(Color.FromRgb(0x1F, 0x29, 0x37)),
+            StrokeThickness = 2.0,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent,
+            Stretch = Stretch.Uniform,
+            Width = 24,
+            Height = 24,
+            IsHitTestVisible = false,
+        };
+
+        var icon = new Viewbox
+        {
+            Width = iconBox,
+            Height = iconBox,
+            Stretch = Stretch.Uniform,
+            Child = arrows,
+            IsHitTestVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        return new Border
+        {
+            Width = size,
+            Height = size,
+            Background = Brushes.White,
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0xD1, 0xD5, 0xDB)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(size / 2),
+            Cursor = Cursors.Hand,
+            ToolTip = toolTip,
+            Child = icon,
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
-                Background = (Brush)System.Windows.Application.Current.FindResource("PanelCellBrush"),
-                Margin = new Thickness(1),
-                CornerRadius = new CornerRadius(1),
-            });
-        }
-        return grid;
+                BlurRadius = 4,
+                ShadowDepth = 1,
+                Opacity = 0.16,
+                Color = Colors.Black,
+            },
+        };
     }
 
     private Ellipse CreatePortDot(bool positive)
     {
-        var brush = (Brush)FindResource(positive ? "PositiveBrush" : "NegativeBrush");
+        // Anchor-only (collapsed); real glyphs live on the overlay layer.
         var ellipse = new Ellipse
         {
-            Width = 8,
-            Height = 8,
-            Fill = brush,
+            Width = PanelPortLayoutService.VisibleCircleDiameterPx,
+            Height = PanelPortLayoutService.VisibleCircleDiameterPx,
+            Fill = positive
+                ? new SolidColorBrush(Color.FromRgb(0xB9, 0x1C, 0x1C))
+                : new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD8)),
             Stroke = Brushes.White,
-            StrokeThickness = 1.5,
+            StrokeThickness = 1.1,
             Visibility = Visibility.Collapsed,
             Cursor = Cursors.Cross,
             Tag = positive ? "PV+" : "PV-",
@@ -785,11 +934,11 @@ public partial class MainWindow : Window
     private static TextBlock CreatePortPolarityLabel(bool positive) => new()
     {
         Text = positive ? "+" : "−",
-        FontSize = 12,
-        FontWeight = FontWeights.Bold,
+        FontSize = 9,
+        FontWeight = FontWeights.SemiBold,
         Foreground = positive
-            ? new SolidColorBrush(Color.FromRgb(0xD3, 0x2F, 0x2F))
-            : new SolidColorBrush(Color.FromRgb(0x21, 0x21, 0x21)),
+            ? new SolidColorBrush(Color.FromRgb(0xB9, 0x1C, 0x1C))
+            : new SolidColorBrush(Color.FromRgb(0xA1, 0xA1, 0xAA)),
         Visibility = Visibility.Collapsed,
         IsHitTestVisible = false,
     };
@@ -808,77 +957,66 @@ public partial class MainWindow : Window
         var (x, y) = WorldToCanvas(panel.PositionXMm, panel.PositionYMm);
         Canvas.SetLeft(visual.Root, x);
         Canvas.SetTop(visual.Root, y);
-        Panel.SetZIndex(visual.Root, 100);
+        Panel.SetZIndex(visual.Root, 100); // above PV wires (z≈40), below ports (z≈960)
         visual.Root.Width = size.Width;
         visual.Root.Height = size.Height;
         visual.Root.Background = Brushes.Transparent;
 
         Canvas.SetLeft(visual.Body, 0);
         Canvas.SetTop(visual.Body, 0);
-        Canvas.SetLeft(visual.Label, 0);
-        Canvas.SetTop(visual.Label, size.Height + 4);
+        visual.Label.Visibility = Visibility.Collapsed;
+        visual.PowerLabel.Visibility = Visibility.Collapsed;
 
-        // Fixed screen-pixel font — do not shrink with zoom (avoids "270 W" clipping to "70").
-        visual.PowerLabel.Text = $"{def.PmaxWatts:0} W";
-        visual.PowerLabel.FontSize = 13;
-        visual.PowerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var tw = visual.PowerLabel.DesiredSize.Width;
-        var th = visual.PowerLabel.DesiredSize.Height;
-        Canvas.SetLeft(visual.PowerLabel, (size.Width - tw) / 2);
-        Canvas.SetTop(visual.PowerLabel, (size.Height - th) / 2);
-        Panel.SetZIndex(visual.PowerLabel, 5);
-
-        // Anchor positions for overlays (in-panel dots stay collapsed).
-        Canvas.SetLeft(visual.PositivePort, size.Width / 2 - 8);
-        Canvas.SetTop(visual.PositivePort, -18);
-        Canvas.SetLeft(visual.NegativePort, size.Width / 2 - 8);
-        Canvas.SetTop(visual.NegativePort, size.Height + 2);
-        Canvas.SetLeft(visual.PositiveLabel, size.Width / 2 + 10);
-        Canvas.SetTop(visual.PositiveLabel, -20);
-        Canvas.SetLeft(visual.NegativeLabel, size.Width / 2 + 10);
-        Canvas.SetTop(visual.NegativeLabel, size.Height + 4);
+        // Both terminals on the bottom service edge (side-by-side) — never top/bottom opposing.
+        var layout = PanelPortLayoutService.ForAxisAlignedPanel(
+            size.Width / (MmToPx * _zoom),
+            size.Height / (MmToPx * _zoom));
+        var s = MmToPx * _zoom;
+        var d = PanelPortLayoutService.VisibleCircleDiameterPx;
+        Canvas.SetLeft(visual.NegativePort, layout.NegLocalXMm * s - d / 2);
+        Canvas.SetTop(visual.NegativePort, layout.NegLocalYMm * s - d / 2);
+        Canvas.SetLeft(visual.PositivePort, layout.PosLocalXMm * s - d / 2);
+        Canvas.SetTop(visual.PositivePort, layout.PosLocalYMm * s - d / 2);
+        Canvas.SetLeft(visual.NegativeLabel, layout.NegLocalXMm * s - 3);
+        Canvas.SetTop(visual.NegativeLabel, layout.NegLocalYMm * s + d / 2);
+        Canvas.SetLeft(visual.PositiveLabel, layout.PosLocalXMm * s - 3);
+        Canvas.SetTop(visual.PositiveLabel, layout.PosLocalYMm * s + d / 2);
 
         var isSelected = _selectedPanelIds.Contains(panel.Id);
         var stringIndex = StringColorPalette.IndexForPanel(_project.Graph.Strings, panel.Id);
+
+        // Photoreal half-cut panel face. Name/watts live in the inspector only.
+        visual.Body.Background = GetPanelFaceBrush();
         if (stringIndex is int si)
         {
-            visual.Body.Background = StringColorPalette.FillForIndex(si);
-            if (!isSelected)
-                visual.Body.BorderBrush = StringColorPalette.BrushForIndex(si, 180);
-            else
-                visual.Body.BorderBrush = (Brush)FindResource("AccentBrush");
-
-            var shortName = _project.Graph.Strings[si].DisplayName;
-            if (shortName.Length > 12) shortName = $"S{si + 1}";
-            visual.Label.Text = _zoom < 0.55
-                ? shortName
-                : $"{shortName}  ·  {def.DisplayName}";
-            visual.Label.Foreground = StringColorPalette.BrushForIndex(si);
+            // Stronger string rim — easy to spot without shouting over the photo face.
+            visual.Body.BorderBrush = isSelected
+                ? (Brush)FindResource("AccentBrush")
+                : StringColorPalette.BrushForIndex(si);
+            visual.Body.BorderThickness = new Thickness(isSelected ? 2.5 : 2.25);
         }
         else
         {
-            visual.Body.Background = (Brush)FindResource("PanelFillBrush");
             visual.Body.BorderBrush = isSelected
                 ? (Brush)FindResource("AccentBrush")
-                : (Brush)FindResource("BorderBrush");
-            visual.Label.Text = def.DisplayName;
-            visual.Label.Foreground = (Brush)FindResource("MutedBrush");
+                : new SolidColorBrush(Color.FromRgb(0xC0, 0xC8, 0xD0));
+            visual.Body.BorderThickness = new Thickness(isSelected ? 2 : 1);
         }
 
         visual.Body.Opacity = 1.0;
         visual.Body.Effect = null;
-        visual.Body.BorderThickness = new Thickness(isSelected ? 1.5 : 1);
 
-        // Semantic zoom: cells when zoomed in; wattage label only when selected.
-        if (visual.Body.Child is UIElement cells)
-            cells.Visibility = _zoom >= 0.55 ? Visibility.Visible : Visibility.Collapsed;
-        visual.PowerLabel.Visibility = isSelected && _zoom >= 0.4 ? Visibility.Visible : Visibility.Collapsed;
-        if (isSelected)
-        {
-            visual.PowerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetTop(visual.PowerLabel, -visual.PowerLabel.DesiredSize.Height - 4);
-            Canvas.SetLeft(visual.PowerLabel, (size.Width - visual.PowerLabel.DesiredSize.Width) / 2);
-        }
+        // Canva-style ↻ — floating below the module (no stem).
+        var handleSize = Math.Clamp(22 * Math.Min(_zoom, 1.15), 20, 26);
+        var gap = Math.Max(8, 10 * Math.Min(_zoom, 1.2));
+        visual.RotateHandle.Width = handleSize;
+        visual.RotateHandle.Height = handleSize;
+        visual.RotateHandle.CornerRadius = new CornerRadius(handleSize / 2);
+        Canvas.SetLeft(visual.RotateHandle, size.Width / 2 - handleSize / 2);
+        Canvas.SetTop(visual.RotateHandle, size.Height + gap);
+        Panel.SetZIndex(visual.RotateHandle, 20);
+        visual.RotateStem.Visibility = Visibility.Collapsed;
+        visual.RotateHandle.Visibility = isSelected ? Visibility.Visible : Visibility.Collapsed;
 
         var showLabels = isSelected || _wireFromPortId is not null || visual.Root.IsMouseOver;
         SetPortsVisible(visual, showLabels);
@@ -889,6 +1027,10 @@ public partial class MainWindow : Window
         foreach (var visual in _wireVisuals.Values.ToList())
             visual.RemoveFrom(DesignCanvas);
         _wireVisuals.Clear();
+
+        var obstacles = CollectPanelObstacleRects();
+        var cableBrush = NeutralCableBrush();
+        var cableBrushSelected = NeutralCableBrush(selected: true);
 
         foreach (var connection in _project.Graph.Connections.Values)
         {
@@ -907,81 +1049,40 @@ public partial class MainWindow : Window
             var p1 = GetPortCanvasPoint(start);
             var p2 = GetPortCanvasPoint(end);
             var selected = _selectedConnectionIds.Contains(connection.Id);
-            var startBrush = PolarityBrush(start.Polarity);
-            var endBrush = PolarityBrush(end.Polarity);
-            var stringIndex = StringColorPalette.IndexForConnection(
-                _project.Graph.Strings, start.OwnerComponentId, end.OwnerComponentId);
-            if (stringIndex is int wireSi)
-            {
-                // Series jumpers share string identity; keep polarity only on ports/MC4.
-                var stringBrush = StringColorPalette.BrushForIndex(wireSi, selected ? (byte)255 : (byte)210);
-                startBrush = stringBrush;
-                endBrush = stringBrush;
-            }
-            var thickness = selected ? 2.0 : 1.5;
+            var thickness = selected ? 2.5 : 1.75;
+            var stroke = selected ? cableBrushSelected : cableBrush;
 
-            var visual = new WireCanvasVisual { ConnectionId = connection.Id };
-            var bothPanels = _project.Graph.Panels.ContainsKey(start.OwnerComponentId)
-                             && _project.Graph.Panels.ContainsKey(end.OwnerComponentId);
-            var useSeriesArc = bothPanels && connection.Wire.Waypoints.Count == 0;
+            // Wires sit under panels normally; selected wire comes forward for inspection.
+            var wireZ = selected ? 720 : 40;
+            var hitZ = selected ? 721 : 41;
 
-            List<Point> routePoints;
-            Point mid;
-            if (useSeriesArc)
-            {
-                var sag = Math.Clamp(32 * _zoom, 22, 64);
-                var arcUp = PreferSeriesArcUp(start, end, p1, p2);
-                mid = new Point(
-                    (p1.X + p2.X) / 2,
-                    arcUp ? Math.Min(p1.Y, p2.Y) - sag : Math.Max(p1.Y, p2.Y) + sag);
-                routePoints = new List<Point> { p1, mid, p2 };
+            var route = BuildPvWireRoute(start, end, p1, p2, connection, obstacles);
+            var pathPoints = route.PathPoints.Select(v => new Point(v.X, v.Y)).ToList();
 
-                var leadA = CreatePolarityLeadPath(p1, mid, startBrush, thickness, connection.Id);
-                var leadB = CreatePolarityLeadPath(p2, mid, endBrush, thickness, connection.Id);
-                visual.Shapes.Add(leadA);
-                visual.Shapes.Add(leadB);
-                AddWireShape(leadA, z: 700);
-                AddWireShape(leadB, z: 700);
-            }
-            else
-            {
-                routePoints = new List<Point> { p1 };
-                foreach (var wp in connection.Wire.Waypoints)
-                {
-                    var (cx, cy) = WorldToCanvas(wp.X, wp.Y);
-                    routePoints.Add(new Point(cx, cy));
-                }
-                routePoints.Add(p2);
-                mid = routePoints[routePoints.Count / 2];
+            var visual = new WireCanvasVisual { ConnectionId = connection.Id, HitPoints = pathPoints };
 
-                // Split polyline into two polarity-colored halves.
-                var half = Math.Max(1, routePoints.Count / 2);
-                var firstHalf = new PointCollection(routePoints.Take(half + 1));
-                var secondHalf = new PointCollection(routePoints.Skip(half));
-                if (secondHalf.Count == 1)
-                    secondHalf.Insert(0, firstHalf[^1]);
+            // Fat invisible hit geometry (clickable without thick visible cable).
+            var hitPath = CreateWirePath(route, Brushes.Transparent, 12, connection.Id, isHitTarget: true);
+            visual.Shapes.Add(hitPath);
+            AddWireShape(hitPath, z: hitZ);
 
-                var polyA = CreatePolarityPolyline(firstHalf, startBrush, thickness, connection.Id);
-                var polyB = CreatePolarityPolyline(secondHalf, endBrush, thickness, connection.Id);
-                visual.Shapes.Add(polyA);
-                visual.Shapes.Add(polyB);
-                AddWireShape(polyA, z: 700);
-                AddWireShape(polyB, z: 700);
-            }
+            // Visible neutral cable.
+            var cablePath = CreateWirePath(route, stroke, thickness, connection.Id, isHitTarget: false);
+            visual.Shapes.Add(cablePath);
+            AddWireShape(cablePath, z: wireZ);
 
-            visual.HitPoints = routePoints;
+            // Short polarity tips at each terminal (not half-and-half cable coloring).
+            var tipLen = Math.Clamp(10 * _zoom, 8, 14);
+            var n1 = PortExitNormalCanvas(start);
+            var n2 = PortExitNormalCanvas(end);
+            var tipA = CreatePolarityTip(p1, n1, tipLen, PolarityBrush(start.Polarity), connection.Id);
+            var tipB = CreatePolarityTip(p2, n2, tipLen, PolarityBrush(end.Polarity), connection.Id);
+            visual.Shapes.Add(tipA);
+            visual.Shapes.Add(tipB);
+            AddWireShape(tipA, z: wireZ + 1);
+            AddWireShape(tipB, z: wireZ + 1);
 
-            // Mated MC4 where leads meet (male ↔ female halves).
-            var plug = Mc4ConnectorVisual.CreateMatedPair(
-                startBrush,
-                endBrush,
-                start.ConnectorInterface,
-                end.ConnectorInterface,
-                selected);
-            Canvas.SetLeft(plug, mid.X - plug.Width / 2);
-            Canvas.SetTop(plug, mid.Y - plug.Height / 2);
-            visual.Shapes.Add(plug);
-            AddWireShape(plug, z: 850);
+            // No mid-wire MC4 / connector node — the cable alone is the connection.
 
             if (selected)
             {
@@ -1032,6 +1133,135 @@ public partial class MainWindow : Window
         RebuildPanelPortHitOverlays();
     }
 
+    private PvWireRouteResult BuildPvWireRoute(
+        ElectricalPort start,
+        ElectricalPort end,
+        Point p1,
+        Point p2,
+        ElectricalConnection connection,
+        IReadOnlyList<PvRect> obstacles)
+    {
+        PvRect? startPanel = null;
+        PvRect? endPanel = null;
+        if (_panelVisuals.TryGetValue(start.OwnerComponentId, out var v1))
+            startPanel = ToPvRect(PanelCanvasRect(v1, pad: 4));
+        if (_panelVisuals.TryGetValue(end.OwnerComponentId, out var v2))
+            endPanel = ToPvRect(PanelCanvasRect(v2, pad: 4));
+
+        IReadOnlyList<PvVec2>? manual = null;
+        if (connection.Wire.Waypoints.Count > 0)
+        {
+            manual = connection.Wire.Waypoints
+                .Select(wp =>
+                {
+                    var (cx, cy) = WorldToCanvas(wp.X, wp.Y);
+                    return new PvVec2(cx, cy);
+                })
+                .ToList();
+        }
+
+        var n1 = PortExitNormalCanvas(start);
+        var n2 = PortExitNormalCanvas(end);
+        return PvWireRouting.Route(
+            new PvVec2(p1.X, p1.Y),
+            new PvVec2(n1.X, n1.Y),
+            new PvVec2(p2.X, p2.Y),
+            new PvVec2(n2.X, n2.Y),
+            startPanel,
+            endPanel,
+            obstacles,
+            manual);
+    }
+
+    private List<PvRect> CollectPanelObstacleRects()
+    {
+        var list = new List<PvRect>(_panelVisuals.Count);
+        foreach (var visual in _panelVisuals.Values)
+            list.Add(ToPvRect(PanelCanvasRect(visual, pad: 6)));
+        return list;
+    }
+
+    private static PvRect ToPvRect(Rect r) => new(r.Left, r.Top, r.Right, r.Bottom);
+
+    private Brush NeutralCableBrush(bool selected = false)
+    {
+        // Dark-theme charcoal cable; slightly brighter when selected.
+        return selected
+            ? new SolidColorBrush(Color.FromRgb(0xC4, 0xC4, 0xCC))
+            : new SolidColorBrush(Color.FromRgb(0x8B, 0x8B, 0x96));
+    }
+
+    private System.Windows.Shapes.Path CreateWirePath(
+        PvWireRouteResult route,
+        Brush stroke,
+        double thickness,
+        Guid connectionId,
+        bool isHitTarget)
+    {
+        var geo = new PathGeometry();
+        if (route.BezierControls.Count >= 2
+            && route.RouteType is not PvWireRouteType.ManualRoute)
+        {
+            var p0 = new Point(route.Start.X, route.Start.Y);
+            var p1 = new Point(route.BezierControls[0].X, route.BezierControls[0].Y);
+            var p2 = new Point(route.BezierControls[1].X, route.BezierControls[1].Y);
+            var p3 = new Point(route.End.X, route.End.Y);
+            var fig = new PathFigure { StartPoint = p0, IsClosed = false };
+            fig.Segments.Add(new BezierSegment(p1, p2, p3, true));
+            geo.Figures.Add(fig);
+        }
+        else
+        {
+            var pts = route.PathPoints.Count > 0
+                ? route.PathPoints
+                : new[] { route.Start, route.End };
+
+            var fig = new PathFigure
+            {
+                StartPoint = new Point(pts[0].X, pts[0].Y),
+                IsClosed = false,
+            };
+            for (var i = 1; i < pts.Count; i++)
+                fig.Segments.Add(new LineSegment(new Point(pts[i].X, pts[i].Y), true));
+            geo.Figures.Add(fig);
+        }
+
+        var path = new System.Windows.Shapes.Path
+        {
+            Data = geo,
+            Stroke = stroke,
+            StrokeThickness = thickness,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent,
+            Tag = connectionId,
+            // Visible stroke is decorative; fat transparent sibling owns hit-testing.
+            IsHitTestVisible = isHitTarget,
+            Cursor = Cursors.Arrow,
+        };
+        AttachWireInteraction(path, connectionId);
+        return path;
+    }
+
+    private Line CreatePolarityTip(Point port, Vector exit, double length, Brush brush, Guid connectionId)
+    {
+        var line = new Line
+        {
+            X1 = port.X,
+            Y1 = port.Y,
+            X2 = port.X + exit.X * length,
+            Y2 = port.Y + exit.Y * length,
+            Stroke = brush,
+            StrokeThickness = 2.0,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            IsHitTestVisible = false,
+            Tag = connectionId,
+        };
+        return line;
+    }
+
     private void AddWireShape(UIElement element, int z)
     {
         Panel.SetZIndex(element, z);
@@ -1043,6 +1273,10 @@ public partial class MainWindow : Window
         foreach (var el in _panelPortHitOverlays.Values)
             DesignCanvas.Children.Remove(el);
         _panelPortHitOverlays.Clear();
+
+        foreach (var el in _panelPortLeadVisuals)
+            DesignCanvas.Children.Remove(el);
+        _panelPortLeadVisuals.Clear();
     }
 
     private void RebuildPanelPortHitOverlays()
@@ -1050,23 +1284,67 @@ public partial class MainWindow : Window
         ClearPanelPortHitOverlays();
         foreach (var panel in _project.Graph.Panels.Values)
         {
-            if (!_panelVisuals.ContainsKey(panel.Id)) continue;
-            AddPanelPortHitOverlay(panel.PositivePort, positive: true);
-            AddPanelPortHitOverlay(panel.NegativePort, positive: false);
+            if (!_panelVisuals.TryGetValue(panel.Id, out var visual)) continue;
+            AddSimplePanelPortOverlay(panel, visual, panel.NegativePort, positive: false);
+            AddSimplePanelPortOverlay(panel, visual, panel.PositivePort, positive: true);
         }
     }
 
-    private void AddPanelPortHitOverlay(ElectricalPort port, bool positive)
+    private void AddSimplePanelPortOverlay(
+        SolarPanelInstance panel,
+        PanelVisual visual,
+        ElectricalPort port,
+        bool positive)
     {
-        var center = GetPortCanvasPoint(port);
-        const double hit = 24.0; // invisible hit target; glyph stays ~8–10px
-        var facing = positive ? Mc4ConnectorVisual.Facing.Up : Mc4ConnectorVisual.Facing.Down;
-        var glyph = Mc4ConnectorVisual.CreatePort(
-            port.Polarity,
-            port.ConnectorInterface,
-            PolarityBrush(port.Polarity),
-            facing,
-            port.IsOccupied);
+        var layout = GetPanelLocalLayout(panel);
+        var (rootX, rootY) = WorldToCanvas(panel.PositionXMm, panel.PositionYMm);
+        var scale = MmToPx * _zoom;
+
+        var leadStart = positive
+            ? new Point(rootX + layout.PosLeadStartXMm * scale, rootY + layout.PosLeadStartYMm * scale)
+            : new Point(rootX + layout.NegLeadStartXMm * scale, rootY + layout.NegLeadStartYMm * scale);
+        var center = positive
+            ? new Point(rootX + layout.PosLocalXMm * scale, rootY + layout.PosLocalYMm * scale)
+            : new Point(rootX + layout.NegLocalXMm * scale, rootY + layout.NegLocalYMm * scale);
+
+        var emphasize = _selectedPanelIds.Contains(panel.Id)
+                        || visual.Root.IsMouseOver
+                        || _wireFromPortId is not null;
+        var opacity = emphasize ? 1.0 : 0.55;
+
+        var lead = new Line
+        {
+            X1 = leadStart.X,
+            Y1 = leadStart.Y,
+            X2 = center.X,
+            Y2 = center.Y,
+            Stroke = positive
+                ? new SolidColorBrush(Color.FromRgb(0xB9, 0x1C, 0x1C))
+                : new SolidColorBrush(Color.FromRgb(0xA1, 0xA1, 0xAA)),
+            StrokeThickness = emphasize ? 1.6 : 1.2,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            Opacity = opacity,
+            IsHitTestVisible = false,
+        };
+        Panel.SetZIndex(lead, 955);
+        DesignCanvas.Children.Add(lead);
+        _panelPortLeadVisuals.Add(lead);
+
+        var hit = PanelPortLayoutService.HitTargetSizePx;
+        var fill = positive
+            ? new SolidColorBrush(Color.FromRgb(0x2A, 0x16, 0x16))
+            : new SolidColorBrush(Color.FromRgb(0x27, 0x27, 0x2A));
+        var accent = positive
+            ? new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44))
+            : new SolidColorBrush(Color.FromRgb(0xE4, 0xE4, 0xE7));
+
+        var glyph = SimplePvTerminalVisual.Create(
+            positive,
+            port.IsOccupied,
+            opacity,
+            fill,
+            accent);
 
         var hitTarget = new Border
         {
@@ -1076,14 +1354,7 @@ public partial class MainWindow : Window
             Cursor = Cursors.Cross,
             Tag = port.Id,
             ToolTip = FormatPortTooltip(port),
-            Child = new Viewbox
-            {
-                Width = 14,
-                Height = 14,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = glyph,
-            },
+            Child = glyph,
         };
         Canvas.SetLeft(hitTarget, center.X - hit / 2);
         Canvas.SetTop(hitTarget, center.Y - hit / 2);
@@ -1093,75 +1364,36 @@ public partial class MainWindow : Window
         _panelPortHitOverlays[port.Id] = hitTarget;
     }
 
-    /// <summary>
-    /// Arc series leads away from the module faces so a second row doesn't hide the jumper.
-    /// Top-edge ports bow up; bottom-edge ports bow down.
-    /// </summary>
-    private bool PreferSeriesArcUp(ElectricalPort start, ElectricalPort end, Point p1, Point p2)
+    private PanelPortLayoutService.LocalPortLayout GetPanelLocalLayout(SolarPanelInstance panel)
     {
-        double centerY = (p1.Y + p2.Y) / 2;
-        var samples = 0;
-        var sum = 0.0;
-        if (_panelVisuals.TryGetValue(start.OwnerComponentId, out var v1))
-        {
-            sum += Canvas.GetTop(v1.Root) + v1.Body.Height / 2;
-            samples++;
-        }
-        if (_panelVisuals.TryGetValue(end.OwnerComponentId, out var v2))
-        {
-            sum += Canvas.GetTop(v2.Root) + v2.Body.Height / 2;
-            samples++;
-        }
-        if (samples > 0)
-            centerY = sum / samples;
-
-        return (p1.Y + p2.Y) / 2 <= centerY;
+        var def = _project.RequireDefinition(panel.DefinitionId);
+        var sizeAt1 = GetPanelSizePx(def, panel.RotationDegrees);
+        return PanelPortLayoutService.ForAxisAlignedPanel(
+            sizeAt1.Width / MmToPx,
+            sizeAt1.Height / MmToPx);
     }
 
-    private System.Windows.Shapes.Path CreatePolarityLeadPath(Point from, Point to, Brush stroke, double thickness, Guid connectionId)
+    private Vector PortExitNormalCanvas(ElectricalPort port)
     {
-        var midX = (from.X + to.X) / 2;
-        var midY = (from.Y + to.Y) / 2;
-        var dy = to.Y - from.Y;
-        var outward = Math.Abs(dy) < 0.5 ? Math.Sign(to.Y - from.Y + 0.01) : Math.Sign(dy);
-        if (outward == 0) outward = 1;
-        var bow = Math.Abs(to.X - from.X) * 0.12 + Math.Abs(dy) * 0.08;
-        var ctrl = new Point(midX, midY + outward * bow);
-
-        var geo = new PathGeometry();
-        var fig = new PathFigure { StartPoint = from, IsClosed = false };
-        fig.Segments.Add(new QuadraticBezierSegment(ctrl, to, true));
-        geo.Figures.Add(fig);
-
-        var path = new System.Windows.Shapes.Path
+        if (_project.Graph.TryGetPanel(port.OwnerComponentId, out var panel))
         {
-            Data = geo,
-            Stroke = stroke,
-            StrokeThickness = thickness,
-            StrokeStartLineCap = PenLineCap.Round,
-            StrokeEndLineCap = PenLineCap.Round,
-            Fill = Brushes.Transparent,
-            Tag = connectionId,
-        };
-        AttachWireInteraction(path, connectionId);
-        return path;
+            var layout = GetPanelLocalLayout(panel);
+            return new Vector(layout.ExitNormalX, layout.ExitNormalY);
+        }
+
+        // Equipment / unknown: keep prior polarity-based outward guess.
+        return port.Polarity == Polarity.Positive ? new Vector(0, -1) : new Vector(0, 1);
     }
 
-    private Polyline CreatePolarityPolyline(PointCollection points, Brush stroke, double thickness, Guid connectionId)
+    private static Rect PanelCanvasRect(PanelVisual visual, double pad)
     {
-        var poly = new Polyline
-        {
-            Points = points,
-            Stroke = stroke,
-            StrokeThickness = thickness,
-            StrokeStartLineCap = PenLineCap.Round,
-            StrokeEndLineCap = PenLineCap.Round,
-            StrokeLineJoin = PenLineJoin.Round,
-            Fill = Brushes.Transparent,
-            Tag = connectionId,
-        };
-        AttachWireInteraction(poly, connectionId);
-        return poly;
+        var left = Canvas.GetLeft(visual.Root);
+        var top = Canvas.GetTop(visual.Root);
+        return new Rect(
+            left - pad,
+            top - pad,
+            visual.Body.Width + pad * 2,
+            visual.Body.Height + pad * 2);
     }
 
     private void AttachWireInteraction(UIElement element, Guid connectionId)
@@ -1180,7 +1412,8 @@ public partial class MainWindow : Window
         };
         element.MouseRightButtonDown += (_, e) =>
         {
-            DisconnectWire(connectionId);
+            SelectConnection(connectionId);
+            ShowCanvasContextMenu(e.GetPosition(DesignCanvas));
             e.Handled = true;
         };
     }
@@ -1428,8 +1661,8 @@ public partial class MainWindow : Window
                 var empty = _project.Graph.Panels.Count == 0 && !HasAnyRoofVertices();
                 EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
                 EmptyStateTitle.Text = "Start with your roof";
-                EmptyStateBody.Text = "Draw it manually or mark it on satellite.";
-                EmptyStateButton.Content = "Satellite map";
+                EmptyStateBody.Text = "Draw it, or trace it free on the satellite map.";
+                EmptyStateButton.Content = "Trace on map";
                 break;
             }
             case WorkspacePlan.Interior:
@@ -1449,7 +1682,7 @@ public partial class MainWindow : Window
                 EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
                 EmptyStateTitle.Text = "Build your system";
                 EmptyStateBody.Text = "Roof modules and equipment on one canvas.";
-                EmptyStateButton.Content = "Satellite map";
+                EmptyStateButton.Content = "Trace on map";
                 break;
             }
             default:
@@ -1507,23 +1740,32 @@ public partial class MainWindow : Window
     private void ToolMeasure_Click(object sender, RoutedEventArgs e)
     {
         SetUiTool(UiTool.Measure);
-        StatusText.Text = "MEASURE  ·  Edge lengths appear while drawing a roof (Draw tool)";
+        _tool = CanvasTool.Measure;
+        ClearMeasureTool();
+        StatusText.Text = "MEASURE  ·  Click points for live edge lengths (Esc clears)";
     }
-
-    private void ToolAdd_Click(object sender, RoutedEventArgs e) => SetUiTool(UiTool.Add);
 
     private void SetUiTool(UiTool tool)
     {
         _uiTool = tool;
         if (tool != UiTool.Obstacle && _tool == CanvasTool.PlaceObstacle)
             _tool = CanvasTool.Select;
+        if (tool != UiTool.Measure && _tool == CanvasTool.Measure)
+        {
+            ClearMeasureTool();
+            _tool = CanvasTool.Select;
+        }
         if (tool == UiTool.Select)
             _tool = CanvasTool.Select;
+        if (tool == UiTool.Measure)
+            _tool = CanvasTool.Measure;
 
         UpdateToolRailStyles();
         UpdateContextToolbar();
         UpdateToolButtonStyles();
     }
+
+    private void ToolAdd_Click(object sender, RoutedEventArgs e) => SetUiTool(UiTool.Add);
 
     private void UpdateToolRailStyles()
     {
@@ -1664,10 +1906,266 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
-    private void CtxDuplicate_Click(object sender, RoutedEventArgs e)
+    private void CtxDuplicate_Click(object sender, RoutedEventArgs e) => DuplicateSelectedPanels();
+
+    private void DuplicateSelectedPanels()
     {
+        if (_selectedPanelIds.Count == 0) return;
         foreach (var id in _selectedPanelIds.ToList())
             _project.History.Execute(new DuplicatePanelCommand(_project, id));
+        RefreshAll();
+        StatusText.Text = $"Duplicated {_selectedPanelIds.Count} panel(s)";
+    }
+
+    private void CopySelectedPanels()
+    {
+        if (_selectedPanelIds.Count == 0)
+        {
+            StatusText.Text = "Nothing to copy — select panel(s) first";
+            return;
+        }
+
+        var panels = _selectedPanelIds
+            .Where(id => _project.Graph.Panels.ContainsKey(id))
+            .Select(id => _project.Graph.GetPanel(id))
+            .ToList();
+        if (panels.Count == 0) return;
+
+        var ox = panels.Min(p => p.PositionXMm);
+        var oy = panels.Min(p => p.PositionYMm);
+        _panelClipboard = panels
+            .Select(p => new PanelClipboardItem(
+                p.DefinitionId,
+                p.PositionXMm - ox,
+                p.PositionYMm - oy,
+                p.RotationDegrees))
+            .ToList();
+        StatusText.Text = $"Copied {_panelClipboard.Count} panel(s) — Ctrl+V or right-click → Paste";
+    }
+
+    private void PastePanelsNearViewCenter()
+    {
+        var viewW = DesignCanvas.ActualWidth;
+        var viewH = DesignCanvas.ActualHeight;
+        if (viewW < 20 || viewH < 20)
+        {
+            PastePanelsAt(new Point2Mm(0, 0));
+            return;
+        }
+
+        var (xMm, yMm) = CanvasToWorld(new Point(viewW / 2, viewH / 2));
+        PastePanelsAt(new Point2Mm(xMm, yMm));
+    }
+
+    private void PastePanelsAt(Point2Mm originMm)
+    {
+        if (_panelClipboard is null || _panelClipboard.Count == 0)
+        {
+            StatusText.Text = "Clipboard empty — copy panels first (Ctrl+C)";
+            return;
+        }
+
+        var newIds = new List<Guid>();
+        foreach (var item in _panelClipboard)
+        {
+            var panel = new SolarPanelInstance(
+                Guid.NewGuid(),
+                item.DefinitionId,
+                originMm.X + item.OffsetXMm,
+                originMm.Y + item.OffsetYMm,
+                item.RotationDegrees);
+            _project.History.Execute(new AddPanelCommand(_project, panel));
+            newIds.Add(panel.Id);
+        }
+
+        SetSelection(panels: newIds);
+        RefreshAll();
+        StatusText.Text = $"Pasted {newIds.Count} panel(s)";
+    }
+
+    private void Canvas_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var pos = e.GetPosition(DesignCanvas);
+        _contextMenuCanvasPoint = pos;
+
+        // Canva-style: right-click an unselected object selects it, then shows the menu.
+        if (FindPanelAt(pos) is Guid panelId)
+        {
+            if (!_selectedPanelIds.Contains(panelId))
+                SetSelection(panels: new[] { panelId });
+        }
+        else if (FindEquipmentAt(pos) is Guid equipmentId)
+        {
+            if (!_selectedEquipmentIds.Contains(equipmentId))
+            {
+                ClearTransientSelection();
+                _selectedEquipmentIds.Add(equipmentId);
+                RefreshAll();
+            }
+        }
+        else if (FindObstacleAt(pos) is Guid obstacleId)
+        {
+            _selectedObstacleId = obstacleId;
+            _selectedPanelIds.Clear();
+            _selectedConnectionIds.Clear();
+            _selectedEquipmentIds.Clear();
+            RefreshAll();
+        }
+
+        ShowCanvasContextMenu(pos);
+        e.Handled = true;
+    }
+
+    private void ShowCanvasContextMenu(Point canvasPos)
+    {
+        var menu = new ContextMenu();
+        var hasPanels = _selectedPanelIds.Count > 0;
+        var hasClipboard = _panelClipboard is { Count: > 0 };
+        var hasConnections = _selectedConnectionIds.Count > 0;
+        var hasEquipment = _selectedEquipmentIds.Count > 0;
+        var hasRoof = _project.Roofs.Roofs.Any(r => r.HasRoof);
+        var hasSelection = hasPanels || hasConnections || hasEquipment || _selectedObstacleId is not null;
+
+        void Add(string header, Action action, bool enabled = true, string? gesture = null)
+        {
+            var item = new MenuItem
+            {
+                Header = header,
+                IsEnabled = enabled,
+                InputGestureText = gesture,
+            };
+            item.Click += (_, _) => action();
+            menu.Items.Add(item);
+        }
+
+        void Sep() => menu.Items.Add(new Separator());
+
+        Add("Copy", CopySelectedPanels, hasPanels, "Ctrl+C");
+        Add("Paste here", () =>
+        {
+            var (xMm, yMm) = CanvasToWorld(canvasPos);
+            PastePanelsAt(new Point2Mm(xMm, yMm));
+        }, hasClipboard, "Ctrl+V");
+        Add("Duplicate", DuplicateSelectedPanels, hasPanels, "Ctrl+D");
+        Sep();
+
+        Add("Rotate 90°", () =>
+        {
+            foreach (var id in _selectedPanelIds.ToList())
+            {
+                var panel = _project.Graph.GetPanel(id);
+                _project.History.Execute(new RotatePanelCommand(
+                    _project, id, panel.RotationDegrees, panel.RotationDegrees + 90));
+            }
+            RefreshAll();
+        }, hasPanels, "R");
+
+        var stringHits = _project.Graph.Strings
+            .Where(s => s.PanelIdsInSeriesOrder.Any(id => _selectedPanelIds.Contains(id)))
+            .ToList();
+        if (stringHits.Count == 1)
+        {
+            var s = stringHits[0];
+            Add($"Select string ({s.DisplayName})", () => SetSelection(panels: s.PanelIdsInSeriesOrder));
+        }
+        else if (stringHits.Count > 1)
+        {
+            var sub = new MenuItem { Header = "Select string" };
+            foreach (var s in stringHits)
+            {
+                var capture = s;
+                var mi = new MenuItem { Header = $"{capture.DisplayName}  ·  {capture.PanelIdsInSeriesOrder.Count} mod" };
+                mi.Click += (_, _) => SetSelection(panels: capture.PanelIdsInSeriesOrder);
+                sub.Items.Add(mi);
+            }
+            menu.Items.Add(sub);
+        }
+
+        if (hasConnections)
+        {
+            Sep();
+            Add("Disconnect wire", () =>
+            {
+                foreach (var id in _selectedConnectionIds.ToList())
+                {
+                    if (_project.Graph.Connections.ContainsKey(id))
+                        _project.History.Execute(new DisconnectCommand(_project, id));
+                }
+                ClearTransientSelection();
+                RefreshAll();
+            });
+        }
+
+        if (hasRoof)
+        {
+            Sep();
+            var anyUnlocked = _project.Roofs.Roofs.Any(r => r.HasRoof && !r.IsLocked);
+            Add(anyUnlocked ? "Lock roof" : "Unlock roof", () => ToggleRoofLock_Click(this, new RoutedEventArgs()));
+            Add("Straighten edges", () => StraightenRoof_Click(this, new RoutedEventArgs()));
+            Add("Rotate roof 15°", () => RotateRoof15_Click(this, new RoutedEventArgs()));
+            Add("Frame roofs", () =>
+            {
+                FrameRoofsInView();
+                RefreshAll();
+            });
+        }
+
+        Sep();
+        Add("Select all panels", () =>
+        {
+            SetSelection(panels: _project.Graph.Panels.Keys);
+        }, _project.Graph.Panels.Count > 0, "Ctrl+A");
+        Add("Frame selection", FrameSelectionInView, hasPanels || hasEquipment);
+        Add("Delete", () => DeleteSelection(), hasSelection, "Del");
+
+        menu.IsOpen = true;
+    }
+
+    private void FrameSelectionInView()
+    {
+        var points = new List<Point2Mm>();
+        foreach (var id in _selectedPanelIds)
+        {
+            if (!_project.Graph.TryGetPanel(id, out var panel)) continue;
+            var def = _project.RequireDefinition(panel.DefinitionId);
+            var size = GetLogicalSizeMm(def, panel.RotationDegrees);
+            points.Add(new Point2Mm(panel.PositionXMm, panel.PositionYMm));
+            points.Add(new Point2Mm(panel.PositionXMm + size.width, panel.PositionYMm + size.height));
+        }
+
+        foreach (var id in _selectedEquipmentIds)
+        {
+            if (!_project.Graph.TryGetEquipment(id, out var eq)) continue;
+            points.Add(new Point2Mm(eq.PositionXMm, eq.PositionYMm));
+            points.Add(new Point2Mm(eq.PositionXMm + eq.WidthMm, eq.PositionYMm + eq.HeightMm));
+        }
+
+        if (points.Count == 0)
+        {
+            FrameRoofsInView();
+            RefreshAll();
+            return;
+        }
+
+        var minX = points.Min(p => p.X);
+        var maxX = points.Max(p => p.X);
+        var minY = points.Min(p => p.Y);
+        var maxY = points.Max(p => p.Y);
+        var widthMm = Math.Max(maxX - minX, 500);
+        var heightMm = Math.Max(maxY - minY, 500);
+        var viewW = Math.Max(DesignCanvas.ActualWidth, 400);
+        var viewH = Math.Max(DesignCanvas.ActualHeight, 300);
+        const double padPx = 80;
+        var zoomX = (viewW - 2 * padPx) / (widthMm * MmToPx);
+        var zoomY = (viewH - 2 * padPx) / (heightMm * MmToPx);
+        _zoom = Math.Clamp(Math.Min(zoomX, zoomY), 0.15, 3.0);
+        var cx = (minX + maxX) / 2;
+        var cy = (minY + maxY) / 2;
+        _panOffset = new Point(
+            viewW / 2 - cx * MmToPx * _zoom,
+            viewH / 2 - cy * MmToPx * _zoom);
+        if (ZoomLabel is not null)
+            ZoomLabel.Text = $"{_zoom * 100:0}%";
         RefreshAll();
     }
 
@@ -1882,13 +2380,8 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
-    private void ShowImportRoof_Click(object sender, RoutedEventArgs e)
-    {
-        SetUiTool(UiTool.Roof);
-        SetPanelVisible(ImportRoofPanel, true);
-        ContextTitle.Text = "Import roof";
-        GoogleSolarAddressBox?.Focus();
-    }
+    private void ShowImportRoof_Click(object sender, RoutedEventArgs e) =>
+        SatelliteMap_Click(sender, e);
 
     private void LayersDrawerToggle_Click(object sender, RoutedEventArgs e)
     {
@@ -1900,12 +2393,16 @@ public partial class MainWindow : Window
 
     private Point GetPortCanvasPoint(ElectricalPort port)
     {
-        if (_panelVisuals.TryGetValue(port.OwnerComponentId, out var visual))
+        if (_project.Graph.TryGetPanel(port.OwnerComponentId, out var panel)
+            && _panelVisuals.ContainsKey(panel.Id))
         {
-            var ellipse = port.Polarity == Polarity.Positive ? visual.PositivePort : visual.NegativePort;
-            var left = Canvas.GetLeft(visual.Root) + Canvas.GetLeft(ellipse) + ellipse.Width / 2;
-            var top = Canvas.GetTop(visual.Root) + Canvas.GetTop(ellipse) + ellipse.Height / 2;
-            return new Point(left, top);
+            var layout = GetPanelLocalLayout(panel);
+            var (rootX, rootY) = WorldToCanvas(panel.PositionXMm, panel.PositionYMm);
+            var scale = MmToPx * _zoom;
+            var positive = port.Polarity == Polarity.Positive;
+            var lx = positive ? layout.PosLocalXMm : layout.NegLocalXMm;
+            var ly = positive ? layout.PosLocalYMm : layout.NegLocalYMm;
+            return new Point(rootX + lx * scale, rootY + ly * scale);
         }
 
         if (_equipmentVisuals.TryGetValue(port.OwnerComponentId, out var eqVisual)
@@ -1974,7 +2471,7 @@ public partial class MainWindow : Window
         var count = _project.Graph.Panels.Count;
         var def = _project.RequireDefinition(definitionId);
         // World origin (0,0); stagger along +X so stacked adds don't fully overlap.
-        var x = count * (def.WidthMm + PanelSpacingMm);
+        var x = count * (def.WidthMm + PanelGapXMm);
         var panel = _project.AddPanelFromDefinition(definitionId, x, 0);
         FocusWorldMm(panel.PositionXMm + def.WidthMm / 2, panel.PositionYMm + def.HeightMm / 2);
         // Keep Panels/Add side panel open so you can place several modules in a row.
@@ -2224,10 +2721,22 @@ public partial class MainWindow : Window
 
     private void StringsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (StringsList.SelectedItem is not StringListItem item) return;
+        var item = StringsList.SelectedItem as StringListItem
+                   ?? (StringsList.SelectedItem as ListBoxItem)?.Content as StringListItem;
+        if (item is null) return;
         var pvString = _project.Graph.Strings.FirstOrDefault(s => s.Id == item.StringId);
         if (pvString is null) return;
         SetSelection(panels: pvString.PanelIdsInSeriesOrder);
+    }
+
+    private int IndexOfStringId(Guid stringId)
+    {
+        for (var i = 0; i < _project.Graph.Strings.Count; i++)
+        {
+            if (_project.Graph.Strings[i].Id == stringId)
+                return i;
+        }
+        return 0;
     }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -2271,9 +2780,17 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.D && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            foreach (var id in _selectedPanelIds.ToList())
-                _project.History.Execute(new DuplicatePanelCommand(_project, id));
-            RefreshAll();
+            DuplicateSelectedPanels();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            CopySelectedPanels();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            PastePanelsNearViewCenter();
             e.Handled = true;
         }
         else if (e.Key == Key.Back)
@@ -2334,6 +2851,13 @@ public partial class MainWindow : Window
         {
             CancelWireDrag();
             EndMarquee(commit: false);
+            if (_tool == CanvasTool.Measure)
+            {
+                ClearMeasureTool();
+                StatusText.Text = "MEASURE  ·  Cleared — click to start again";
+                e.Handled = true;
+                return;
+            }
             // Leave in-progress roof vertices — use Ctrl+Z to step back segments.
             if (_tool == CanvasTool.DrawRoof)
             {
@@ -2418,6 +2942,15 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_tool == CanvasTool.Measure)
+        {
+            var (xMm, yMm) = CanvasToWorld(pos);
+            _measurePoints.Add(new Point2Mm(xMm, yMm));
+            RebuildMeasureVisuals();
+            e.Handled = true;
+            return;
+        }
+
         if (_tool == CanvasTool.PlaceObstacle)
         {
             var active = _project.Roofs.EnsureActiveRoof();
@@ -2439,8 +2972,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Drag roof vertex
-        if (FindRoofVertexAt(pos) is int vertexIndex)
+        // Drag roof vertex (unlocked only)
+        if (FindRoofVertexAt(pos) is int vertexIndex
+            && GetActiveRoofSurface() is { IsLocked: false })
         {
             _draggingRoofVertexIndex = vertexIndex;
             DesignCanvas.CaptureMouse();
@@ -2506,7 +3040,20 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Empty canvas → start marquee highlight
+        // Move unlocked roof only with Alt+drag — plain drag over the house starts marquee
+        // so panel box-select / wiring aren't stolen by the outline.
+        if (_tool == CanvasTool.Select
+            && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)
+            && FindClosedRoofAt(pos) is Guid roofId
+            && _project.Roofs.Find(roofId) is { IsLocked: false })
+        {
+            _project.Roofs.SetActive(roofId);
+            BeginRoofBodyDrag(pos);
+            e.Handled = true;
+            return;
+        }
+
+        // Empty canvas (or roof fill) → start marquee highlight
         if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
             ClearTransientSelection();
 
@@ -2565,6 +3112,34 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_rotatingRoof && e.LeftButton == MouseButtonState.Pressed)
+        {
+            var (cx, cy) = WorldToCanvas(_roofRotatePivot.X, _roofRotatePivot.Y);
+            var mouseAngle = Math.Atan2(pos.Y - cy, pos.X - cx) * (180.0 / Math.PI);
+            var delta = SnapRoofDragDegrees(mouseAngle - _roofRotateStartMouseDeg);
+
+            if (Math.Abs(delta - _roofRotateLiveDegrees) > 0.05)
+            {
+                _rotateMoved = true;
+                ApplyLiveRoofRotation(delta);
+            }
+            return;
+        }
+
+        if (_draggingRoofBody && e.LeftButton == MouseButtonState.Pressed)
+        {
+            var (x0, y0) = CanvasToWorld(_roofDragStartCanvas);
+            var (x1, y1) = CanvasToWorld(pos);
+            var dx = x1 - x0;
+            var dy = y1 - y0;
+            if (Math.Abs(dx - _roofDragDxMm) > 0.1 || Math.Abs(dy - _roofDragDyMm) > 0.1)
+            {
+                _rotateMoved = true; // reuse moved flag for commit
+                ApplyLiveRoofTranslate(dx, dy);
+            }
+            return;
+        }
+
         if (_draggingWaypointConnectionId is Guid wpConnId
             && _draggingWaypointIndex is int wpIdx
             && e.LeftButton == MouseButtonState.Pressed
@@ -2602,8 +3177,22 @@ public partial class MainWindow : Window
             && GetActiveRoofSurface() is { } dragRoof)
         {
             var (xMm, yMm) = CanvasToWorld(pos);
-            dragRoof.MoveVertex(vIndex, new Point2Mm(xMm, yMm));
+            var raw = new Point2Mm(xMm, yMm);
+            var free = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
+            var axisTolMm = RoofAxisSnapPx / (MmToPx * Math.Max(_zoom, 0.05));
+            var snapped = RoofGeometry.SnapEditVertex(
+                vIndex,
+                raw,
+                dragRoof.Vertices,
+                axisTolMm,
+                free,
+                out var alignX,
+                out var alignY);
+            _roofAlignXSource = alignX;
+            _roofAlignYSource = alignY;
+            dragRoof.MoveVertex(vIndex, snapped);
             RefreshAll();
+            UpdateRoofEditSnapGuides(dragRoof, vIndex, snapped);
             return;
         }
 
@@ -2613,7 +3202,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_tool == CanvasTool.Measure && _measurePoints.Count > 0)
+        {
+            UpdateMeasureRubberBand(pos);
+            return;
+        }
+
         ClearRoofLiveMeasure();
+        ClearMeasureRubberBand();
 
         if (_isMarqueeSelecting && e.LeftButton == MouseButtonState.Pressed)
         {
@@ -2705,6 +3301,10 @@ public partial class MainWindow : Window
             }
 
             RefreshAll();
+            if (!isEquipment)
+                UpdatePanelAlignmentGuides(_draggingPanelId.Value, _dragOrigins.Keys.ToHashSet());
+            else
+                ClearAlignmentGuides();
         }
     }
 
@@ -2763,6 +3363,61 @@ public partial class MainWindow : Window
             _rotateMoved = false;
             ClearRotateDegreeLabel();
             DesignCanvas.ReleaseMouseCapture();
+            RefreshAll();
+            return;
+        }
+
+        if (_rotatingRoof)
+        {
+            var deg = _roofRotateLiveDegrees;
+            // Restore baseline, then commit via undoable command (avoids double-apply).
+            foreach (var (id, before) in _roofRotateBaseline)
+            {
+                var roof = _project.Roofs.Find(id);
+                if (roof is null) continue;
+                roof.SetVertices(before, closed: true);
+            }
+
+            _rotatingRoof = false;
+            _roofRotateBaseline.Clear();
+            ClearRotateDegreeLabel();
+            DesignCanvas.ReleaseMouseCapture();
+
+            if (_rotateMoved && Math.Abs(deg) >= 0.05)
+            {
+                _project.History.Execute(new RotateRoofsCommand(_project, deg));
+                StatusText.Text = $"ROOF  |  Rotated {deg:0.#}°";
+            }
+
+            _rotateMoved = false;
+            RefreshAll();
+            return;
+        }
+
+        if (_draggingRoofBody)
+        {
+            var dx = _roofDragDxMm;
+            var dy = _roofDragDyMm;
+            foreach (var (id, before) in _roofRotateBaseline)
+            {
+                var roof = _project.Roofs.Find(id);
+                if (roof is null) continue;
+                roof.SetVertices(before, closed: true);
+            }
+
+            _draggingRoofBody = false;
+            _roofRotateBaseline.Clear();
+            DesignCanvas.ReleaseMouseCapture();
+
+            if (_rotateMoved && (Math.Abs(dx) >= 0.5 || Math.Abs(dy) >= 0.5))
+            {
+                _project.History.Execute(new TranslateRoofsCommand(_project, dx, dy));
+                StatusText.Text = "ROOF  |  Moved";
+            }
+
+            _rotateMoved = false;
+            _roofDragDxMm = 0;
+            _roofDragDyMm = 0;
             RefreshAll();
             return;
         }
@@ -2854,6 +3509,7 @@ public partial class MainWindow : Window
 
             _draggingPanelId = null;
             _dragOrigins.Clear();
+            ClearAlignmentGuides();
             RefreshAll();
         }
     }
@@ -3110,9 +3766,13 @@ public partial class MainWindow : Window
         var moving = _project.Graph.GetPanel(movingId);
         var movingDef = _project.RequireDefinition(moving.DefinitionId);
         var movingSize = GetLogicalSizeMm(movingDef, moving.RotationDegrees);
+        var gapY = PanelGapYMm;
 
-        double bestX = xMm, bestY = yMm;
-        var bestScore = SnapThresholdMm;
+        // Independent axis snaps — top/bottom must catch even when X is slightly off (old hypot score missed that).
+        double bestX = xMm;
+        double bestY = yMm;
+        var bestDx = SnapThresholdMm;
+        var bestDy = SnapThresholdMm;
 
         foreach (var other in _project.Graph.Panels.Values)
         {
@@ -3120,49 +3780,186 @@ public partial class MainWindow : Window
             var otherDef = _project.RequireDefinition(other.DefinitionId);
             var otherSize = GetLogicalSizeMm(otherDef, other.RotationDegrees);
 
-            var candidates = new[]
+            var ox = other.PositionXMm;
+            var oy = other.PositionYMm;
+            var ow = otherSize.width;
+            var oh = otherSize.height;
+            var mw = movingSize.width;
+            var mh = movingSize.height;
+
+            // X candidates: left/right neighbor seats + left/right/center edge align
+            var xCandidates = new[]
             {
-                (other.PositionXMm + otherSize.width + PanelSpacingMm, other.PositionYMm), // right of other
-                (other.PositionXMm - movingSize.width - PanelSpacingMm, other.PositionYMm), // left
-                (other.PositionXMm, other.PositionYMm + otherSize.height + PanelSpacingMm), // below
-                (other.PositionXMm, other.PositionYMm - movingSize.height - PanelSpacingMm), // above
+                ox + ow + PanelGapXMm, // right of other
+                ox - mw - PanelGapXMm, // left of other
+                ox,                   // left edges
+                ox + ow - mw,         // right edges
+                ox + (ow - mw) / 2,   // centers
             };
-
-            foreach (var (cx, cy) in candidates)
+            foreach (var cx in xCandidates)
             {
-                var score = Hypot(cx - xMm, cy - yMm);
-                if (score < bestScore)
+                var dx = Math.Abs(cx - xMm);
+                if (dx < bestDx)
                 {
-                    bestScore = score;
+                    bestDx = dx;
                     bestX = cx;
-                    bestY = cy;
                 }
             }
 
-            // Align edges when close on one axis
-            if (Math.Abs(other.PositionYMm - yMm) < SnapThresholdMm)
+            // Y candidates: above/below neighbor seats + top/bottom/center edge align
+            var yCandidates = new[]
             {
-                var alignedY = other.PositionYMm;
-                var score = Math.Abs(alignedY - yMm);
-                if (score < bestScore)
-                {
-                    bestScore = score;
-                    bestY = alignedY;
-                }
-            }
-            if (Math.Abs(other.PositionXMm - xMm) < SnapThresholdMm)
+                oy + oh + gapY, // below other
+                oy - mh - gapY, // above other
+                oy,             // top edges
+                oy + oh - mh,   // bottom edges
+                oy + (oh - mh) / 2, // centers
+            };
+            foreach (var cy in yCandidates)
             {
-                var alignedX = other.PositionXMm;
-                var score = Math.Abs(alignedX - xMm);
-                if (score < bestScore)
+                var dy = Math.Abs(cy - yMm);
+                if (dy < bestDy)
                 {
-                    bestScore = score;
-                    bestX = alignedX;
+                    bestDy = dy;
+                    bestY = cy;
                 }
             }
         }
 
         return (bestX, bestY);
+    }
+
+    /// <summary>
+    /// Canva-style smart guides: thin magenta dotted lines when edges/centers line up while dragging.
+    /// </summary>
+    private void UpdatePanelAlignmentGuides(Guid movingId, HashSet<Guid> ignoreIds)
+    {
+        ClearAlignmentGuides();
+        if (!_project.Graph.TryGetPanel(movingId, out var moving)) return;
+
+        var movingDef = _project.RequireDefinition(moving.DefinitionId);
+        var movingSize = GetLogicalSizeMm(movingDef, moving.RotationDegrees);
+        var ml = moving.PositionXMm;
+        var mt = moving.PositionYMm;
+        var mr = ml + movingSize.width;
+        var mb = mt + movingSize.height;
+        var mcx = (ml + mr) * 0.5;
+        var mcy = (mt + mb) * 0.5;
+
+        // Tight — only when actually aligned (snap lands exact; free-drag within a few mm still shows).
+        const double tolMm = 4.0;
+        // Soft overhang past the objects (px → mm) so lines read like Canva without dominating.
+        var padMm = 28.0 / (MmToPx * Math.Max(_zoom, 0.2));
+        var extendMm = 56.0 / (MmToPx * Math.Max(_zoom, 0.2));
+
+        // Bucket world coords → span on the cross axis.
+        var vGuides = new Dictionary<long, (double x, double y0, double y1)>();
+        var hGuides = new Dictionary<long, (double y, double x0, double x1)>();
+
+        static long Bucket(double mm) => (long)Math.Round(mm * 10.0); // 0.1 mm
+
+        void AddV(double x, double yA0, double yA1, double yB0, double yB1, bool extendBeyond)
+        {
+            var y0 = Math.Min(Math.Min(yA0, yA1), Math.Min(yB0, yB1)) - padMm;
+            var y1 = Math.Max(Math.Max(yA0, yA1), Math.Max(yB0, yB1)) + padMm;
+            if (extendBeyond)
+            {
+                y0 -= extendMm;
+                y1 += extendMm * 0.35;
+            }
+
+            var key = Bucket(x);
+            if (vGuides.TryGetValue(key, out var g))
+                vGuides[key] = (g.x, Math.Min(g.y0, y0), Math.Max(g.y1, y1));
+            else
+                vGuides[key] = (x, y0, y1);
+        }
+
+        void AddH(double y, double xA0, double xA1, double xB0, double xB1)
+        {
+            var x0 = Math.Min(Math.Min(xA0, xA1), Math.Min(xB0, xB1)) - padMm;
+            var x1 = Math.Max(Math.Max(xA0, xA1), Math.Max(xB0, xB1)) + padMm;
+            var key = Bucket(y);
+            if (hGuides.TryGetValue(key, out var g))
+                hGuides[key] = (g.y, Math.Min(g.x0, x0), Math.Max(g.x1, x1));
+            else
+                hGuides[key] = (y, x0, x1);
+        }
+
+        foreach (var other in _project.Graph.Panels.Values)
+        {
+            if (ignoreIds.Contains(other.Id)) continue;
+            var otherDef = _project.RequireDefinition(other.DefinitionId);
+            var otherSize = GetLogicalSizeMm(otherDef, other.RotationDegrees);
+            var ol = other.PositionXMm;
+            var ot = other.PositionYMm;
+            var oright = ol + otherSize.width;
+            var ob = ot + otherSize.height;
+            var ocx = (ol + oright) * 0.5;
+            var ocy = (ot + ob) * 0.5;
+
+            // Vertical guides (shared X)
+            if (Math.Abs(ml - ol) <= tolMm) AddV(ml, mt, mb, ot, ob, extendBeyond: false);
+            if (Math.Abs(mr - oright) <= tolMm) AddV(mr, mt, mb, ot, ob, extendBeyond: false);
+            if (Math.Abs(ml - oright) <= tolMm) AddV(ml, mt, mb, ot, ob, extendBeyond: false);
+            if (Math.Abs(mr - ol) <= tolMm) AddV(mr, mt, mb, ot, ob, extendBeyond: false);
+            if (Math.Abs(mcx - ocx) <= tolMm) AddV(mcx, mt, mb, ot, ob, extendBeyond: true);
+
+            // Horizontal guides (shared Y) — top / center / bottom like Canva
+            if (Math.Abs(mt - ot) <= tolMm) AddH(mt, ml, mr, ol, oright);
+            if (Math.Abs(mb - ob) <= tolMm) AddH(mb, ml, mr, ol, oright);
+            if (Math.Abs(mt - ob) <= tolMm) AddH(mt, ml, mr, ol, oright);
+            if (Math.Abs(mb - ot) <= tolMm) AddH(mb, ml, mr, ol, oright);
+            if (Math.Abs(mcy - ocy) <= tolMm) AddH(mcy, ml, mr, ol, oright);
+        }
+
+        // Soft magenta — visible but not shouty (Canva-like).
+        var stroke = new SolidColorBrush(Color.FromArgb(0xB8, 0xD9, 0x46, 0xEF));
+        stroke.Freeze();
+        var dash = new DoubleCollection { 1.5, 2.75 };
+
+        foreach (var (_, g) in vGuides)
+        {
+            var (x1, y1) = WorldToCanvas(g.x, g.y0);
+            var (x2, y2) = WorldToCanvas(g.x, g.y1);
+            AddAlignmentGuideLine(x1, y1, x2, y2, stroke, dash);
+        }
+
+        foreach (var (_, g) in hGuides)
+        {
+            var (x1, y1) = WorldToCanvas(g.x0, g.y);
+            var (x2, y2) = WorldToCanvas(g.x1, g.y);
+            AddAlignmentGuideLine(x1, y1, x2, y2, stroke, dash);
+        }
+    }
+
+    private void AddAlignmentGuideLine(
+        double x1, double y1, double x2, double y2, Brush stroke, DoubleCollection dash)
+    {
+        var line = new Line
+        {
+            X1 = x1,
+            Y1 = y1,
+            X2 = x2,
+            Y2 = y2,
+            Stroke = stroke,
+            StrokeThickness = 1.0,
+            StrokeDashArray = dash,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            IsHitTestVisible = false,
+            SnapsToDevicePixels = true,
+        };
+        Panel.SetZIndex(line, 2500);
+        DesignCanvas.Children.Add(line);
+        _alignmentGuideVisuals.Add(line);
+    }
+
+    private void ClearAlignmentGuides()
+    {
+        foreach (var el in _alignmentGuideVisuals)
+            DesignCanvas.Children.Remove(el);
+        _alignmentGuideVisuals.Clear();
     }
 
     private static (double width, double height) GetLogicalSizeMm(SolarPanelDefinition def, int rotation)
@@ -3231,6 +4028,7 @@ public partial class MainWindow : Window
         _draggingPanelId = null;
         _rotatingEquipmentId = null;
         _dragOrigins.Clear();
+        ClearAlignmentGuides();
         ClearRotateDegreeLabel();
     }
 
@@ -3574,7 +4372,7 @@ public partial class MainWindow : Window
             Fill = Brushes.White,
             Stroke = (Brush)FindResource("AccentBrush"),
             StrokeThickness = 2,
-            Cursor = Cursors.Hand,
+            Cursor = Cursors.Arrow,
             Visibility = Visibility.Collapsed,
             ToolTip = "Drag to rotate · snaps to 90° · Shift=15° · Alt=free · R / Shift+R nudge",
         };
@@ -3838,6 +4636,124 @@ public partial class MainWindow : Window
         StatusText.Text = "DRAW ROOF  |  Ortho + ALIGN  |  Ctrl+Z / Backspace = undo last segment  |  Esc pauses (keeps outline)  |  Near start = CLOSE";
     }
 
+    private void StraightenRoof_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_project.Roofs.Roofs.Any(r => r.HasRoof))
+        {
+            StatusText.Text = "ROOF  |  Import or close a roof first";
+            return;
+        }
+
+        if (_project.Roofs.Roofs.Any(r => r.HasRoof && r.IsLocked))
+        {
+            StatusText.Text = "ROOF  |  Unlock roof first to straighten";
+            return;
+        }
+
+        _project.History.Execute(new StraightenRoofEdgesCommand(_project));
+        FrameRoofsInView();
+        RefreshAll();
+        StatusText.Text = "ROOF  |  Edges straightened (axis-aligned)";
+    }
+
+    private void RotateRoof15_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_project.Roofs.Roofs.Any(r => r.HasRoof))
+        {
+            StatusText.Text = "ROOF  |  Import or close a roof first";
+            return;
+        }
+
+        if (_project.Roofs.Roofs.Any(r => r.HasRoof && r.IsLocked))
+        {
+            StatusText.Text = "ROOF  |  Unlock roof first to rotate";
+            return;
+        }
+
+        var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -15.0 : 15.0;
+        _project.History.Execute(new RotateRoofsCommand(_project, step));
+        RefreshAll();
+        StatusText.Text = $"ROOF  |  Rotated {step:0}°";
+    }
+
+    private void ToggleRoofLock_Click(object sender, RoutedEventArgs e)
+    {
+        var roofs = _project.Roofs.Roofs.Where(r => r.HasRoof).ToList();
+        if (roofs.Count == 0)
+        {
+            StatusText.Text = "ROOF  |  Import or close a roof first";
+            return;
+        }
+
+        // If any unlocked → lock all (safe for wiring). Else unlock all for edits.
+        var lockAll = roofs.Any(r => !r.IsLocked);
+        foreach (var roof in roofs)
+            roof.IsLocked = lockAll;
+
+        _project.NotifyChanged(lockAll ? "Lock roof" : "Unlock roof");
+        RefreshAll();
+        StatusText.Text = lockAll
+            ? "ROOF  |  Locked — outline won't move while you wire"
+            : "ROOF  |  Unlocked — drag / rotate / straighten enabled";
+    }
+
+    private void UpdateLockRoofButton()
+    {
+        if (LockRoofButton is null) return;
+        var roofs = _project.Roofs.Roofs.Where(r => r.HasRoof).ToList();
+        if (roofs.Count == 0)
+        {
+            LockRoofButton.Content = "Lock roof";
+            LockRoofButton.IsEnabled = false;
+            return;
+        }
+
+        LockRoofButton.IsEnabled = true;
+        var anyUnlocked = roofs.Any(r => !r.IsLocked);
+        LockRoofButton.Content = anyUnlocked ? "Lock roof" : "Unlock roof";
+    }
+
+    /// <summary>
+    /// Fit all closed roofs in the visible canvas (centered in front of the user).
+    /// </summary>
+    private void FrameRoofsInView()
+    {
+        var verts = _project.Roofs.Roofs
+            .Where(r => r.HasRoof)
+            .SelectMany(r => r.Vertices)
+            .ToList();
+        if (verts.Count == 0) return;
+
+        var minX = verts.Min(v => v.X);
+        var maxX = verts.Max(v => v.X);
+        var minY = verts.Min(v => v.Y);
+        var maxY = verts.Max(v => v.Y);
+        var widthMm = Math.Max(maxX - minX, 500);
+        var heightMm = Math.Max(maxY - minY, 500);
+
+        var viewW = DesignCanvas.ActualWidth;
+        var viewH = DesignCanvas.ActualHeight;
+        if (viewW < 40 || viewH < 40 || double.IsNaN(viewW) || double.IsNaN(viewH))
+        {
+            viewW = Math.Max(ActualWidth - 360, 640);
+            viewH = Math.Max(ActualHeight - 80, 480);
+        }
+
+        const double padPx = 72;
+        var zoomX = (viewW - 2 * padPx) / (widthMm * MmToPx);
+        var zoomY = (viewH - 2 * padPx) / (heightMm * MmToPx);
+        _zoom = Math.Clamp(Math.Min(zoomX, zoomY), 0.12, 2.8);
+
+        var cx = (minX + maxX) / 2;
+        var cy = (minY + maxY) / 2;
+        _panOffset = new Point(
+            viewW / 2 - cx * MmToPx * _zoom,
+            viewH / 2 - cy * MmToPx * _zoom);
+
+        if (ZoomLabel is not null)
+            ZoomLabel.Text = $"{_zoom * 100:0}%";
+    }
+
     private void NewRoofLayer_Click(object sender, RoutedEventArgs e)
     {
         _project.Roofs.AddRoof();
@@ -3910,6 +4826,8 @@ public partial class MainWindow : Window
         "https://console.cloud.google.com/apis/library/solar.googleapis.com";
     private const string GoogleGeocodingApiEnableUrl =
         "https://console.cloud.google.com/apis/library/geocoding-backend.googleapis.com";
+    private const string GoogleMapsJsApiEnableUrl =
+        "https://console.cloud.google.com/apis/library/maps-backend.googleapis.com";
     private const string GoogleCredentialsUrl =
         "https://console.cloud.google.com/apis/credentials";
 
@@ -4000,6 +4918,10 @@ public partial class MainWindow : Window
             "Enable Geocoding API (for addresses)",
             GoogleGeocodingApiEnableUrl,
             "Needed if you import by street address instead of lat,lon"));
+        body.Children.Add(CreateExternalLinkButton(
+            "Enable Maps JavaScript API (satellite picker)",
+            GoogleMapsJsApiEnableUrl,
+            "Needed for smooth Google satellite zoom in the house picker"));
         body.Children.Add(CreateExternalLinkButton(
             "Create / copy API key (Credentials)",
             GoogleCredentialsUrl,
@@ -4100,10 +5022,30 @@ public partial class MainWindow : Window
 
     private async void ImportGoogleSolar_Click(object sender, RoutedEventArgs e)
     {
+        // Optional / advanced only — primary roof import is free map tracing.
+        var goFree = MessageBox.Show(this,
+            "Recommended: use free Trace roof on map (no Google billing).\n\n"
+            + "Continue with optional Google Solar API import anyway?",
+            "Google Solar (optional)",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (goFree != MessageBoxResult.Yes)
+        {
+            SatelliteMap_Click(sender, e);
+            return;
+        }
+
         var apiKey = EnsureGoogleApiKey();
         if (apiKey is null) return;
 
-        var query = GoogleSolarAddressBox?.Text?.Trim() ?? "";
+        var query = PromptText(
+            "Optional Google Solar import",
+            "Address or lat,lon:",
+            _project.Site.LocationName is "Unspecified" or null or ""
+                ? ""
+                : _project.Site.LocationName);
+        if (query is null) return;
+
         if (string.IsNullOrWhiteSpace(query)
             && _project.Site.LatitudeDegrees is double slat
             && _project.Site.LongitudeDegrees is double slon)
@@ -4113,14 +5055,7 @@ public partial class MainWindow : Window
         }
 
         if (string.IsNullOrWhiteSpace(query))
-        {
-            MessageBox.Show(this,
-                "Enter an address or lat,lon — or set Site lat/lon first.",
-                "Google Solar",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
             return;
-        }
 
         try
         {
@@ -4143,37 +5078,74 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void SatelliteMap_Click(object sender, RoutedEventArgs e)
+    private void SatelliteMap_Click(object sender, RoutedEventArgs e)
     {
-        // Map imagery works without a key; geocode + Solar import need one (prompted on Import).
-        var apiKey = GoogleSolarApiKeyStore.TryResolve();
-        var initialQuery = GoogleSolarAddressBox?.Text?.Trim();
-        if (string.IsNullOrWhiteSpace(initialQuery))
-            initialQuery = _project.Site.LocationName;
+        // Free path: WebView2 + Leaflet/Esri + Nominatim + user-traced roof. No Google billing.
+        var initialQuery = _project.Site.LocationName;
+        if (string.IsNullOrWhiteSpace(initialQuery)
+            || initialQuery.Equals("Unspecified", StringComparison.OrdinalIgnoreCase))
+        {
+            initialQuery = null;
+        }
 
         double? initLat = _project.Site.LatitudeDegrees;
         double? initLon = _project.Site.LongitudeDegrees;
 
-        var dialog = new SatelliteMapDialog(apiKey, initialQuery, initLat, initLon)
+        var dialog = new SatelliteMapDialog(null, initialQuery, initLat, initLon)
         {
             Owner = this,
         };
-        if (dialog.ShowDialog() != true
-            || dialog.SelectedLatitude is not double lat
-            || dialog.SelectedLongitude is not double lon)
+        if (dialog.ShowDialog() != true)
             return;
 
-        var key = EnsureGoogleApiKey();
-        if (key is null) return;
+        var rings = dialog.RoofRings.Count > 0
+            ? dialog.RoofRings
+            : dialog.RoofOutline.Count >= 3
+                ? new IReadOnlyList<(double Lat, double Lon)>[] { dialog.RoofOutline }
+                : Array.Empty<IReadOnlyList<(double Lat, double Lon)>>();
+        if (rings.Count == 0)
+            return;
 
         try
         {
-            await ImportGoogleSolarAtAsync(key, lat, lon, dialog.SelectedLabel).ConfigureAwait(true);
+            if (_project.Roofs.Roofs.Count > 0)
+            {
+                var confirm = MessageBox.Show(this,
+                    "Import replaces all current roof layers. Continue?",
+                    "Trace roof",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (confirm != MessageBoxResult.Yes) return;
+            }
+
+            var import = FreeRoofTraceImport.BuildMany(rings, dialog.SelectedLabel);
+            FreeRoofTraceImport.ApplyToProject(_project, import, dialog.SelectedLabel);
+            // Map traces are never square — auto-align longest edge + snap edges to H/V.
+            try
+            {
+                _project.History.Execute(new StraightenRoofEdgesCommand(_project));
+            }
+            catch (InvalidOperationException)
+            {
+                // No closed roof — ignore.
+            }
+            UpdateSiteFieldBoxes();
+            _workspacePlan = WorkspacePlan.Roof;
+            ApplyWorkspacePlanUi();
+            // Center the imported roof in the visible canvas (was spawning off-screen / below).
+            Dispatcher.BeginInvoke(() =>
+            {
+                FrameRoofsInView();
+                RefreshAll();
+            }, DispatcherPriority.Loaded);
+            StatusText.Text = $"ROOF  |  {import.Summary}  ·  straightened + locked";
+            if (HudDetail is not null)
+                HudDetail.Text = import.Summary + "  ·  Squared up & locked — Trace again if wrong; Unlock only to tweak";
         }
         catch (Exception ex)
         {
-            StatusText.Text = "GOOGLE SOLAR  |  Import failed";
-            MessageBox.Show(this, ex.Message, "Google Solar import failed",
+            StatusText.Text = "ROOF  |  Trace import failed";
+            MessageBox.Show(this, ex.Message, "Trace roof failed",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -4215,9 +5187,6 @@ public partial class MainWindow : Window
         var insights = await client.FindClosestBuildingAsync(lat, lon).ConfigureAwait(true);
         var import = GoogleSolarClient.BuildRoofImport(insights, label);
         GoogleSolarClient.ApplyToProject(_project, import, label);
-        if (GoogleSolarAddressBox is not null
-            && string.IsNullOrWhiteSpace(GoogleSolarAddressBox.Text))
-            GoogleSolarAddressBox.Text = label;
 
         UpdateSiteFieldBoxes();
         _workspacePlan = WorkspacePlan.Roof;
@@ -4742,6 +5711,132 @@ public partial class MainWindow : Window
         }
     }
 
+    private void AddRoofRotateHandle(RoofSurface roof)
+    {
+        var all = _project.Roofs.Roofs.Where(r => r.HasRoof).SelectMany(r => r.Vertices).ToList();
+        if (all.Count == 0) all = roof.Vertices.ToList();
+
+        var minX = all.Min(v => v.X);
+        var maxX = all.Max(v => v.X);
+        var maxY = all.Max(v => v.Y);
+        var midX = (minX + maxX) * 0.5;
+
+        // World Y-up → canvas Y-down: maxY is the bottom edge on screen.
+        var (cx, bottomY) = WorldToCanvas(midX, maxY);
+        var handleSize = Math.Clamp(24 * Math.Min(_zoom, 1.15), 22, 28);
+        var gap = Math.Max(10, 14 * Math.Min(_zoom, 1.2));
+        var handleY = bottomY + gap;
+
+        _roofRotateHandle = CreateCanvaRotateHandle(
+            handleSize,
+            "Drag to rotate · snaps to 90° when close · Shift = 15° · Alt = free");
+        Canvas.SetLeft(_roofRotateHandle, cx - handleSize / 2);
+        Canvas.SetTop(_roofRotateHandle, handleY);
+        Panel.SetZIndex(_roofRotateHandle, 1410);
+        _roofRotateHandle.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ChangedButton != MouseButton.Left) return;
+            BeginRoofRotation(e.GetPosition(DesignCanvas));
+            e.Handled = true;
+        };
+        DesignCanvas.Children.Add(_roofRotateHandle);
+        _roofVisuals.Add(_roofRotateHandle);
+    }
+
+    private void BeginRoofRotation(Point canvasPos)
+    {
+        var roofs = _project.Roofs.Roofs.Where(r => r.HasRoof).ToList();
+        if (roofs.Count == 0) return;
+        if (roofs.Any(r => r.IsLocked))
+        {
+            StatusText.Text = "ROOF  |  Unlock roof first to rotate";
+            return;
+        }
+
+        _roofRotateBaseline.Clear();
+        foreach (var roof in roofs)
+            _roofRotateBaseline[roof.Id] = roof.Vertices.ToList();
+
+        var all = _roofRotateBaseline.Values.SelectMany(v => v).ToList();
+        _roofRotatePivot = RoofGeometry.Centroid(all);
+        var (cx, cy) = WorldToCanvas(_roofRotatePivot.X, _roofRotatePivot.Y);
+        _roofRotateStartMouseDeg = Math.Atan2(canvasPos.Y - cy, canvasPos.X - cx) * (180.0 / Math.PI);
+        _roofRotateLiveDegrees = 0;
+        _rotatingRoof = true;
+        _draggingRoofBody = false;
+        _rotateMoved = false;
+        DesignCanvas.CaptureMouse();
+        UpdateRotateDegreeLabel(new Point(cx, cy), 0);
+    }
+
+    private void BeginRoofBodyDrag(Point canvasPos)
+    {
+        var roofs = _project.Roofs.Roofs.Where(r => r.HasRoof && !r.IsLocked).ToList();
+        if (roofs.Count == 0) return;
+
+        _roofRotateBaseline.Clear();
+        foreach (var roof in roofs)
+            _roofRotateBaseline[roof.Id] = roof.Vertices.ToList();
+
+        _roofDragStartCanvas = canvasPos;
+        _roofDragDxMm = 0;
+        _roofDragDyMm = 0;
+        _draggingRoofBody = true;
+        _rotatingRoof = false;
+        _rotateMoved = false;
+        DesignCanvas.CaptureMouse();
+        StatusText.Text = "ROOF  |  Moving (Alt+drag)";
+    }
+
+    /// <summary>
+    /// Free rotation by default; magnetic snap to 0/90/180/270 within 8°.
+    /// Shift = hard 15° grid. Alt = fully free (no magnet).
+    /// </summary>
+    private static double SnapRoofDragDegrees(double delta)
+    {
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+            return delta;
+
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            return Math.Round(delta / 15.0) * 15.0;
+
+        const double magnetDeg = 8.0;
+        var nearestOrtho = Math.Round(delta / 90.0) * 90.0;
+        if (Math.Abs(delta - nearestOrtho) <= magnetDeg)
+            return nearestOrtho;
+
+        return delta;
+    }
+
+    private void ApplyLiveRoofRotation(double degrees)
+    {
+        foreach (var (id, before) in _roofRotateBaseline)
+        {
+            var roof = _project.Roofs.Find(id);
+            if (roof is null) continue;
+            roof.SetVertices(RoofGeometry.RotateVertices(before, _roofRotatePivot, degrees), closed: true);
+        }
+
+        _roofRotateLiveDegrees = degrees;
+        RebuildRoofVisuals();
+        var (cx, cy) = WorldToCanvas(_roofRotatePivot.X, _roofRotatePivot.Y);
+        UpdateRotateDegreeLabel(new Point(cx, cy), degrees);
+    }
+
+    private void ApplyLiveRoofTranslate(double dxMm, double dyMm)
+    {
+        foreach (var (id, before) in _roofRotateBaseline)
+        {
+            var roof = _project.Roofs.Find(id);
+            if (roof is null) continue;
+            roof.SetVertices(RoofGeometry.TranslateVertices(before, dxMm, dyMm), closed: true);
+        }
+
+        _roofDragDxMm = dxMm;
+        _roofDragDyMm = dyMm;
+        RebuildRoofVisuals();
+    }
+
     private void BuildRoofSurfaceVisual(RoofSurface roof, bool isActive)
     {
         var vertices = roof.Vertices;
@@ -4768,6 +5863,7 @@ public partial class MainWindow : Window
                 Stroke = strokeBrush,
                 StrokeThickness = strokeThickness,
                 IsHitTestVisible = false,
+                Cursor = Cursors.SizeAll,
             };
             DesignCanvas.Children.Insert(0, fill);
             _roofVisuals.Add(fill);
@@ -4863,26 +5959,32 @@ public partial class MainWindow : Window
             }
         }
 
-        if (isActive)
+        if (isActive && !roof.IsLocked)
         {
             for (var i = 0; i < vertices.Count; i++)
             {
                 var (x, y) = WorldToCanvas(vertices[i].X, vertices[i].Y);
+                // Shrink handles when zoomed in so edges stay readable under the tip.
+                var handleSize = Math.Clamp(8.0 / Math.Sqrt(Math.Max(_zoom, 0.4)), 4.5, 8);
                 var handle = new Ellipse
                 {
-                    Width = 10,
-                    Height = 10,
+                    Width = handleSize,
+                    Height = handleSize,
                     Fill = Brushes.White,
                     Stroke = (Brush)FindResource("AccentBrush"),
-                    StrokeThickness = 2,
+                    StrokeThickness = 1.5,
                     Tag = i,
-                    Cursor = Cursors.Hand,
+                    Cursor = Cursors.Arrow,
                 };
-                Canvas.SetLeft(handle, x - 5);
-                Canvas.SetTop(handle, y - 5);
+                Canvas.SetLeft(handle, x - handleSize / 2);
+                Canvas.SetTop(handle, y - handleSize / 2);
                 DesignCanvas.Children.Add(handle);
                 _roofVisuals.Add(handle);
             }
+
+            // Canva-style rotate handle (closed unlocked roofs only).
+            if (roof.IsClosed && vertices.Count >= 3)
+                AddRoofRotateHandle(roof);
         }
 
         foreach (var obstacle in roof.Obstacles)
@@ -4910,7 +6012,7 @@ public partial class MainWindow : Window
                     IsHitTestVisible = false,
                 },
                 Tag = obstacle.Id,
-                Cursor = Cursors.Hand,
+                Cursor = Cursors.Arrow,
             };
             Canvas.SetLeft(rect, x);
             Canvas.SetTop(rect, y);
@@ -4929,6 +6031,20 @@ public partial class MainWindow : Window
             var (x, y) = WorldToCanvas(active.Vertices[i].X, active.Vertices[i].Y);
             if (Hypot(canvasPoint.X - x, canvasPoint.Y - y) <= 10)
                 return i;
+        }
+        return null;
+    }
+
+    private Guid? FindClosedRoofAt(Point canvasPoint)
+    {
+        var (wx, wy) = CanvasToWorld(canvasPoint);
+        var world = new Point2Mm(wx, wy);
+        // Prefer active roof, then others (top-most / last wins for overlap).
+        foreach (var roof in _project.Roofs.Roofs.Reverse())
+        {
+            if (!roof.IsVisible || !roof.IsClosed || roof.Vertices.Count < 3) continue;
+            if (RoofGeometry.IsPointInsidePolygon(world, roof.Vertices))
+                return roof.Id;
         }
         return null;
     }
@@ -5037,6 +6153,23 @@ public partial class MainWindow : Window
             out alignY);
     }
 
+    /// <summary>
+    /// Subtle dashed guides while dragging a roof corner (LEVEL / PLUMB / ALIGN).
+    /// </summary>
+    private void UpdateRoofEditSnapGuides(RoofSurface roof, int index, Point2Mm snapped)
+    {
+        var n = roof.Vertices.Count;
+        if (n < 2) return;
+        var prev = roof.Vertices[(index - 1 + n) % n];
+        var (x1, y1) = WorldToCanvas(prev.X, prev.Y);
+        var (x2, y2) = WorldToCanvas(snapped.X, snapped.Y);
+        var levelHint = GetOrthoLevelHint(prev, snapped);
+        // Also show PLUMB/LEVEL if the edge toward next is ortho.
+        var next = roof.Vertices[(index + 1) % n];
+        levelHint ??= GetOrthoLevelHint(snapped, next);
+        UpdateRoofLeveler(x1, y1, x2, y2, levelHint, snapped);
+    }
+
     private void ClearRoofLiveMeasure()
     {
         void Remove(UIElement? el)
@@ -5062,6 +6195,145 @@ public partial class MainWindow : Window
         _roofAlignMarker = null;
         _roofAlignXSource = null;
         _roofAlignYSource = null;
+    }
+
+    private void ClearMeasureTool()
+    {
+        ClearMeasureRubberBand();
+        foreach (var el in _measureVisuals)
+            DesignCanvas.Children.Remove(el);
+        _measureVisuals.Clear();
+        _measurePoints.Clear();
+    }
+
+    private void ClearMeasureRubberBand()
+    {
+        if (_measureRubberBand is not null)
+        {
+            DesignCanvas.Children.Remove(_measureRubberBand);
+            _measureRubberBand = null;
+        }
+        if (_measureLiveLabel is not null)
+        {
+            DesignCanvas.Children.Remove(_measureLiveLabel);
+            _measureLiveLabel = null;
+        }
+    }
+
+    private void RebuildMeasureVisuals()
+    {
+        ClearMeasureRubberBand();
+        foreach (var el in _measureVisuals)
+            DesignCanvas.Children.Remove(el);
+        _measureVisuals.Clear();
+
+        for (var i = 0; i < _measurePoints.Count; i++)
+        {
+            var (cx, cy) = WorldToCanvas(_measurePoints[i].X, _measurePoints[i].Y);
+            var dot = new Ellipse
+            {
+                Width = 8,
+                Height = 8,
+                Fill = (Brush)FindResource("AccentBrush"),
+                Stroke = Brushes.White,
+                StrokeThickness = 1.5,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(dot, cx - 4);
+            Canvas.SetTop(dot, cy - 4);
+            Panel.SetZIndex(dot, 1500);
+            DesignCanvas.Children.Add(dot);
+            _measureVisuals.Add(dot);
+
+            if (i == 0) continue;
+            var prev = _measurePoints[i - 1];
+            var (ax, ay) = WorldToCanvas(prev.X, prev.Y);
+            var line = new Line
+            {
+                X1 = ax, Y1 = ay, X2 = cx, Y2 = cy,
+                Stroke = (Brush)FindResource("AccentBrush"),
+                StrokeThickness = 2,
+                IsHitTestVisible = false,
+            };
+            Panel.SetZIndex(line, 1490);
+            DesignCanvas.Children.Add(line);
+            _measureVisuals.Add(line);
+
+            var lenMm = prev.DistanceTo(_measurePoints[i]);
+            var label = new TextBlock
+            {
+                Text = _project.Units.FormatLength(lenMm),
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("AccentBrush"),
+                Background = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
+                Padding = new Thickness(4, 2, 4, 2),
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(label, (ax + cx) / 2);
+            Canvas.SetTop(label, (ay + cy) / 2 - 14);
+            Panel.SetZIndex(label, 1500);
+            DesignCanvas.Children.Add(label);
+            _measureVisuals.Add(label);
+        }
+
+        if (_measurePoints.Count >= 2)
+        {
+            var total = 0.0;
+            for (var i = 1; i < _measurePoints.Count; i++)
+                total += _measurePoints[i - 1].DistanceTo(_measurePoints[i]);
+            StatusText.Text = $"MEASURE  ·  {_measurePoints.Count - 1} segment(s) · {_project.Units.FormatLength(total)} total";
+        }
+        else
+        {
+            StatusText.Text = "MEASURE  ·  Click next point (Esc clears)";
+        }
+    }
+
+    private void UpdateMeasureRubberBand(Point canvasPos)
+    {
+        if (_measurePoints.Count == 0) return;
+        var last = _measurePoints[^1];
+        var (x1, y1) = WorldToCanvas(last.X, last.Y);
+        var (xMm, yMm) = CanvasToWorld(canvasPos);
+        var cur = new Point2Mm(xMm, yMm);
+        var (x2, y2) = WorldToCanvas(cur.X, cur.Y);
+        var lenMm = last.DistanceTo(cur);
+
+        if (_measureRubberBand is null)
+        {
+            _measureRubberBand = new Line
+            {
+                Stroke = (Brush)FindResource("AccentBrush"),
+                StrokeThickness = 2,
+                StrokeDashArray = new DoubleCollection { 4, 3 },
+                IsHitTestVisible = false,
+            };
+            DesignCanvas.Children.Add(_measureRubberBand);
+            Panel.SetZIndex(_measureRubberBand, 1500);
+        }
+        _measureRubberBand.X1 = x1;
+        _measureRubberBand.Y1 = y1;
+        _measureRubberBand.X2 = x2;
+        _measureRubberBand.Y2 = y2;
+
+        if (_measureLiveLabel is null)
+        {
+            _measureLiveLabel = new TextBlock
+            {
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("AccentBrush"),
+                Background = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
+                Padding = new Thickness(4, 2, 4, 2),
+                IsHitTestVisible = false,
+            };
+            DesignCanvas.Children.Add(_measureLiveLabel);
+            Panel.SetZIndex(_measureLiveLabel, 1500);
+        }
+        _measureLiveLabel.Text = _project.Units.FormatLength(lenMm);
+        Canvas.SetLeft(_measureLiveLabel, (x1 + x2) / 2);
+        Canvas.SetTop(_measureLiveLabel, (y1 + y2) / 2 - 14);
     }
 
     private void UpdateRoofLiveMeasure(Point canvasPos, RoofSurface roof)
@@ -5138,7 +6410,8 @@ public partial class MainWindow : Window
 
         var first = roof.Vertices[0];
         var (fx, fy) = WorldToCanvas(first.X, first.Y);
-        var size = closing ? 22.0 : 16.0;
+        var size = (closing ? 12.0 : 8.0) / Math.Sqrt(Math.Max(_zoom, 0.45));
+        size = Math.Clamp(size, 5, 14);
 
         if (_roofCloseMarker is null)
         {
@@ -5427,6 +6700,44 @@ public partial class MainWindow : Window
         }
         SelectCurrentUnitInCombo();
         _unitsComboUiReady = true;
+    }
+
+    private bool _panelColorComboUiReady;
+
+    private void PopulatePanelColorCombo()
+    {
+        _panelColorComboUiReady = false;
+        PanelColorCombo.Items.Clear();
+        foreach (PanelAppearance.Kind kind in Enum.GetValues<PanelAppearance.Kind>())
+        {
+            PanelColorCombo.Items.Add(new ComboBoxItem
+            {
+                Content = PanelAppearance.DisplayName(kind),
+                Tag = kind,
+            });
+        }
+
+        for (var i = 0; i < PanelColorCombo.Items.Count; i++)
+        {
+            if (PanelColorCombo.Items[i] is ComboBoxItem item
+                && item.Tag is PanelAppearance.Kind kind
+                && kind == PanelAppearance.Current)
+            {
+                PanelColorCombo.SelectedIndex = i;
+                break;
+            }
+        }
+
+        _panelColorComboUiReady = true;
+    }
+
+    private void PanelColorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_panelColorComboUiReady) return;
+        if (PanelColorCombo.SelectedItem is not ComboBoxItem { Tag: PanelAppearance.Kind kind }) return;
+        if (kind == PanelAppearance.Current) return;
+        PanelAppearance.Apply(kind);
+        RefreshAll();
     }
 
     private bool _unitsComboUiReady;
@@ -5749,6 +7060,8 @@ public partial class MainWindow : Window
         public Ellipse NegativePort { get; }
         public TextBlock PositiveLabel { get; }
         public TextBlock NegativeLabel { get; }
+        public Border RotateHandle { get; }
+        public Line RotateStem { get; }
 
         public PanelVisual(
             Guid instanceId,
@@ -5759,7 +7072,9 @@ public partial class MainWindow : Window
             Ellipse positive,
             Ellipse negative,
             TextBlock positiveLabel,
-            TextBlock negativeLabel)
+            TextBlock negativeLabel,
+            Border rotateHandle,
+            Line rotateStem)
         {
             InstanceId = instanceId;
             Root = root;
@@ -5770,6 +7085,8 @@ public partial class MainWindow : Window
             NegativePort = negative;
             PositiveLabel = positiveLabel;
             NegativeLabel = negativeLabel;
+            RotateHandle = rotateHandle;
+            RotateStem = rotateStem;
         }
     }
 

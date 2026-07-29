@@ -360,6 +360,271 @@ public sealed class AddRoofVertexCommand : ICommand
         ?? throw new InvalidOperationException("Roof layer not found.");
 }
 
+/// <summary>
+/// Rotate one or more closed roof polygons (and their obstacles) around a shared pivot.
+/// </summary>
+public sealed class RotateRoofsCommand : ICommand
+{
+    private readonly SolarProject _project;
+    private readonly double _degrees;
+    private readonly Dictionary<Guid, List<Point2Mm>> _beforeVertices = new();
+    private readonly Dictionary<Guid, List<Point2Mm>> _afterVertices = new();
+    private readonly Dictionary<Guid, List<(Guid Id, double X, double Y)>> _beforeObstacles = new();
+    private readonly Dictionary<Guid, List<(Guid Id, double X, double Y)>> _afterObstacles = new();
+    private bool _captured;
+
+    public RotateRoofsCommand(SolarProject project, double degrees)
+    {
+        _project = project;
+        _degrees = degrees;
+    }
+
+    public string Description => Math.Abs(_degrees) < 0.05
+        ? "Straighten roof"
+        : $"Rotate roof {_degrees:0.#}°";
+
+    public void Execute()
+    {
+        if (!_captured)
+            Capture();
+
+        foreach (var (id, verts) in _afterVertices)
+        {
+            var roof = _project.Roofs.Find(id);
+            if (roof is null) continue;
+            roof.SetVertices(verts, closed: true);
+            if (_afterObstacles.TryGetValue(id, out var obs))
+            {
+                foreach (var (oid, x, y) in obs)
+                {
+                    var o = roof.FindObstacle(oid);
+                    if (o is null) continue;
+                    o.XMm = x;
+                    o.YMm = y;
+                }
+            }
+        }
+
+        _project.NotifyChanged(Description);
+    }
+
+    public void Undo()
+    {
+        foreach (var (id, verts) in _beforeVertices)
+        {
+            var roof = _project.Roofs.Find(id);
+            if (roof is null) continue;
+            roof.SetVertices(verts, closed: true);
+            if (_beforeObstacles.TryGetValue(id, out var obs))
+            {
+                foreach (var (oid, x, y) in obs)
+                {
+                    var o = roof.FindObstacle(oid);
+                    if (o is null) continue;
+                    o.XMm = x;
+                    o.YMm = y;
+                }
+            }
+        }
+
+        _project.NotifyChanged($"Undo: {Description}");
+    }
+
+    private void Capture()
+    {
+        var roofs = _project.Roofs.Roofs.Where(r => r.HasRoof).ToList();
+        if (roofs.Count == 0)
+            throw new InvalidOperationException("No closed roof to rotate.");
+
+        var all = roofs.SelectMany(r => r.Vertices).ToList();
+        var pivot = RoofGeometry.Centroid(all);
+
+        foreach (var roof in roofs)
+        {
+            var before = roof.Vertices.ToList();
+            _beforeVertices[roof.Id] = before;
+            _afterVertices[roof.Id] = RoofGeometry.RotateVertices(before, pivot, _degrees);
+
+            var beforeObs = new List<(Guid, double, double)>();
+            var afterObs = new List<(Guid, double, double)>();
+            foreach (var o in roof.Obstacles)
+            {
+                beforeObs.Add((o.Id, o.XMm, o.YMm));
+                // Rotate obstacle top-left around roof pivot (AABB approx).
+                var center = new Point2Mm(o.XMm + o.WidthMm / 2, o.YMm + o.HeightMm / 2);
+                var rotated = RoofGeometry.RotatePoint(center, pivot, _degrees);
+                afterObs.Add((o.Id, rotated.X - o.WidthMm / 2, rotated.Y - o.HeightMm / 2));
+            }
+            _beforeObstacles[roof.Id] = beforeObs;
+            _afterObstacles[roof.Id] = afterObs;
+        }
+
+        _captured = true;
+    }
+}
+
+/// <summary>
+/// Align longest edge + orthogonalize edges (clean up wobbly map traces).
+/// </summary>
+public sealed class StraightenRoofEdgesCommand : ICommand
+{
+    private readonly SolarProject _project;
+    private readonly Dictionary<Guid, List<Point2Mm>> _beforeVertices = new();
+    private readonly Dictionary<Guid, List<Point2Mm>> _afterVertices = new();
+    private bool _captured;
+
+    public StraightenRoofEdgesCommand(SolarProject project) => _project = project;
+
+    public string Description => "Straighten roof edges";
+
+    public void Execute()
+    {
+        if (!_captured)
+            Capture();
+
+        foreach (var (id, verts) in _afterVertices)
+        {
+            var roof = _project.Roofs.Find(id);
+            if (roof is null) continue;
+            roof.SetVertices(verts, closed: true);
+        }
+
+        _project.NotifyChanged(Description);
+    }
+
+    public void Undo()
+    {
+        foreach (var (id, verts) in _beforeVertices)
+        {
+            var roof = _project.Roofs.Find(id);
+            if (roof is null) continue;
+            roof.SetVertices(verts, closed: true);
+        }
+
+        _project.NotifyChanged($"Undo: {Description}");
+    }
+
+    private void Capture()
+    {
+        var roofs = _project.Roofs.Roofs.Where(r => r.HasRoof).ToList();
+        if (roofs.Count == 0)
+            throw new InvalidOperationException("No closed roof to straighten.");
+
+        var all = roofs.SelectMany(r => r.Vertices).ToList();
+        var pivot = RoofGeometry.Centroid(all);
+        var alignDeg = RoofGeometry.StraightenDegrees(all);
+
+        foreach (var roof in roofs)
+        {
+            var before = roof.Vertices.ToList();
+            _beforeVertices[roof.Id] = before;
+            var aligned = Math.Abs(alignDeg) < 0.05
+                ? before
+                : RoofGeometry.RotateVertices(before, pivot, alignDeg);
+            _afterVertices[roof.Id] = RoofGeometry.OrthogonalizeEdges(aligned);
+        }
+
+        _captured = true;
+    }
+}
+
+/// <summary>
+/// Nudge all closed roofs by a world-space delta (drag-move).
+/// </summary>
+public sealed class TranslateRoofsCommand : ICommand
+{
+    private readonly SolarProject _project;
+    private readonly double _dxMm;
+    private readonly double _dyMm;
+    private readonly Dictionary<Guid, List<Point2Mm>> _beforeVertices = new();
+    private readonly Dictionary<Guid, List<Point2Mm>> _afterVertices = new();
+    private readonly Dictionary<Guid, List<(Guid Id, double X, double Y)>> _beforeObstacles = new();
+    private readonly Dictionary<Guid, List<(Guid Id, double X, double Y)>> _afterObstacles = new();
+    private bool _captured;
+
+    public TranslateRoofsCommand(SolarProject project, double dxMm, double dyMm)
+    {
+        _project = project;
+        _dxMm = dxMm;
+        _dyMm = dyMm;
+    }
+
+    public string Description => "Move roof";
+
+    public void Execute()
+    {
+        if (!_captured)
+            Capture();
+
+        foreach (var (id, verts) in _afterVertices)
+        {
+            var roof = _project.Roofs.Find(id);
+            if (roof is null) continue;
+            roof.SetVertices(verts, closed: true);
+            if (_afterObstacles.TryGetValue(id, out var obs))
+            {
+                foreach (var (oid, x, y) in obs)
+                {
+                    var o = roof.FindObstacle(oid);
+                    if (o is null) continue;
+                    o.XMm = x;
+                    o.YMm = y;
+                }
+            }
+        }
+
+        _project.NotifyChanged(Description);
+    }
+
+    public void Undo()
+    {
+        foreach (var (id, verts) in _beforeVertices)
+        {
+            var roof = _project.Roofs.Find(id);
+            if (roof is null) continue;
+            roof.SetVertices(verts, closed: true);
+            if (_beforeObstacles.TryGetValue(id, out var obs))
+            {
+                foreach (var (oid, x, y) in obs)
+                {
+                    var o = roof.FindObstacle(oid);
+                    if (o is null) continue;
+                    o.XMm = x;
+                    o.YMm = y;
+                }
+            }
+        }
+
+        _project.NotifyChanged($"Undo: {Description}");
+    }
+
+    private void Capture()
+    {
+        var roofs = _project.Roofs.Roofs.Where(r => r.HasRoof).ToList();
+        if (roofs.Count == 0)
+            throw new InvalidOperationException("No closed roof to move.");
+
+        foreach (var roof in roofs)
+        {
+            var before = roof.Vertices.ToList();
+            _beforeVertices[roof.Id] = before;
+            _afterVertices[roof.Id] = RoofGeometry.TranslateVertices(before, _dxMm, _dyMm);
+
+            var beforeObs = new List<(Guid, double, double)>();
+            var afterObs = new List<(Guid, double, double)>();
+            foreach (var o in roof.Obstacles)
+            {
+                beforeObs.Add((o.Id, o.XMm, o.YMm));
+                afterObs.Add((o.Id, o.XMm + _dxMm, o.YMm + _dyMm));
+            }
+            _beforeObstacles[roof.Id] = beforeObs;
+            _afterObstacles[roof.Id] = afterObs;
+        }
+
+        _captured = true;
+    }
+}
+
 public sealed class CloseRoofCommand : ICommand
 {
     private readonly SolarProject _project;

@@ -6,6 +6,11 @@ Project history for review and submission.
 
 Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect all passing).
 
+### MC4 Unity connect asset (GrabCAD)
+- Exported matching male/female MC4 + connect clip into `UnityProject/Assets/SolarSim/Art/MC4/`
+- `Mc4ConnectionPresenter` + `WireView` spawn/play clip on new series joins
+- One-time Editor setup: **solarSim → Setup MC4 Connection Prefab**
+
 ---
 
 ## Summary table
@@ -118,14 +123,18 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Design aid only — not a stamped permit package
 
 ### 2.4 — Satellite house picker (WPF)
-- **Satellite map…** (Roof rail + empty state): WebView2 + Leaflet Esri World Imagery
-- Search address (Geocoding) or paste lat,lon → click house → pin → **Import this building**
-- Feeds existing Google Solar `buildingInsights` roof import (API key still required for import)
-- Full Cesium for Unity 3D site remains later roadmap
+- **Trace roof on map…** (Roof rail + empty state): **WebView2 + Leaflet** — sharp Google satellite by default (Esri fallback toggle)
+- Search via **OpenStreetMap Nominatim** (no key) or paste lat,lon
+- Click roof corners → drag handles to adjust → live edge lengths (m) + area on map
+- Undo / Ctrl+Z; **New section** for L/T multi-wing roofs (imports as multiple roof layers)
+- After import: drag roof to move; Canva-style ↻ rotate (snaps to 90°); edges auto-straightened; corner drag snaps H/V
+- Measure tool: click points on canvas for live edge lengths (same style as Draw roof)
 
 ---
 
 ## UX / stability notes (not separate phases)
+- PV series wires: short physical Bézier jumpers (under modules), neutral cable color, polarity at terminals; no mid-wire MC4 node
+- Panel terminals: simple bottom-edge −/+ pair with short leads (`PanelPortLayoutService`); no MC4 glyphs
 - Polarity wiring UX: dual-tone leads, series arcs, plug feedback
 - Startup NullReference from racking checkbox during XAML load — fixed (checkbox off by default; no `IsChecked` fire before canvas exists)
 - Stale equipment selection / status refresh hardening + crash log at `%LOCALAPPDATA%\solarSim\last-error.log`

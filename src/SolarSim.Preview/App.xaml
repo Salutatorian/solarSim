@@ -25,8 +25,8 @@
         <SolidColorBrush x:Key="EmptyCardBrush" Color="#191A1D"/>
         <SolidColorBrush x:Key="DotGridColor" Color="#2A2B2F"/>
 
-        <SolidColorBrush x:Key="PanelFillBrush" Color="#1C1D22"/>
-        <SolidColorBrush x:Key="PanelCellBrush" Color="#282A30"/>
+        <SolidColorBrush x:Key="PanelFillBrush" Color="#045097"/>
+        <SolidColorBrush x:Key="PanelCellBrush" Color="#0A6BB8"/>
         <SolidColorBrush x:Key="PositiveBrush" Color="#EF4444"/>
         <SolidColorBrush x:Key="NegativeBrush" Color="#E4E4E7"/>
         <SolidColorBrush x:Key="WireBrush" Color="#A1A1AA"/>

@@ -42,8 +42,6 @@ internal static class ThemeController
             Set(r, "ZoomChipBrush", 0x22, 0x23, 0x27);
             Set(r, "EmptyCardBrush", 0x19, 0x1A, 0x1D);
             Set(r, "DotGridColor", 0x2A, 0x2B, 0x2F);
-            Set(r, "PanelFillBrush", 0x1C, 0x1D, 0x22);
-            Set(r, "PanelCellBrush", 0x28, 0x2A, 0x30);
             Set(r, "NegativeBrush", 0xE4, 0xE4, 0xE7);
             Set(r, "PlugNodeBrush", 0xE4, 0xE4, 0xE7);
             Set(r, "WireBrush", 0xA1, 0xA1, 0xAA);
@@ -71,13 +69,14 @@ internal static class ThemeController
             Set(r, "ZoomChipBrush", 0xE4, 0xE4, 0xE7);
             Set(r, "EmptyCardBrush", 0xFF, 0xFF, 0xFF);
             Set(r, "DotGridColor", 0xD4, 0xD4, 0xD8);
-            Set(r, "PanelFillBrush", 0xE4, 0xE4, 0xE7);
-            Set(r, "PanelCellBrush", 0xD4, 0xD4, 0xD8);
             Set(r, "NegativeBrush", 0x27, 0x27, 0x2A);
             Set(r, "PlugNodeBrush", 0x18, 0x18, 0x1B);
             Set(r, "WireBrush", 0x52, 0x52, 0x5B);
             Set(r, "SnapBrush", 0xD9, 0x77, 0x06);
         }
+
+        // Panel blues are user-chosen and survive theme switches.
+        PanelAppearance.ApplyBrushes();
 
         var gridColor = kind == ThemeKind.DarkCad
             ? Color.FromRgb(0x22, 0x23, 0x27)
