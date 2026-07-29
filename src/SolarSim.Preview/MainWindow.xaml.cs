@@ -2611,6 +2611,7 @@ public partial class MainWindow : Window
         yield return new("yneg", "MC4 Y", "Negative", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
         yield return new("inv5", "Inverter", "5 kW", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
         yield return new("inv76", "Inverter", "7.6 kW", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
+        yield return new("inv42", "ANENJI", "4.2 kW hybrid", "◇", "Electrical", () => AddInverterAnenji4_2k_Click(this, new RoutedEventArgs()));
         yield return new("inv12", "ANENJI", "12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()));
         yield return new("battery", "ANENJI", "16 kWh battery", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()));
         yield return new("batdisc", "Batt disc.", "Check Amp + wire size", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()));
@@ -4688,6 +4689,12 @@ public partial class MainWindow : Window
         PlaceAndSelectEquipment(_project.AddStringInverter(x, y, InverterDefinition.CreateAnenji12kW2Mppt()));
     }
 
+    private void AddInverterAnenji4_2k_Click(object sender, RoutedEventArgs e)
+    {
+        var (x, y) = NextEquipmentPlaceMm(900);
+        PlaceAndSelectEquipment(_project.AddStringInverter(x, y, InverterDefinition.CreateAnenji4_2kW1Mppt()));
+    }
+
     private void RebuildEquipmentVisuals()
     {
         if (!ShowsEquipment)
@@ -4740,7 +4747,7 @@ public partial class MainWindow : Window
             Background = isCombiner
                 ? CreateCombinerFaceBrush()
                 : isAnenji
-                    ? CreateAnenjiFaceBrush()
+                    ? CreateAnenjiFaceBrush(equipment)
                     : isBatteryFace
                         ? CreateBatteryFaceBrush()
                         : isPvIsolatorFace
@@ -5036,11 +5043,14 @@ public partial class MainWindow : Window
         };
     }
 
-    private static ImageBrush CreateAnenjiFaceBrush()
+    private static ImageBrush CreateAnenjiFaceBrush(ElectricalEquipmentInstance equipment)
     {
+        var asset = equipment.InverterSpecs?.DefinitionId == InverterDefinition.Anenji4_2kWDefinitionId
+            ? "inverter-anenji-4_2kw.png"
+            : "inverter-anenji-12kw.png";
         var bmp = new System.Windows.Media.Imaging.BitmapImage();
         bmp.BeginInit();
-        bmp.UriSource = new Uri("pack://application:,,,/Assets/inverter-anenji-12kw.png", UriKind.Absolute);
+        bmp.UriSource = new Uri($"pack://application:,,,/Assets/{asset}", UriKind.Absolute);
         bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
         bmp.EndInit();
         bmp.Freeze();
@@ -5103,7 +5113,9 @@ public partial class MainWindow : Window
     private static bool IsAnenjiHybridFace(ElectricalEquipmentInstance equipment)
     {
         if (equipment.Kind != EquipmentKind.StringInverter) return false;
-        if (equipment.InverterSpecs?.DefinitionId == InverterDefinition.Anenji12kWDefinitionId)
+        var id = equipment.InverterSpecs?.DefinitionId;
+        if (id == InverterDefinition.Anenji12kWDefinitionId
+            || id == InverterDefinition.Anenji4_2kWDefinitionId)
             return true;
         return equipment.Ports.Any(p => p.Label.Equals("BAT+", StringComparison.OrdinalIgnoreCase))
             && equipment.Ports.Any(p => p.Label.Equals("AC IN L", StringComparison.OrdinalIgnoreCase));
@@ -5117,10 +5129,10 @@ public partial class MainWindow : Window
         double portSize,
         double half)
     {
-        // Bottom edge layout matching typical hybrid gland row:
-        // left AC IN / AC OUT · mid-right BAT± · far-right PV1 / PV2 (MPPT1 / MPPT2).
         var y = bodyH - half * 0.35;
         var pairGap = Math.Min(portSize * 0.9, bodyW * 0.025);
+        var singlePv = equipment.InverterSpecs?.MpptCount == 1
+            || equipment.InverterSpecs?.DefinitionId == InverterDefinition.Anenji4_2kWDefinitionId;
 
         void Place(string label, double centerX)
         {
@@ -5142,6 +5154,17 @@ public partial class MainWindow : Window
             Place(minusLabel, centerX + pairGap);
         }
 
+        if (singlePv)
+        {
+            // 4.2 kW: AC IN / AC OUT / single PV on the left · BAT in the middle.
+            PlacePair("AC IN L", "AC IN N", 0.10 * bodyW);
+            PlacePair("AC OUT L", "AC OUT N", 0.22 * bodyW);
+            PlacePair("MPPT1+", "MPPT1-", 0.34 * bodyW);
+            PlacePair("BAT+", "BAT-", 0.55 * bodyW);
+            return;
+        }
+
+        // 12 kW: AC IN / AC OUT left · BAT mid-right · PV1 / PV2 far right.
         PlacePair("AC IN L", "AC IN N", 0.12 * bodyW);
         PlacePair("AC OUT L", "AC OUT N", 0.28 * bodyW);
         PlacePair("BAT+", "BAT-", 0.55 * bodyW);

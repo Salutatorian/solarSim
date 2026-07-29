@@ -34,6 +34,7 @@
     <Resource Include="Assets\solarsim-logo.ico" />
     <Resource Include="Assets\combiner-6string.png" />
     <Resource Include="Assets\inverter-anenji-12kw.png" />
+    <Resource Include="Assets\inverter-anenji-4_2kw.png" />
     <Resource Include="Assets\battery-anenji-16kwh.png" />
     <Resource Include="Assets\disconnect-pv-isolator.png" />
     <Resource Include="Assets\battery-disconnect-dhm1b.png" />
