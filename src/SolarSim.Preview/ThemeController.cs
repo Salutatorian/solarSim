@@ -46,6 +46,8 @@ internal static class ThemeController
             Set(r, "PlugNodeBrush", 0xE4, 0xE4, 0xE7);
             Set(r, "WireBrush", 0xA1, 0xA1, 0xAA);
             Set(r, "SnapBrush", 0xF5, 0x9E, 0x0B);
+            Set(r, "ScrollThumbBrush", 0x4A, 0x4B, 0x52);
+            Set(r, "ScrollThumbHoverBrush", 0x6B, 0x6C, 0x74);
         }
         else
         {
@@ -73,6 +75,8 @@ internal static class ThemeController
             Set(r, "PlugNodeBrush", 0x18, 0x18, 0x1B);
             Set(r, "WireBrush", 0x52, 0x52, 0x5B);
             Set(r, "SnapBrush", 0xD9, 0x77, 0x06);
+            Set(r, "ScrollThumbBrush", 0xC4, 0xC4, 0xC8);
+            Set(r, "ScrollThumbHoverBrush", 0xA1, 0xA1, 0xAA);
         }
 
         // Panel blues are user-chosen and survive theme switches.

@@ -1,44 +1,68 @@
 <Window x:Class="SolarSim.Preview.WhatsNewDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="What's new"
         Icon="pack://application:,,,/Assets/solarsim-logo.ico"
         Width="520" Height="520"
         MinWidth="420" MinHeight="360"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="CanResizeWithGrip"
+        WindowStyle="None"
+        ResizeMode="CanResize"
         Background="{DynamicResource BgBrush}"
         FontFamily="{StaticResource UiFont}"
         ShowInTaskbar="False">
-    <DockPanel Margin="22">
-        <Button DockPanel.Dock="Bottom" Content="Got it" Style="{StaticResource PrimaryButton}"
-                Padding="20,8" HorizontalAlignment="Right" IsDefault="True" IsCancel="True"
-                Click="Ok_Click" Margin="0,16,0,0"/>
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="40"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+            Background="{DynamicResource BgBrush}">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Height="40"
+                    Background="{DynamicResource ChromeBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1">
+                <DockPanel Margin="14,0,6,0">
+                    <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource DialogChromeButton}"
+                            Click="Ok_Click" ToolTip="Close"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Image Style="{StaticResource AppLogoMark}" Width="18" Height="18" Margin="0,0,8,0"
+                               VerticalAlignment="Center"/>
+                        <TextBlock Text="What's new" FontFamily="{StaticResource DisplayFont}" FontSize="13"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
 
-        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                <Image Style="{StaticResource AppLogoMark}" Width="28" Height="28" Margin="0,0,10,0"
-                       VerticalAlignment="Center"/>
-                <TextBlock Text="What's new" FontFamily="{StaticResource DisplayFont}" FontSize="20"
-                           FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
-            <TextBlock x:Name="VersionText" Text="" FontSize="13"
-                       Foreground="{DynamicResource TextBrush}" Margin="0,0,0,2"/>
-            <TextBlock x:Name="ReleasedText" Text="" FontSize="12"
-                       Foreground="{DynamicResource MutedBrush}"/>
-        </StackPanel>
+            <Button DockPanel.Dock="Bottom" Content="Got it" Style="{StaticResource PrimaryButton}"
+                    Padding="20,8" HorizontalAlignment="Right" IsDefault="True" IsCancel="True"
+                    Click="Ok_Click" Margin="20,0,20,16"/>
 
-        <Border Background="{DynamicResource ChromeBrush}"
-                BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="14">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <TextBlock x:Name="NotesText" TextWrapping="Wrap"
-                           Foreground="{DynamicResource TextBrush}"
-                           FontSize="12.5" LineHeight="20"/>
-            </ScrollViewer>
-        </Border>
-    </DockPanel>
+            <DockPanel Margin="20,16,20,8">
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+                    <TextBlock x:Name="VersionText" Text="" FontSize="13"
+                               Foreground="{DynamicResource TextBrush}" Margin="0,0,0,2"/>
+                    <TextBlock x:Name="ReleasedText" Text="" FontSize="12"
+                               Foreground="{DynamicResource MutedBrush}"/>
+                </StackPanel>
+
+                <Border Background="{DynamicResource ChromeBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="14">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <TextBlock x:Name="NotesText" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   FontSize="12.5" LineHeight="20"/>
+                    </ScrollViewer>
+                </Border>
+            </DockPanel>
+        </DockPanel>
+    </Border>
 </Window>

@@ -262,6 +262,11 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 ### Spawn in viewport (`0.1.19`)
 - Adding panels or equipment places them in the center of the current screen view (not at world 0,0)
 
+### UI chrome polish (`0.1.20`)
+- App-wide slim overlay scrollbars (theme-aware thumbs)
+- Dialogs (Settings / What's new / About / Custom panel / Satellite map) use borderless dark chrome instead of the OS white title bar
+- ComboBox + dropdown items restyled to match the CAD HUD
+
 ---
 
 ## How to verify for submission
