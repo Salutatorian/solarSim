@@ -437,13 +437,21 @@ public partial class MainWindow : Window
             || _selectedObstacleId is not null;
 
         if (SiteTempsPanel is not null)
-            SiteTempsPanel.Visibility = hasSelection ? Visibility.Collapsed : Visibility.Visible;
+        {
+            // System tab focuses on topology; site stays in Project Settings / other plans.
+            var showSite = !hasSelection
+                           && _workspacePlan != WorkspacePlan.Combined;
+            SiteTempsPanel.Visibility = showSite ? Visibility.Visible : Visibility.Collapsed;
+        }
         if (RackingPanel is not null)
-            RackingPanel.Visibility = (!hasSelection || _selectedPanelIds.Count > 0 || _uiTool == UiTool.Roof)
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-        if (hasSelection && RackingPanel is not null && _selectedPanelIds.Count == 0 && _uiTool != UiTool.Roof)
-            RackingPanel.Visibility = Visibility.Collapsed;
+        {
+            var showRacking = !hasSelection
+                ? _uiTool == UiTool.Roof || _workspacePlan == WorkspacePlan.Roof
+                : _selectedPanelIds.Count > 0 || _uiTool == UiTool.Roof;
+            if (_workspacePlan == WorkspacePlan.Combined && !hasSelection)
+                showRacking = false;
+            RackingPanel.Visibility = showRacking ? Visibility.Visible : Visibility.Collapsed;
+        }
 
         ClearInspectorRows();
 
@@ -480,6 +488,10 @@ public partial class MainWindow : Window
             AddInspectorRow("PV+", panel.PositivePort.IsOccupied ? "Connected" : "Open");
             AddInspectorRow("PV−", panel.NegativePort.IsOccupied ? "Connected" : "Open");
             AddInspectorRow("Connector", def.ConnectorFamily);
+            var panelString = _project.Graph.Strings.FirstOrDefault(s =>
+                s.PanelIdsInSeriesOrder.Contains(panel.Id));
+            if (panelString is not null)
+                AddInspectorRow("String", panelString.DisplayName);
             return;
         }
 
@@ -541,6 +553,44 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_workspacePlan == WorkspacePlan.Combined)
+        {
+            InspectorHeading.Text = "System";
+            if (InspectorSubheading is not null)
+                InspectorSubheading.Text = FriendlyProjectName();
+            var sysCalc = _project.GetCalculationSnapshot();
+            AddInspectorSection("Array");
+            AddInspectorRow("Modules", $"{sysCalc.TotalPanels}");
+            AddInspectorRow("DC power", FormatPower(sysCalc.TotalPmaxWatts));
+            AddInspectorRow("Strings", $"{sysCalc.StringCount}");
+            if (sysCalc.TotalPanels > 0)
+                AddInspectorRow("Est. annual", $"~{_project.GetEnergyEstimate().EstimatedAnnualKwh:0} kWh");
+
+            if (sysCalc.Strings.Count > 0)
+            {
+                AddInspectorSection("Strings");
+                var si = 0;
+                foreach (var s in sysCalc.Strings)
+                {
+                    AddInspectorStringRow(si, s.DisplayName,
+                        $"{s.PanelCount} mod · {s.VmpVolts:0.#} Vmp · {s.VocVolts:0.#} Voc");
+                    si++;
+                }
+            }
+
+            AddInspectorSection("Path");
+            AddInspectorNote("Modules → String → [Combiner] → [PV Disc.] → Inverter MPPT");
+            AddInspectorNote("Inverter AC → [AC Disc.] → Load Center");
+
+            var invCount = _project.Graph.Equipment.Values.Count(e => e.Kind == EquipmentKind.StringInverter);
+            var combinerCount = _project.Graph.Equipment.Values.Count(e => e.Kind == EquipmentKind.CombinerBox);
+            AddInspectorSection("Gear");
+            AddInspectorRow("Inverters", $"{invCount}");
+            AddInspectorRow("Combiners", $"{combinerCount}");
+            AddInspectorNote("Design aid — not a stamped one-line. Full text: ⋯ → Single-Line.");
+            return;
+        }
+
         InspectorHeading.Text = "Project";
         if (InspectorSubheading is not null)
             InspectorSubheading.Text = FriendlyProjectName();
@@ -552,6 +602,47 @@ public partial class MainWindow : Window
         if (calc.TotalPanels > 0)
             AddInspectorRow("Est. annual", $"~{_project.GetEnergyEstimate().EstimatedAnnualKwh:0} kWh");
         AddInspectorNote("Site and racking settings appear below when nothing is selected.");
+    }
+
+    private void AddInspectorStringRow(int index, string name, string detail)
+    {
+        if (InspectorRows is null) return;
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var swatch = new Border
+        {
+            Width = 8,
+            Height = 8,
+            CornerRadius = new CornerRadius(2),
+            Background = StringColorPalette.BrushForIndex(index),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+        };
+        Grid.SetColumn(swatch, 0);
+
+        var nameBlock = new TextBlock
+        {
+            Text = name,
+            Style = (Style)FindResource("InspectorRowLabel"),
+            Foreground = (Brush)FindResource("TextBrush"),
+        };
+        Grid.SetColumn(nameBlock, 1);
+
+        var detailBlock = new TextBlock
+        {
+            Text = detail,
+            Style = (Style)FindResource("InspectorRowValue"),
+            FontSize = 11.5,
+        };
+        Grid.SetColumn(detailBlock, 2);
+
+        row.Children.Add(swatch);
+        row.Children.Add(nameBlock);
+        row.Children.Add(detailBlock);
+        InspectorRows.Children.Add(row);
     }
 
     private void RebuildPanelVisuals()
@@ -748,11 +839,33 @@ public partial class MainWindow : Window
         Canvas.SetTop(visual.NegativeLabel, size.Height + 4);
 
         var isSelected = _selectedPanelIds.Contains(panel.Id);
-        visual.Body.BorderBrush = isSelected
-            ? (Brush)FindResource("AccentBrush")
-            : (Brush)FindResource("BorderBrush");
-        visual.Body.Opacity = 1.0;
+        var stringIndex = StringColorPalette.IndexForPanel(_project.Graph.Strings, panel.Id);
+        if (stringIndex is int si)
+        {
+            visual.Body.Background = StringColorPalette.FillForIndex(si);
+            if (!isSelected)
+                visual.Body.BorderBrush = StringColorPalette.BrushForIndex(si, 180);
+            else
+                visual.Body.BorderBrush = (Brush)FindResource("AccentBrush");
 
+            var shortName = _project.Graph.Strings[si].DisplayName;
+            if (shortName.Length > 12) shortName = $"S{si + 1}";
+            visual.Label.Text = _zoom < 0.55
+                ? shortName
+                : $"{shortName}  ·  {def.DisplayName}";
+            visual.Label.Foreground = StringColorPalette.BrushForIndex(si);
+        }
+        else
+        {
+            visual.Body.Background = (Brush)FindResource("PanelFillBrush");
+            visual.Body.BorderBrush = isSelected
+                ? (Brush)FindResource("AccentBrush")
+                : (Brush)FindResource("BorderBrush");
+            visual.Label.Text = def.DisplayName;
+            visual.Label.Foreground = (Brush)FindResource("MutedBrush");
+        }
+
+        visual.Body.Opacity = 1.0;
         visual.Body.Effect = null;
         visual.Body.BorderThickness = new Thickness(isSelected ? 1.5 : 1);
 
@@ -796,6 +909,15 @@ public partial class MainWindow : Window
             var selected = _selectedConnectionIds.Contains(connection.Id);
             var startBrush = PolarityBrush(start.Polarity);
             var endBrush = PolarityBrush(end.Polarity);
+            var stringIndex = StringColorPalette.IndexForConnection(
+                _project.Graph.Strings, start.OwnerComponentId, end.OwnerComponentId);
+            if (stringIndex is int wireSi)
+            {
+                // Series jumpers share string identity; keep polarity only on ports/MC4.
+                var stringBrush = StringColorPalette.BrushForIndex(wireSi, selected ? (byte)255 : (byte)210);
+                startBrush = stringBrush;
+                endBrush = stringBrush;
+            }
             var thickness = selected ? 2.0 : 1.5;
 
             var visual = new WireCanvasVisual { ConnectionId = connection.Id };
@@ -1279,6 +1401,9 @@ public partial class MainWindow : Window
         StylePlanTab(RoofPlanButton, _workspacePlan == WorkspacePlan.Roof);
         StylePlanTab(InteriorPlanButton, _workspacePlan == WorkspacePlan.Interior);
         StylePlanTab(CombinedPlanButton, _workspacePlan == WorkspacePlan.Combined);
+
+        if (_workspacePlan == WorkspacePlan.Combined)
+            SetInspectorOpen(true);
 
         UpdateToolRailStyles();
         UpdateContextToolbar();

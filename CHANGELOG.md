@@ -135,6 +135,7 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - **Canva-style layout:** icon+label left rail, expandable left tool panel, canvas as hero on dark stage, Properties inspector on demand, top File/workspace tabs + bottom zoom bar
 - **UI identity pass:** drop Canva naming; neutral charcoal + amber theme; WindowChrome title bar; 48px icon-only rail; row-based inspector; thinner wires; no blue selection glow; structured bottom HUD; contextual site/racking panels; semantic zoom on modules
 - **MC4 / Add / selection chrome:** distinctive male/female MC4 glyphs + mated wire nodes; searchable Add tile palette with Recent; floating rotate/duplicate/string toolbar above selection
+- **System string identity:** color-code modules and series jumpers by string; System inspector shows SLD-style array/strings/path summary
 
 ---
 
