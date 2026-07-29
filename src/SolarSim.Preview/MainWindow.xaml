@@ -1,49 +1,69 @@
-﻿<Window x:Class="SolarSim.Preview.MainWindow"
+<Window x:Class="SolarSim.Preview.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="solarSim — Solar Panel Lab"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="solarSim"
         Width="1440" Height="900"
         MinWidth="1100" MinHeight="700"
-        Background="#0E0E10"
+        Background="{DynamicResource BgBrush}"
         FontFamily="{StaticResource UiFont}"
         WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanResize"
         PreviewKeyDown="Window_PreviewKeyDown"
         Closing="Window_Closing">
-    <DockPanel Background="#0E0E10">
-        <!-- Canva-like thin top bar -->
-        <Border DockPanel.Dock="Top" Background="#16161A" Height="48" Padding="12,0">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="40"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+    <DockPanel Background="{DynamicResource BgBrush}">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource ChromeBrush}" Height="40"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                     <TextBlock Text="solarSim" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold"
-                               FontSize="13" Foreground="#F3F4F6" VerticalAlignment="Center" Margin="0,0,16,0"/>
-                    <Button Content="File" Style="{StaticResource CanvaTopLink}" Click="OverflowMenu_Click"
-                            x:Name="FileMenuButton"/>
-                    <TextBlock Text="|" Foreground="#3F3F46" Margin="6,0" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="ProjectNameLabel" Text="Untitled Project" Foreground="#A1A1AA"
+                               FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <Button Content="File" Style="{StaticResource GhostButton}" Click="OverflowMenu_Click"
+                            x:Name="FileMenuButton" Padding="8,4" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <TextBlock Text="|" Foreground="{DynamicResource BorderBrush}" Margin="6,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ProjectNameLabel" Text="Untitled Project"
+                               Foreground="{DynamicResource MutedBrush}"
                                FontSize="13" VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Button x:Name="RoofPlanButton" Content="Roof" Style="{StaticResource NavTabButton}" Click="RoofPlan_Click"/>
-                    <Button x:Name="InteriorPlanButton" Content="Equipment" Style="{StaticResource NavTabButton}" Click="InteriorPlan_Click"/>
-                    <Button x:Name="CombinedPlanButton" Content="System" Style="{StaticResource NavTabButton}" Click="CombinedPlan_Click"/>
+                    <Button x:Name="RoofPlanButton" Content="Roof" Style="{StaticResource NavTabButton}" Click="RoofPlan_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button x:Name="InteriorPlanButton" Content="Equipment" Style="{StaticResource NavTabButton}" Click="InteriorPlan_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button x:Name="CombinedPlanButton" Content="System" Style="{StaticResource NavTabButton}" Click="CombinedPlan_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="↶" Style="{StaticResource IconGhostButton}" Width="34" Click="Undo_Click" ToolTip="Undo"/>
-                    <Button Content="↷" Style="{StaticResource IconGhostButton}" Width="34" Click="Redo_Click" ToolTip="Redo" Margin="0,0,8,0"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Button Content="↶" Style="{StaticResource IconGhostButton}" Width="34" Click="Undo_Click" ToolTip="Undo"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button Content="↷" Style="{StaticResource IconGhostButton}" Width="34" Click="Redo_Click" ToolTip="Redo" Margin="0,0,6,0"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <Button x:Name="ThemeToggleButton" Content="◐" Style="{StaticResource IconGhostButton}" Width="34"
-                            Click="ThemeToggle_Click" ToolTip="Theme" Margin="0,0,6,0"/>
-                    <Button Content="Save" Style="{StaticResource PrimaryButton}" Padding="16,6" Click="Save_Click" Margin="0,0,6,0"/>
+                            Click="ThemeToggle_Click" ToolTip="Theme" Margin="0,0,6,0"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button Content="Save" Style="{StaticResource PrimaryButton}" Padding="14,5" Click="Save_Click" Margin="0,0,6,0"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <Button x:Name="OverflowMenuButton" Content="⋯" Style="{StaticResource IconGhostButton}" Width="34"
-                            Click="OverflowMenu_Click">
+                            Click="OverflowMenu_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Open Project…" Click="Open_Click"/>
                                 <MenuItem Header="Save As…" Click="Save_Click"/>
+                                <MenuItem Header="Project Settings…" Click="ProjectSettings_Click"/>
                                 <Separator/>
                                 <MenuItem Header="Single-Line Diagram" Click="SingleLine_Click"/>
                                 <MenuItem Header="BOM / Wire Schedule" Click="BomSchedule_Click"/>
@@ -60,20 +80,39 @@
                     </Button>
                     <Button x:Name="DeleteButton" Visibility="Collapsed" Click="Delete_Click"/>
                 </StackPanel>
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Stretch">
+                    <Button Content="─" Style="{StaticResource TitleBarButton}" Click="Minimize_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button x:Name="MaximizeButton" Content="□" Style="{StaticResource TitleBarButton}" Click="Maximize_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button Content="✕" Style="{StaticResource TitleBarButton}" Click="CloseWindow_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Bottom HUD like Canva status + zoom -->
-        <Border DockPanel.Dock="Bottom" Background="#16161A" Height="40" Padding="14,0">
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource ChromeBrush}" Height="44" Padding="14,0"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
             <Grid>
-                <TextBlock x:Name="StatusText" VerticalAlignment="Center"
-                           Text="0 modules  ·  0 W DC  ·  0 strings  ·  0 errors"
-                           Foreground="#A1A1AA" FontSize="12"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="HudModules" Text="0 modules" Foreground="{DynamicResource TextBrush}"
+                               FontSize="12.5" FontWeight="SemiBold" Margin="0,0,18,0"/>
+                    <TextBlock x:Name="HudPower" Text="0 W DC" Foreground="{DynamicResource TextBrush}"
+                               FontSize="12.5" FontWeight="SemiBold" Margin="0,0,18,0"/>
+                    <TextBlock x:Name="HudStrings" Text="0 strings" Foreground="{DynamicResource MutedBrush}"
+                               FontSize="12.5" Margin="0,0,18,0"/>
+                    <TextBlock x:Name="HudHealth" Text="✓ No issues" Foreground="{DynamicResource OkBrush}"
+                               FontSize="12.5"/>
+                    <TextBlock x:Name="StatusText" Visibility="Collapsed"/>
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Content="Properties" Style="{StaticResource CanvaTopLink}" Click="ToggleInspector_Click" Margin="0,0,12,0"/>
+                    <TextBlock x:Name="HudDetail" Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                               VerticalAlignment="Center" Margin="0,0,16,0" MaxWidth="420" TextTrimming="CharacterEllipsis"/>
+                    <Button Content="Properties" Style="{StaticResource GhostButton}" Click="ToggleInspector_Click"
+                            Padding="8,4" Margin="0,0,10,0"/>
                     <Button Content="−" Style="{StaticResource IconGhostButton}" Width="28" Click="ZoomOut_Click"/>
                     <TextBlock x:Name="ZoomLabel" Text="100%" Width="48" TextAlignment="Center"
-                               VerticalAlignment="Center" Foreground="#D4D4D8" FontSize="12"/>
+                               VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
                     <Button Content="+" Style="{StaticResource IconGhostButton}" Width="28" Click="ZoomIn_Click"/>
                 </StackPanel>
             </Grid>
@@ -81,80 +120,39 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="76"/>
+                <ColumnDefinition Width="48"/>
                 <ColumnDefinition x:Name="SidePanelColumn" Width="0"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition x:Name="InspectorColumn" Width="0"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Canva icon rail: icon + label -->
-            <Border Grid.Column="0" Background="#0E0E10" BorderBrush="#27272A" BorderThickness="0,0,1,0">
+            <Border Grid.Column="0" Background="{DynamicResource BgBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
                 <DockPanel>
-                    <Button x:Name="LayersRailButton" DockPanel.Dock="Bottom" Style="{StaticResource CanvaRailButton}"
-                            Click="LayersDrawerToggle_Click" Margin="0,0,0,6" ToolTip="Layers">
-                        <StackPanel>
-                            <TextBlock Text="☰" FontSize="16" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Layers" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                        </StackPanel>
-                    </Button>
+                    <Button x:Name="LayersRailButton" DockPanel.Dock="Bottom" Style="{StaticResource ToolRailButton}"
+                            Click="LayersDrawerToggle_Click" Margin="0,0,0,8" ToolTip="Layers" Content="☰"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="0,8,0,0">
-                            <Button x:Name="ToolSelectButton" Style="{StaticResource CanvaRailButton}" Click="ToolSelect_Click" ToolTip="Select">
-                                <StackPanel>
-                                    <TextBlock Text="↖" FontSize="16" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Select" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="ToolRoofButton" Style="{StaticResource CanvaRailButton}" Click="ToolRoof_Click" ToolTip="Roof">
-                                <StackPanel>
-                                    <TextBlock Text="⌂" FontSize="16" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Roof" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="ToolPanelButton" Style="{StaticResource CanvaRailButton}" Click="ToolPanel_Click" ToolTip="Panels">
-                                <StackPanel>
-                                    <TextBlock Text="▦" FontSize="16" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Panels" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="ToolWireButton" Style="{StaticResource CanvaRailButton}" Click="ToolWire_Click" ToolTip="Wire">
-                                <StackPanel>
-                                    <TextBlock Text="⌁" FontSize="16" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Wire" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="ToolObstacleButton" Style="{StaticResource CanvaRailButton}" Click="ToolObstacle_Click" ToolTip="Obstacle">
-                                <StackPanel>
-                                    <TextBlock Text="◇" FontSize="16" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Object" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="ToolMeasureButton" Style="{StaticResource CanvaRailButton}" Click="ToolMeasure_Click" ToolTip="Measure">
-                                <StackPanel>
-                                    <TextBlock Text="↔" FontSize="16" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Measure" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="ToolAddButton" Style="{StaticResource CanvaRailButton}" Click="ToolAdd_Click" ToolTip="Add">
-                                <StackPanel>
-                                    <TextBlock Text="+" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Add" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Button>
+                        <StackPanel Margin="0,10,0,0">
+                            <Button x:Name="ToolSelectButton" Style="{StaticResource ToolRailButton}" Click="ToolSelect_Click" ToolTip="Select" Content="↖"/>
+                            <Button x:Name="ToolRoofButton" Style="{StaticResource ToolRailButton}" Click="ToolRoof_Click" ToolTip="Roof" Content="⌂"/>
+                            <Button x:Name="ToolPanelButton" Style="{StaticResource ToolRailButton}" Click="ToolPanel_Click" ToolTip="Panels" Content="▦"/>
+                            <Button x:Name="ToolWireButton" Style="{StaticResource ToolRailButton}" Click="ToolWire_Click" ToolTip="Wire" Content="⌁"/>
+                            <Button x:Name="ToolObstacleButton" Style="{StaticResource ToolRailButton}" Click="ToolObstacle_Click" ToolTip="Obstacle" Content="◇"/>
+                            <Button x:Name="ToolMeasureButton" Style="{StaticResource ToolRailButton}" Click="ToolMeasure_Click" ToolTip="Measure" Content="↔"/>
+                            <Button x:Name="ToolAddButton" Style="{StaticResource ToolRailButton}" Click="ToolAdd_Click" ToolTip="Add" Content="+"/>
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
 
-            <!-- Canva-style expandable left library panel -->
-            <Border x:Name="SidePanel" Grid.Column="1" Background="#18181B" BorderBrush="#27272A"
+            <Border x:Name="SidePanel" Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="0,0,1,0" Visibility="Collapsed">
                 <DockPanel Margin="14,12,10,12">
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
                         <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource IconGhostButton}"
                                 Width="28" Height="28" Click="CloseSidePanel_Click"/>
                         <TextBlock x:Name="ContextTitle" Text="Roof" FontWeight="SemiBold" FontSize="15"
-                                   Foreground="#F4F4F5" VerticalAlignment="Center"/>
+                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     </DockPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
@@ -162,6 +160,7 @@
                             <StackPanel x:Name="RoofContextPanel" Visibility="Collapsed">
                                 <Button x:Name="DrawRoofButton" Content="Draw roof" Style="{StaticResource PaletteRowButton}" Click="DrawRoof_Click"/>
                                 <Button Content="Import roof" Style="{StaticResource PaletteRowButton}" Click="ShowImportRoof_Click"/>
+                                <Button Content="Satellite map…" Style="{StaticResource PaletteRowButton}" Click="SatelliteMap_Click"/>
                                 <Button Content="New roof layer" Style="{StaticResource PaletteRowButton}" Click="NewRoofLayer_Click"/>
                                 <Button Content="Close polygon" Style="{StaticResource PaletteRowButton}" Click="CloseRoof_Click"/>
                                 <TextBlock Text="Setback" Style="{StaticResource FieldLabel}" Margin="0,12,0,6"/>
@@ -173,7 +172,9 @@
                                     <TextBlock Text="Address or lat,lon" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                                     <TextBox x:Name="GoogleSolarAddressBox" Margin="0,0,0,8"/>
                                     <Button Content="Find property" Style="{StaticResource PrimaryButton}"
-                                            HorizontalAlignment="Stretch" Click="ImportGoogleSolar_Click"/>
+                                            HorizontalAlignment="Stretch" Click="ImportGoogleSolar_Click" Margin="0,0,0,8"/>
+                                    <Button Content="Open satellite map…" Style="{StaticResource GhostButton}"
+                                            HorizontalAlignment="Stretch" Click="SatelliteMap_Click"/>
                                 </StackPanel>
                             </StackPanel>
 
@@ -187,7 +188,7 @@
 
                             <!-- Wire -->
                             <StackPanel x:Name="WireContextPanel" Visibility="Collapsed">
-                                <TextBlock TextWrapping="Wrap" Foreground="#A1A1AA" FontSize="12.5" LineHeight="18"
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12.5" LineHeight="18"
                                            Text="Select a panel, then drag from PV+ to a compatible PV−. Right-click a wire to disconnect."/>
                             </StackPanel>
 
@@ -200,28 +201,33 @@
                             <!-- Add / library -->
                             <Border x:Name="AddPalette" Visibility="Collapsed">
                                 <StackPanel>
-                                    <StackPanel x:Name="RoofLibraryPanel">
-                                        <TextBlock Text="Solar" Style="{StaticResource SectionLabel}" Margin="0,0,0,6"/>
-                                        <Button Content="Boviet 270 W" Style="{StaticResource PaletteRowButton}" Click="AddBoviet_Click"/>
-                                        <Button Content="Generic 400 W" Style="{StaticResource PaletteRowButton}" Click="AddGeneric400_Click"/>
-                                        <Button Content="Generic 550 W" Style="{StaticResource PaletteRowButton}" Click="AddGeneric550_Click"/>
-                                        <Button Content="Custom panel…" Style="{StaticResource PaletteRowButton}" Click="AddCustom_Click"/>
+                                    <TextBox x:Name="AddSearchBox" Margin="0,0,0,12" Padding="8,7"
+                                             Background="{DynamicResource HoverBrush}"
+                                             Foreground="{DynamicResource TextBrush}"
+                                             BorderBrush="{DynamicResource BorderBrush}"
+                                             CaretBrush="{DynamicResource TextBrush}"
+                                             Tag="Search components…"
+                                             TextChanged="AddSearch_TextChanged"/>
+
+                                    <StackPanel x:Name="AddRecentSection" Visibility="Collapsed" Margin="0,0,0,12">
+                                        <TextBlock Text="Recent" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                                        <WrapPanel x:Name="AddRecentTiles"/>
                                     </StackPanel>
-                                    <StackPanel x:Name="InteriorLibraryPanel">
-                                        <TextBlock Text="Electrical" Style="{StaticResource SectionLabel}"/>
-                                        <Button Content="6-String Combiner" Style="{StaticResource PaletteRowButton}" Click="AddCombiner_Click"/>
-                                        <Button Content="DC / PV Disconnect" Style="{StaticResource PaletteRowButton}" Click="AddDisconnect_Click"/>
-                                        <Button Content="MC4 Y (+)" Style="{StaticResource PaletteRowButton}" Click="AddBranchYPos_Click"/>
-                                        <Button Content="MC4 Y (−)" Style="{StaticResource PaletteRowButton}" Click="AddBranchYNeg_Click"/>
-                                        <Button Content="Inverter 5 kW" Style="{StaticResource PaletteRowButton}" Click="AddInverter5k_Click"/>
-                                        <Button Content="Inverter 7.6 kW" Style="{StaticResource PaletteRowButton}" Click="AddInverter76k_Click"/>
-                                        <Button Content="Battery" Style="{StaticResource PaletteRowButton}" Click="AddBattery_Click"/>
-                                        <Button Content="Battery Disconnect" Style="{StaticResource PaletteRowButton}" Click="AddBatteryDisconnect_Click"/>
-                                        <Button Content="AC Disconnect" Style="{StaticResource PaletteRowButton}" Click="AddAcDisconnect_Click"/>
-                                        <Button Content="AC Load Center" Style="{StaticResource PaletteRowButton}" Click="AddAcLoadCenter_Click"/>
+
+                                    <StackPanel x:Name="AddSolarSection" Margin="0,0,0,12">
+                                        <TextBlock Text="Solar" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                                        <WrapPanel x:Name="AddSolarTiles"/>
                                     </StackPanel>
-                                    <TextBlock Text="Structural" Style="{StaticResource SectionLabel}"/>
-                                    <Button Content="Roof vent" Style="{StaticResource PaletteRowButton}" Click="AddObstacleMode_Click"/>
+
+                                    <StackPanel x:Name="AddElectricalSection" Margin="0,0,0,12">
+                                        <TextBlock Text="Electrical" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                                        <WrapPanel x:Name="AddElectricalTiles"/>
+                                    </StackPanel>
+
+                                    <StackPanel x:Name="AddStructuralSection">
+                                        <TextBlock Text="Structural" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                                        <WrapPanel x:Name="AddStructuralTiles"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
@@ -244,7 +250,7 @@
                             </Border>
 
                             <StackPanel x:Name="MeasureContextPanel" Visibility="Collapsed">
-                                <TextBlock TextWrapping="Wrap" Foreground="#A1A1AA" FontSize="12.5"
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12.5"
                                            Text="Live edge lengths appear while drawing a roof. Use the Roof → Draw tool."/>
                             </StackPanel>
                         </StackPanel>
@@ -253,7 +259,7 @@
             </Border>
 
             <!-- Hero canvas stage -->
-            <Border Grid.Column="2" Background="#121214" ClipToBounds="True">
+            <Border Grid.Column="2" Background="{DynamicResource CanvasBrush}" ClipToBounds="True">
                 <Grid>
                     <Rectangle x:Name="CanvasGridRect" Fill="{DynamicResource CanvasDotBrush}"/>
                     <Canvas x:Name="DesignCanvas" Background="Transparent"
@@ -267,25 +273,42 @@
                     <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock x:Name="EmptyStateTitle" Text="Start with your roof"
                                    FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
-                                   Foreground="#F4F4F5" HorizontalAlignment="Center"/>
+                                   Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center"/>
                         <TextBlock x:Name="EmptyStateBody" Text="Draw it manually or import one"
-                                   FontSize="14" Foreground="#71717A" HorizontalAlignment="Center" Margin="0,8,0,22"/>
+                                   FontSize="14" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" Margin="0,8,0,22"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Button Content="Draw roof" Style="{StaticResource PrimaryButton}" Width="118" Height="34"
                                     Click="EmptyStateDraw_Click" Margin="0,0,10,0"/>
-                            <Button x:Name="EmptyStateButton" Content="Import roof" Style="{StaticResource GhostButton}"
-                                    Width="118" Height="34" Click="EmptyStateImport_Click"
-                                    BorderBrush="#3F3F46" Foreground="#E4E4E7"/>
+                            <Button x:Name="EmptyStateButton" Content="Satellite map" Style="{StaticResource GhostButton}"
+                                    Width="128" Height="34" Click="EmptyStateImport_Click"
+                                    BorderBrush="{DynamicResource BorderBrush}" Foreground="{DynamicResource TextBrush}"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Hidden legacy host so UpdateContextToolbar null-checks still work -->
-                    <Border x:Name="ContextToolBar" Visibility="Collapsed"/>
+                    <!-- Floating selection toolbar (Figma-style) -->
+                    <Border x:Name="ContextToolBar" Visibility="Collapsed"
+                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="4,3"
+                            Panel.ZIndex="80">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.35" Color="#000000"/>
+                        </Border.Effect>
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="CtxRotateButton" Content="↻" Style="{StaticResource ContextActionButton}"
+                                    ToolTip="Rotate 90° (R)" Click="CtxRotate_Click" Width="32" Padding="0"/>
+                            <Button x:Name="CtxDuplicateButton" Content="Duplicate" Style="{StaticResource ContextActionButton}"
+                                    ToolTip="Duplicate (Ctrl+D)" Click="CtxDuplicate_Click"/>
+                            <Button x:Name="CtxStringButton" Content="String" Style="{StaticResource ContextActionButton}"
+                                    ToolTip="Select string" Click="CtxString_Click" Margin="0"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
-            <!-- Properties inspector — toggled like Canva -->
-            <Border x:Name="InspectorPanel" Grid.Column="3" Background="#18181B" BorderBrush="#27272A"
+            <!-- Properties inspector -->
+            <Border x:Name="InspectorPanel" Grid.Column="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1,0,0,0" Visibility="Collapsed">
                 <DockPanel Margin="16,12,12,12">
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
@@ -294,7 +317,7 @@
                         <Button DockPanel.Dock="Right" Content="Delete" Style="{StaticResource DangerButton}"
                                 Padding="10,5" FontSize="11" Click="Delete_Click" Margin="0,0,6,0"/>
                         <TextBlock Text="Properties" FontWeight="SemiBold" FontSize="14"
-                                   Foreground="#F4F4F5" VerticalAlignment="Center"/>
+                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     </DockPanel>
                     <Border DockPanel.Dock="Bottom" Margin="0,12,0,0">
                         <DockPanel>
@@ -306,9 +329,13 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock x:Name="InspectorHeading" Text="Project" FontSize="15" FontWeight="SemiBold"
-                                       Foreground="#F4F4F5" Margin="0,0,0,10"/>
+                                       Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4"/>
+                            <TextBlock x:Name="InspectorSubheading" FontSize="12.5"
+                                       Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,14"
+                                       Text="Nothing selected"/>
+                            <StackPanel x:Name="InspectorRows"/>
                             <TextBlock x:Name="InspectorBody" TextWrapping="Wrap" FontSize="12.5" LineHeight="20"
-                                       Foreground="#A1A1AA" Text="Select something on the canvas."/>
+                                       Foreground="{DynamicResource MutedBrush}" Visibility="Collapsed"/>
 
                             <StackPanel x:Name="SiteTempsPanel" Margin="0,18,0,0">
                                 <TextBlock Text="Site" Style="{StaticResource SectionLabel}"/>
@@ -346,7 +373,7 @@
                                 <TextBox x:Name="RailOverhangBox" Text="150" Margin="0,0,0,6" LostFocus="RackingBox_LostFocus" KeyDown="RackingBox_KeyDown"/>
                                 <TextBlock Text="Edge inset" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
                                 <TextBox x:Name="AttachmentEdgeBox" Text="200" Margin="0,0,0,8" LostFocus="RackingBox_LostFocus" KeyDown="RackingBox_KeyDown"/>
-                                <TextBlock x:Name="RackingSummaryText" TextWrapping="Wrap" FontSize="11.5" Foreground="#71717A"
+                                <TextBlock x:Name="RackingSummaryText" TextWrapping="Wrap" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"
                                            Text="Place modules to estimate rails / attachments."/>
                             </StackPanel>
 

@@ -1,0 +1,46 @@
+<Window x:Class="SolarSim.Preview.SatelliteMapDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Satellite map — mark your house"
+        Width="960" Height="700"
+        MinWidth="720" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#0E0E10"
+        FontFamily="{StaticResource UiFont}">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#16161A" Padding="12,10" BorderBrush="#27272A" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Search" Style="{StaticResource PrimaryButton}"
+                            Padding="14,6" Margin="8,0,0,0" Click="Search_Click"/>
+                    <TextBox x:Name="SearchBox" VerticalContentAlignment="Center" Height="32"
+                             KeyDown="SearchBox_KeyDown"
+                             ToolTip="Address or lat,lon"/>
+                </DockPanel>
+                <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center"
+                           Foreground="#A1A1AA" FontSize="12.5" Margin="16,0,0,0"
+                           Text="Loading map…"/>
+            </Grid>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Background="#16161A" Padding="12,10" BorderBrush="#27272A" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Cancel" Style="{StaticResource GhostButton}" Width="96" Margin="0,0,8,0"
+                            Click="Cancel_Click"/>
+                    <Button x:Name="ImportButton" Content="Import this building" Style="{StaticResource PrimaryButton}"
+                            Padding="16,8" IsEnabled="False" Click="Import_Click"/>
+                </StackPanel>
+                <TextBlock x:Name="PinLabel" VerticalAlignment="Center" Foreground="#D4D4D8" FontSize="12.5"
+                           Text="Click the satellite image to place a pin on the house."/>
+            </DockPanel>
+        </Border>
+
+        <wv2:WebView2 x:Name="MapView"/>
+    </DockPanel>
+</Window>

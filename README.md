@@ -152,6 +152,11 @@ Full phase-by-phase history: **[CHANGELOG.md](CHANGELOG.md)** (keep updated for 
 - Imports roof-segment bounding boxes as roof layers; fills site lat/lon + peak sun hours
 - Design aid — segment boxes are approximations, not surveyed footprints
 
+**Phase 2.4 — Satellite house picker:** done
+- **Satellite map…** / empty-state **Satellite map**: Esri satellite imagery in WebView2
+- Search or click the house → **Import this building** → same Google Solar roof import as 2.0
+- Still needs Solar API key for roof geometry; map tiles themselves do not
+
 **Phase 2.1 — Detailed monthly production estimate:** done
 - Site **tilt / azimuth** + latitude seasonality (NH/SH) for monthly kWh
 - Single-line + HTML report show monthly table; schema **10**
@@ -167,13 +172,13 @@ Full phase-by-phase history: **[CHANGELOG.md](CHANGELOG.md)** (keep updated for 
 - Tabs: **Roof** · **Interior** · **Combined** (modules + gear + home-run wiring)
 - Dark CAD HUD default; top-bar **Light** / **Dark** toggle
 
-**Next:** Later roadmap (Cesium site context · Unity feature parity)
+**Next:** Later roadmap (Cesium for Unity 3D · Unity feature parity)
 
 ### Roadmap (remaining)
 
 | Phase | Focus |
 |-------|--------|
-| Later | Cesium site context · Unity roof/equipment parity |
+| Later | Cesium for Unity 3D site · Unity roof/equipment parity |
 
 ## Domain notes
 

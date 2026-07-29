@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>solarSim satellite picker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzPyD7ylctQs2lzC+Xt0QbGOP4="
+        crossorigin="" />
+  <style>
+    html, body, #map { margin: 0; height: 100%; width: 100%; background: #0e0e10; }
+    .leaflet-container { background: #0e0e10; font: 13px Bahnschrift, Segoe UI, sans-serif; }
+    .hint {
+      position: absolute; z-index: 1000; left: 12px; bottom: 12px;
+      background: rgba(24, 24, 27, 0.88); color: #e4e4e7; padding: 8px 12px;
+      border-radius: 8px; border: 1px solid #3f3f46; pointer-events: none;
+      max-width: min(360px, calc(100% - 24px));
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="hint" id="hint">Click the house on the satellite image to drop a pin.</div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script>
+    const map = L.map('map', { zoomControl: true, attributionControl: true })
+      .setView([-25.2744, 133.7751], 4);
+
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      }
+    ).addTo(map);
+
+    let marker = null;
+
+    function post(msg) {
+      try {
+        if (window.chrome && chrome.webview && chrome.webview.postMessage)
+          chrome.webview.postMessage(msg);
+      } catch (e) { /* host not ready */ }
+    }
+
+    function setPin(lat, lon, fly) {
+      const ll = L.latLng(lat, lon);
+      if (!marker) {
+        marker = L.marker(ll, { draggable: true }).addTo(map);
+        marker.on('dragend', () => {
+          const p = marker.getLatLng();
+          post({ type: 'pin', lat: p.lat, lon: p.lng });
+        });
+      } else {
+        marker.setLatLng(ll);
+      }
+      if (fly) map.setView(ll, Math.max(map.getZoom(), 18));
+      post({ type: 'pin', lat: lat, lon: lon });
+      document.getElementById('hint').textContent =
+        'Pin set — drag to fine-tune, then Import this building.';
+    }
+
+    map.on('click', (e) => {
+      setPin(e.latlng.lat, e.latlng.lng, false);
+    });
+
+    window.solarSimMap = {
+      flyTo: function (lat, lon, zoom) {
+        const z = typeof zoom === 'number' ? zoom : 18;
+        map.setView([lat, lon], z);
+      },
+      setPin: function (lat, lon, fly) {
+        setPin(lat, lon, fly !== false);
+      },
+      clearPin: function () {
+        if (marker) {
+          map.removeLayer(marker);
+          marker = null;
+        }
+        document.getElementById('hint').textContent =
+          'Click the house on the satellite image to drop a pin.';
+      }
+    };
+
+    post({ type: 'ready' });
+  </script>
+</body>
+</html>

@@ -93,7 +93,8 @@ public partial class MainWindow : Window
     private readonly HashSet<Guid> _selectedEquipmentIds = new();
 
     private Guid? _wireFromPortId;
-    private readonly Dictionary<Guid, Ellipse> _panelPortHitOverlays = new();
+    private readonly Dictionary<Guid, FrameworkElement> _panelPortHitOverlays = new();
+    private readonly List<string> _recentAddKeys = new();
     private Line? _previewWire;
     private Ellipse? _hoverPortMarker;
     private TextBlock? _connectedToast;
@@ -215,48 +216,7 @@ public partial class MainWindow : Window
         var warnings = calc.Warnings.Count(w => w.Severity != IssueSeverity.Info);
         var errors = calc.Errors.Count;
 
-        if (_selectedPanelIds.Count > 0 || _selectedConnectionIds.Count > 0)
-            StatusText.Text = BuildSelectionStatusText(calc, errors, warnings);
-        else if (_selectedConnectionIds.Count == 0 && _selectedEquipmentIds.Count == 1
-                 && _project.Graph.TryGetEquipment(_selectedEquipmentIds.First(), out var eq))
-        {
-            if (eq.Kind == EquipmentKind.StringInverter)
-            {
-                var report = _project.GetMpptReports().FirstOrDefault(r => r.InverterId == eq.Id);
-                var wired = report?.Channels.Count(c => c.PositiveConnected || c.NegativeConnected) ?? 0;
-                var mpptIssues = report?.Channels.Sum(c => c.Issues.Count(i => i.Severity != IssueSeverity.Info))
-                                 ?? 0;
-                StatusText.Text =
-                    $"INVERTER  |  {eq.Name}  |  {wired}/{eq.InverterSpecs?.MpptCount ?? 0} MPPT wired  |  " +
-                    $"{mpptIssues} MPPT alerts  |  Del to remove";
-            }
-            else
-            {
-                StatusText.Text = $"EQUIPMENT  |  {eq.Name}  |  {eq.Ports.Count} ports  |  Del to remove";
-            }
-        }
-        else if (calc.Strings.Count == 1)
-        {
-            var s = calc.Strings[0];
-            var power = FormatPower(calc.TotalPmaxWatts);
-            var energy = _project.GetEnergyEstimate();
-            StatusText.Text =
-                $"{calc.TotalPanels} Panels  |  {power}  |  {s.DisplayName}: {s.PanelCount} modules  " +
-                $"{s.TotalPmaxWatts:0.##} W  Vmp {s.VmpVolts:0.##} V  Voc {s.VocVolts:0.##} V  " +
-                $"Imp {s.ImpAmps:0.##} A  Isc {s.IscAmps:0.##} A  |  ~{energy.EstimatedAnnualKwh:0} kWh/yr  |  " +
-                $"{errors} Errors  |  {warnings} Warnings";
-        }
-        else
-        {
-            var roofBit = _project.Roofs.HasAnyClosedRoof
-                ? $"  |  Roof {_project.Units.FormatAreaSquareMeters(_project.Roofs.TotalAreaSquareMeters())}  setback {_project.Units.FormatLength(GetActiveRoofSetbackMm())}"
-                : "";
-            var energyBit = calc.TotalPanels > 0
-                ? $"  |  ~{_project.GetEnergyEstimate().EstimatedAnnualKwh:0} kWh/yr"
-                : "";
-            StatusText.Text =
-                $"{calc.TotalPanels} modules    ·    {FormatPower(calc.TotalPmaxWatts)}    ·    {calc.StringCount} strings{roofBit}{energyBit}    ·    {errors} errors    ·    {warnings} warnings";
-        }
+        UpdateHud(calc, errors, warnings);
 
         ProjectNameLabel.Text = FriendlyProjectName();
         ProjectNameLabel.ToolTip = string.IsNullOrEmpty(_project.FilePath)
@@ -271,14 +231,63 @@ public partial class MainWindow : Window
         }
 
         UpdateInspector();
+        UpdateSelectionToolbar();
         DeleteButton.IsEnabled = _selectedPanelIds.Count > 0
             || _selectedConnectionIds.Count > 0
             || _selectedEquipmentIds.Count > 0
             || _selectedObstacleId is not null;
-        // Auto-open properties when something is selected (Canva-like).
         if (DeleteButton.IsEnabled && InspectorPanel?.Visibility != Visibility.Visible)
             SetInspectorOpen(true);
         ZoomLabel.Text = $"{_zoom * 100:0}%";
+    }
+
+    private void UpdateHud(ProjectCalculationResult calc, int errors, int warnings)
+    {
+        if (HudModules is not null)
+            HudModules.Text = $"{calc.TotalPanels} module{(calc.TotalPanels == 1 ? "" : "s")}";
+        if (HudPower is not null)
+            HudPower.Text = FormatPower(calc.TotalPmaxWatts);
+        if (HudStrings is not null)
+            HudStrings.Text = $"{calc.StringCount} string{(calc.StringCount == 1 ? "" : "s")}";
+
+        if (HudHealth is not null)
+        {
+            if (errors > 0)
+            {
+                HudHealth.Text = $"✕ {errors} error{(errors == 1 ? "" : "s")}";
+                HudHealth.Foreground = (Brush)FindResource("DangerBrush");
+            }
+            else if (warnings > 0)
+            {
+                HudHealth.Text = $"! {warnings} warning{(warnings == 1 ? "" : "s")}";
+                HudHealth.Foreground = (Brush)FindResource("AccentBrush");
+            }
+            else
+            {
+                HudHealth.Text = "✓ No issues";
+                HudHealth.Foreground = (Brush)FindResource("OkBrush");
+            }
+        }
+
+        var detail = "";
+        if (_selectedPanelIds.Count > 0 || _selectedConnectionIds.Count > 0)
+            detail = BuildSelectionStatusText(calc, errors, warnings);
+        else if (_selectedEquipmentIds.Count == 1
+                 && _project.Graph.TryGetEquipment(_selectedEquipmentIds.First(), out var eq))
+            detail = eq.Name;
+        else if (calc.Strings.Count == 1)
+        {
+            var s = calc.Strings[0];
+            detail = $"{s.DisplayName}  ·  {s.PanelCount} mod  ·  Vmp {s.VmpVolts:0.#} V  ·  Voc {s.VocVolts:0.#} V";
+        }
+        else if (calc.TotalPanels > 0)
+            detail = $"~{_project.GetEnergyEstimate().EstimatedAnnualKwh:0} kWh/yr";
+
+        if (HudDetail is not null)
+            HudDetail.Text = detail;
+        // Keep StatusText in sync for legacy call sites that still write to it.
+        if (StatusText is not null && !string.IsNullOrEmpty(detail))
+            StatusText.Text = detail;
     }
 
     private void PruneStaleSelection()
@@ -348,175 +357,201 @@ public partial class MainWindow : Window
     private static string FormatPower(double watts) =>
         watts >= 1000 ? $"{watts / 1000.0:0.##} kW DC" : $"{watts:0.##} W DC";
 
+
+    private void ClearInspectorRows()
+    {
+        if (InspectorRows is not null)
+            InspectorRows.Children.Clear();
+        if (InspectorBody is not null)
+        {
+            InspectorBody.Text = "";
+            InspectorBody.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void AddInspectorSection(string title)
+    {
+        if (InspectorRows is null) return;
+        InspectorRows.Children.Add(new TextBlock
+        {
+            Text = title.ToUpperInvariant(),
+            Style = (Style)FindResource("SectionLabel"),
+            Margin = new Thickness(0, InspectorRows.Children.Count == 0 ? 0 : 14, 0, 8),
+        });
+    }
+
+    private void AddInspectorRow(string label, string value)
+    {
+        if (InspectorRows is null) return;
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var left = new TextBlock { Text = label, Style = (Style)FindResource("InspectorRowLabel") };
+        var right = new TextBlock { Text = value, Style = (Style)FindResource("InspectorRowValue") };
+        Grid.SetColumn(right, 1);
+        grid.Children.Add(left);
+        grid.Children.Add(right);
+        InspectorRows.Children.Add(grid);
+    }
+
+    private void AddInspectorNote(string note)
+    {
+        if (InspectorRows is null) return;
+        InspectorRows.Children.Add(new TextBlock
+        {
+            Text = note,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            FontSize = 12,
+            LineHeight = 18,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+    }
+
+    private void ShowInspectorDump(string heading, string body)
+    {
+        ClearInspectorRows();
+        InspectorHeading.Text = heading;
+        if (InspectorSubheading is not null)
+            InspectorSubheading.Text = "";
+        if (InspectorBody is not null)
+        {
+            InspectorBody.Text = body;
+            InspectorBody.Visibility = Visibility.Visible;
+        }
+    }
+
+    private static string FormatPortTooltip(ElectricalPort port)
+    {
+        var lines = new List<string> { port.Label, port.ConnectorFamily };
+        if (port.ConnectorInterface != ConnectorInterface.Unspecified)
+            lines.Add(port.ConnectorInterface.ToString());
+        return string.Join("\n", lines);
+    }
+
     private void UpdateInspector()
     {
-        if (_selectedPanelIds.Count == 1 && _selectedConnectionIds.Count == 0)
+        var hasSelection = _selectedPanelIds.Count > 0
+            || _selectedConnectionIds.Count > 0
+            || _selectedEquipmentIds.Count > 0
+            || _selectedObstacleId is not null;
+
+        if (SiteTempsPanel is not null)
+            SiteTempsPanel.Visibility = hasSelection ? Visibility.Collapsed : Visibility.Visible;
+        if (RackingPanel is not null)
+            RackingPanel.Visibility = (!hasSelection || _selectedPanelIds.Count > 0 || _uiTool == UiTool.Roof)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        if (hasSelection && RackingPanel is not null && _selectedPanelIds.Count == 0 && _uiTool != UiTool.Roof)
+            RackingPanel.Visibility = Visibility.Collapsed;
+
+        ClearInspectorRows();
+
+        if (_selectedPanelIds.Count == 1 && _selectedConnectionIds.Count == 0
+            && _project.Graph.TryGetPanel(_selectedPanelIds.First(), out var panel))
         {
-            var panelId = _selectedPanelIds.First();
-            if (_project.Graph.TryGetPanel(panelId, out var panel))
-            {
-                var def = _project.RequireDefinition(panel.DefinitionId);
-                var coldVoc = TemperatureDeratingService.ColdVocVolts(def, _project.Site);
-                var hotVmp = TemperatureDeratingService.HotVmpVolts(def, _project.Site);
-                var beta = TemperatureDeratingService.ResolveVocTempCoeffPercentPerC(def);
-                InspectorHeading.Text = "SOLAR PANEL";
-                InspectorBody.Text =
-                    $"{def.Manufacturer} {def.Model}\n\n" +
-                    $"Pmax    {def.PmaxWatts:0.##} W\n" +
-                    $"Vmp     {def.VmpVolts:0.##} V\n" +
-                    $"Imp     {def.ImpAmps:0.##} A\n" +
-                    $"Voc     {def.VocVolts:0.##} V\n" +
-                    $"Isc     {def.IscAmps:0.##} A\n\n" +
-                    $"β Voc   {beta:0.##} %/°C\n" +
-                    $"Cold Voc {coldVoc:0.##} V @ {_project.Site.MinAmbientCelsius:0.#} °C\n" +
-                    $"Hot Vmp  {hotVmp:0.##} V @ {_project.Site.HotCellCelsius:0.#} °C\n\n" +
-                    $"Width   {def.WidthMm:0.##} mm\n" +
-                    $"Height  {def.HeightMm:0.##} mm\n" +
-                    $"Rotation  {panel.RotationDegrees}°\n" +
-                    $"Connector  {def.ConnectorFamily}\n\n" +
-                    "Press Delete to remove.";
-                return;
-            }
-        }
+            var def = _project.RequireDefinition(panel.DefinitionId);
+            var coldVoc = TemperatureDeratingService.ColdVocVolts(def, _project.Site);
+            var hotVmp = TemperatureDeratingService.HotVmpVolts(def, _project.Site);
+            InspectorHeading.Text = "Panel";
+            if (InspectorSubheading is not null)
+                InspectorSubheading.Text = $"{def.Manufacturer}  ·  {def.Model}";
 
-        if (_selectedConnectionIds.Count == 1 && _selectedPanelIds.Count == 0)
-        {
-            var connId = _selectedConnectionIds.First();
-            if (_project.Graph.Connections.TryGetValue(connId, out var conn))
-            {
-                var drop = _project.CalculateWireVoltageDrop(connId);
-                InspectorHeading.Text = "PV WIRE";
-                InspectorBody.Text =
-                    $"Gauge     {(int)conn.Wire.Gauge} AWG\n" +
-                    $"Type      {conn.Wire.WireType}\n" +
-                    $"Material  {conn.Wire.Material}\n" +
-                    $"One-way   {_project.Units.FormatLength(conn.Wire.OneWayLengthMm)}\n" +
-                    $"Circuit   {_project.Units.FormatLength(conn.Wire.OneWayLengthMm * 2)}\n" +
-                    $"Bends     {conn.Wire.Waypoints.Count}\n" +
-                    $"Connector {conn.Wire.ConnectorFamily}\n\n" +
-                    (drop is null
-                        ? "Voltage drop: n/a"
-                        : $"Voltage drop (est.)\n" +
-                          $"  {drop.Value.VoltageDropVolts:0.###} V\n" +
-                          $"  {drop.Value.PercentDrop:0.##}% of Vmp\n" +
-                          $"  Loss {drop.Value.PowerLossWatts:0.##} W\n" +
-                          $"  @ {drop.Value.CurrentAmps:0.##} A\n\n" +
-                          "Design aid only — not code approval.") +
-                    "\n\nDouble-click wire to add bend.\nDrag handles to route.\nRight-click wire to disconnect.\nDel removes bend (or wire).";
-                return;
-            }
-        }
+            AddInspectorSection("Overview");
+            AddInspectorRow("Pmax", $"{def.PmaxWatts:0.##} W");
 
-        if (_selectedEquipmentIds.Count == 1)
-        {
-            var id = _selectedEquipmentIds.First();
-            if (_project.Graph.TryGetEquipment(id, out var eq))
-            {
-                if (eq.Kind == EquipmentKind.StringInverter && eq.InverterSpecs is not null)
-                {
-                    var report = _project.GetMpptReports().FirstOrDefault(r => r.InverterId == id);
-                    var specs = eq.InverterSpecs;
-                    var sb = new System.Text.StringBuilder();
-                    sb.AppendLine(eq.Name);
-                    sb.AppendLine();
-                    sb.AppendLine($"AC rated  {specs.AcRatedWatts:0.#} W");
-                    sb.AppendLine($"MPPTs     {specs.MpptCount}");
-                    sb.AppendLine($"Rotation  {eq.RotationDegrees:0.#}°");
-                    sb.AppendLine($"MPPT win  {specs.MinMpptVolts:0.#}–{specs.MaxMpptVolts:0.#} V");
-                    sb.AppendLine($"Max Voc   {specs.MaxDcVolts:0.#} V");
-                    sb.AppendLine($"Max Imp   {specs.MaxCurrentPerMpptAmps:0.##} A / MPPT");
-                    sb.AppendLine($"Site      cold {_project.Site.MinAmbientCelsius:0.#} °C · hot {_project.Site.HotCellCelsius:0.#} °C");
-                    sb.AppendLine();
+            AddInspectorSection("Transform");
+            AddInspectorRow("Position",
+                $"{panel.PositionXMm / 1000.0:0.##}, {panel.PositionYMm / 1000.0:0.##} m");
+            AddInspectorRow("Rotation", $"{panel.RotationDegrees}°");
+            AddInspectorRow("Size", $"{def.WidthMm:0.#} × {def.HeightMm:0.#} mm");
 
-                    // String sizing hint from first selected/placed panel definition.
-                    var sampleDef = _project.Graph.Panels.Values
-                        .Select(p => _project.Definitions.TryGetValue(p.DefinitionId, out var d) ? d : null)
-                        .FirstOrDefault(d => d is not null);
-                    if (sampleDef is not null)
-                    {
-                        var advice = StringSizingService.Advise(sampleDef, specs, _project.Site, eq.Id);
-                        sb.AppendLine($"Sizing ({sampleDef.DisplayName})");
-                        sb.AppendLine($"  STC Voc   {advice.StcVocVolts:0.##} V");
-                        sb.AppendLine($"  Cold Voc  {advice.ColdVocVolts:0.##} V @ {advice.MinAmbientCelsius:0.#} °C");
-                        sb.AppendLine($"  Hot Vmp   {advice.HotVmpVolts:0.##} V @ {advice.HotCellCelsius:0.#} °C");
-                        sb.AppendLine($"  Series    {advice.MinModulesInSeries}–{advice.MaxModulesInSeries} modules");
-                        sb.AppendLine();
-                    }
+            AddInspectorSection("Electrical");
+            AddInspectorRow("Vmp", $"{def.VmpVolts:0.##} V");
+            AddInspectorRow("Voc", $"{def.VocVolts:0.##} V");
+            AddInspectorRow("Imp", $"{def.ImpAmps:0.##} A");
+            AddInspectorRow("Isc", $"{def.IscAmps:0.##} A");
 
-                    if (report is not null)
-                    {
-                        foreach (var ch in report.Channels)
-                        {
-                            sb.Append($"MPPT{ch.ChannelIndex}: ");
-                            if (!ch.PositiveConnected && !ch.NegativeConnected)
-                                sb.AppendLine("open");
-                            else if (ch.PmaxWatts is double pw)
-                            {
-                                sb.Append($"{pw:0.#} W | {ch.VmpVolts:0.#} Vmp | {ch.VocVolts:0.#} Voc");
-                                if (ch.ColdVocVolts is double cv)
-                                    sb.Append($" | cold {cv:0.#} Voc");
-                                if (ch.HotVmpVolts is double hv)
-                                    sb.Append($" | hot {hv:0.#} Vmp");
-                                sb.AppendLine($" | {ch.ImpAmps:0.##} A");
-                            }
-                            else
-                                sb.AppendLine("wired (no string mapped)");
+            AddInspectorSection("Temperature");
+            AddInspectorRow("Cold Voc", $"{coldVoc:0.##} V");
+            AddInspectorRow("Hot Vmp", $"{hotVmp:0.##} V");
 
-                            foreach (var issue in ch.Issues.Where(i => i.Severity != IssueSeverity.Info))
-                                sb.AppendLine($"  ! {issue.Title}");
-                        }
-
-                        foreach (var issue in report.Issues)
-                            sb.AppendLine($"! {issue.Title}: {issue.Message}");
-                    }
-
-                    sb.AppendLine();
-                    sb.Append("Drag top handle to rotate — snaps to 90° (live ° shown).\nShift=15° · Alt=free · R / Shift+R nudge.\nWire combiner/string ± into MPPT±.\nPress Delete to remove.");
-                    InspectorHeading.Text = "INVERTER / MPPT";
-                    InspectorBody.Text = sb.ToString().TrimEnd();
-                    return;
-                }
-
-                InspectorHeading.Text = eq.Kind.ToString().ToUpperInvariant();
-                InspectorBody.Text =
-                    $"{eq.Name}\n\n" +
-                    $"Rotation: {eq.RotationDegrees:0.#}°\n" +
-                    $"Ports: {eq.Ports.Count}\n" +
-                    string.Join("\n", eq.Ports.Select(p =>
-                        $"  {p.Label} ({p.Polarity}) {(p.IsOccupied ? "●" : "○")}")) +
-                    "\n\nDrag top handle to rotate — snaps to 90° (live ° shown).\nShift=15° · Alt=free · R / Shift+R nudge.\nHover ports and drag to connect.\nPress Delete to remove.";
-                return;
-            }
-        }
-
-        if (_selectedPanelIds.Count > 1 || (_selectedPanelIds.Count > 0 && _selectedConnectionIds.Count > 0))
-        {
-            double watts = 0;
-            foreach (var id in _selectedPanelIds)
-            {
-                if (_project.Graph.TryGetPanel(id, out var p)
-                    && _project.Definitions.TryGetValue(p.DefinitionId, out var d))
-                    watts += d.PmaxWatts;
-            }
-
-            InspectorHeading.Text = "SELECTION";
-            InspectorBody.Text =
-                $"Panels: {_selectedPanelIds.Count}\n" +
-                $"Wires: {_selectedConnectionIds.Count}\n" +
-                $"Selected DC: {watts:0.##} W\n\n" +
-                "Delete or click Delete to remove all highlighted items.";
+            AddInspectorSection("Connections");
+            AddInspectorRow("PV+", panel.PositivePort.IsOccupied ? "Connected" : "Open");
+            AddInspectorRow("PV−", panel.NegativePort.IsOccupied ? "Connected" : "Open");
+            AddInspectorRow("Connector", def.ConnectorFamily);
             return;
         }
 
+        if (_selectedConnectionIds.Count == 1 && _selectedPanelIds.Count == 0
+            && _project.Graph.Connections.TryGetValue(_selectedConnectionIds.First(), out var conn))
+        {
+            var drop = _project.CalculateWireVoltageDrop(conn.Id);
+            InspectorHeading.Text = "Wire";
+            if (InspectorSubheading is not null)
+                InspectorSubheading.Text = $"{(int)conn.Wire.Gauge} AWG  ·  {conn.Wire.Material}";
+            AddInspectorSection("Route");
+            AddInspectorRow("One-way", _project.Units.FormatLength(conn.Wire.OneWayLengthMm));
+            AddInspectorRow("Circuit", _project.Units.FormatLength(conn.Wire.OneWayLengthMm * 2));
+            AddInspectorRow("Bends", $"{conn.Wire.Waypoints.Count}");
+            AddInspectorRow("Type", conn.Wire.WireType.ToString());
+            AddInspectorSection("Drop (est.)");
+            if (drop is null)
+                AddInspectorNote("Voltage drop: n/a");
+            else
+            {
+                AddInspectorRow("ΔV", $"{drop.Value.VoltageDropVolts:0.###} V");
+                AddInspectorRow("% of Vmp", $"{drop.Value.PercentDrop:0.##}%");
+                AddInspectorRow("Loss", $"{drop.Value.PowerLossWatts:0.##} W");
+            }
+            AddInspectorNote("Design aid only — not code approval.");
+            return;
+        }
+
+        if (_selectedEquipmentIds.Count == 1
+            && _project.Graph.TryGetEquipment(_selectedEquipmentIds.First(), out var eq))
+        {
+            InspectorHeading.Text = eq.Kind.ToString();
+            if (InspectorSubheading is not null)
+                InspectorSubheading.Text = eq.Name;
+            AddInspectorSection("Overview");
+            AddInspectorRow("Ports", $"{eq.Ports.Count}");
+            if (eq.Kind == EquipmentKind.StringInverter && eq.InverterSpecs is not null)
+            {
+                var report = _project.GetMpptReports().FirstOrDefault(r => r.InverterId == eq.Id);
+                AddInspectorSection("MPPT");
+                AddInspectorRow("Channels", $"{eq.InverterSpecs.MpptCount}");
+                if (report is not null)
+                {
+                    var wired = report.Channels.Count(c => c.PositiveConnected || c.NegativeConnected);
+                    AddInspectorRow("Wired", $"{wired}/{eq.InverterSpecs.MpptCount}");
+                }
+            }
+            return;
+        }
+
+        if (_selectedPanelIds.Count + _selectedConnectionIds.Count + _selectedEquipmentIds.Count > 1)
+        {
+            InspectorHeading.Text = "Selection";
+            if (InspectorSubheading is not null)
+                InspectorSubheading.Text = "Multiple objects";
+            AddInspectorRow("Panels", $"{_selectedPanelIds.Count}");
+            AddInspectorRow("Wires", $"{_selectedConnectionIds.Count}");
+            AddInspectorRow("Equipment", $"{_selectedEquipmentIds.Count}");
+            return;
+        }
+
+        InspectorHeading.Text = "Project";
+        if (InspectorSubheading is not null)
+            InspectorSubheading.Text = FriendlyProjectName();
         var calc = _project.GetCalculationSnapshot();
-        InspectorHeading.Text = "PROJECT";
-        InspectorBody.Text =
-            $"Name: {_project.Name}\n" +
-            $"Panels: {calc.TotalPanels}\n" +
-            $"DC Power: {calc.TotalPmaxWatts:0.##} W\n" +
-            $"Strings: {calc.StringCount}\n" +
-            $"Unconnected: {calc.UnconnectedPanels}\n\n" +
-            "Drag on empty canvas to highlight an area.";
+        AddInspectorSection("Summary");
+        AddInspectorRow("Modules", $"{calc.TotalPanels}");
+        AddInspectorRow("DC power", FormatPower(calc.TotalPmaxWatts));
+        AddInspectorRow("Strings", $"{calc.StringCount}");
+        if (calc.TotalPanels > 0)
+            AddInspectorRow("Est. annual", $"~{_project.GetEnergyEstimate().EstimatedAnnualKwh:0} kWh");
+        AddInspectorNote("Site and racking settings appear below when nothing is selected.");
     }
 
     private void RebuildPanelVisuals()
@@ -575,13 +610,6 @@ public partial class MainWindow : Window
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
             IsHitTestVisible = false,
-            Effect = new System.Windows.Media.Effects.DropShadowEffect
-            {
-                Color = Colors.Black,
-                BlurRadius = 4,
-                ShadowDepth = 0,
-                Opacity = 0.85,
-            },
         };
 
         var label = new TextBlock
@@ -636,7 +664,7 @@ public partial class MainWindow : Window
         {
             grid.Children.Add(new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(0x24, 0x30, 0x44)),
+                Background = (Brush)System.Windows.Application.Current.FindResource("PanelCellBrush"),
                 Margin = new Thickness(1),
                 CornerRadius = new CornerRadius(1),
             });
@@ -649,15 +677,15 @@ public partial class MainWindow : Window
         var brush = (Brush)FindResource(positive ? "PositiveBrush" : "NegativeBrush");
         var ellipse = new Ellipse
         {
-            Width = 16,
-            Height = 16,
+            Width = 8,
+            Height = 8,
             Fill = brush,
             Stroke = Brushes.White,
-            StrokeThickness = 2.5,
+            StrokeThickness = 1.5,
             Visibility = Visibility.Collapsed,
             Cursor = Cursors.Cross,
             Tag = positive ? "PV+" : "PV-",
-            ToolTip = positive ? "PV+ (male / positive)" : "PV− (female / negative)",
+            ToolTip = positive ? "PV+" : "PV−",
         };
         ellipse.MouseLeftButtonDown += Port_MouseLeftButtonDown;
         return ellipse;
@@ -722,20 +750,22 @@ public partial class MainWindow : Window
         var isSelected = _selectedPanelIds.Contains(panel.Id);
         visual.Body.BorderBrush = isSelected
             ? (Brush)FindResource("AccentBrush")
-            : new SolidColorBrush(Color.FromRgb(0x3A, 0x4A, 0x60));
-        visual.Body.BorderThickness = new Thickness(isSelected ? 3 : 2);
-        visual.Body.Opacity = isSelected ? 1.0 : 0.98;
+            : (Brush)FindResource("BorderBrush");
+        visual.Body.Opacity = 1.0;
 
+        visual.Body.Effect = null;
+        visual.Body.BorderThickness = new Thickness(isSelected ? 1.5 : 1);
+
+        // Semantic zoom: cells when zoomed in; wattage label only when selected.
+        if (visual.Body.Child is UIElement cells)
+            cells.Visibility = _zoom >= 0.55 ? Visibility.Visible : Visibility.Collapsed;
+        visual.PowerLabel.Visibility = isSelected && _zoom >= 0.4 ? Visibility.Visible : Visibility.Collapsed;
         if (isSelected)
-            visual.Body.Effect = new System.Windows.Media.Effects.DropShadowEffect
-            {
-                Color = Color.FromRgb(0x2F, 0x6F, 0xED),
-                BlurRadius = 10,
-                ShadowDepth = 0,
-                Opacity = 0.55,
-            };
-        else
-            visual.Body.Effect = null;
+        {
+            visual.PowerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetTop(visual.PowerLabel, -visual.PowerLabel.DesiredSize.Height - 4);
+            Canvas.SetLeft(visual.PowerLabel, (size.Width - visual.PowerLabel.DesiredSize.Width) / 2);
+        }
 
         var showLabels = isSelected || _wireFromPortId is not null || visual.Root.IsMouseOver;
         SetPortsVisible(visual, showLabels);
@@ -766,7 +796,7 @@ public partial class MainWindow : Window
             var selected = _selectedConnectionIds.Contains(connection.Id);
             var startBrush = PolarityBrush(start.Polarity);
             var endBrush = PolarityBrush(end.Polarity);
-            var thickness = selected ? 4.0 : 3.0;
+            var thickness = selected ? 2.0 : 1.5;
 
             var visual = new WireCanvasVisual { ConnectionId = connection.Id };
             var bothPanels = _project.Graph.Panels.ContainsKey(start.OwnerComponentId)
@@ -819,16 +849,13 @@ public partial class MainWindow : Window
 
             visual.HitPoints = routePoints;
 
-            // MC4-style plug node where leads meet (series − → +).
-            var plug = new Ellipse
-            {
-                Width = selected ? 11 : 9,
-                Height = selected ? 11 : 9,
-                Fill = (Brush)FindResource("PlugNodeBrush"),
-                Stroke = Brushes.White,
-                StrokeThickness = 1.5,
-                IsHitTestVisible = false,
-            };
+            // Mated MC4 where leads meet (male ↔ female halves).
+            var plug = Mc4ConnectorVisual.CreateMatedPair(
+                startBrush,
+                endBrush,
+                start.ConnectorInterface,
+                end.ConnectorInterface,
+                selected);
             Canvas.SetLeft(plug, mid.X - plug.Width / 2);
             Canvas.SetTop(plug, mid.Y - plug.Height / 2);
             visual.Shapes.Add(plug);
@@ -891,8 +918,8 @@ public partial class MainWindow : Window
 
     private void ClearPanelPortHitOverlays()
     {
-        foreach (var ellipse in _panelPortHitOverlays.Values)
-            DesignCanvas.Children.Remove(ellipse);
+        foreach (var el in _panelPortHitOverlays.Values)
+            DesignCanvas.Children.Remove(el);
         _panelPortHitOverlays.Clear();
     }
 
@@ -910,25 +937,38 @@ public partial class MainWindow : Window
     private void AddPanelPortHitOverlay(ElectricalPort port, bool positive)
     {
         var center = GetPortCanvasPoint(port);
-        var size = 16.0;
-        var ellipse = new Ellipse
+        const double hit = 24.0; // invisible hit target; glyph stays ~8–10px
+        var facing = positive ? Mc4ConnectorVisual.Facing.Up : Mc4ConnectorVisual.Facing.Down;
+        var glyph = Mc4ConnectorVisual.CreatePort(
+            port.Polarity,
+            port.ConnectorInterface,
+            PolarityBrush(port.Polarity),
+            facing,
+            port.IsOccupied);
+
+        var hitTarget = new Border
         {
-            Width = size,
-            Height = size,
-            Fill = PolarityBrush(port.Polarity),
-            Stroke = Brushes.White,
-            StrokeThickness = 2.5,
+            Width = hit,
+            Height = hit,
+            Background = Brushes.Transparent,
             Cursor = Cursors.Cross,
             Tag = port.Id,
-            ToolTip = positive ? "PV+ (male / positive)" : "PV− (female / negative)",
-            Opacity = port.IsOccupied ? 0.5 : 1.0,
+            ToolTip = FormatPortTooltip(port),
+            Child = new Viewbox
+            {
+                Width = 14,
+                Height = 14,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = glyph,
+            },
         };
-        Canvas.SetLeft(ellipse, center.X - size / 2);
-        Canvas.SetTop(ellipse, center.Y - size / 2);
-        Panel.SetZIndex(ellipse, 960);
-        ellipse.MouseLeftButtonDown += Port_MouseLeftButtonDown;
-        DesignCanvas.Children.Add(ellipse);
-        _panelPortHitOverlays[port.Id] = ellipse;
+        Canvas.SetLeft(hitTarget, center.X - hit / 2);
+        Canvas.SetTop(hitTarget, center.Y - hit / 2);
+        Panel.SetZIndex(hitTarget, 960);
+        hitTarget.MouseLeftButtonDown += Port_MouseLeftButtonDown;
+        DesignCanvas.Children.Add(hitTarget);
+        _panelPortHitOverlays[port.Id] = hitTarget;
     }
 
     /// <summary>
@@ -1139,7 +1179,35 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
-    private void OverflowMenu_Click(object sender, RoutedEventArgs e)
+    private void Minimize_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void Maximize_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        if (MaximizeButton is not null)
+            MaximizeButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
+    }
+
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void ProjectSettings_Click(object sender, RoutedEventArgs e)
+    {
+        SetSelection();
+        SetInspectorOpen(true);
+        if (SiteTempsPanel is not null)
+            SiteTempsPanel.Visibility = Visibility.Visible;
+        if (RackingPanel is not null)
+            RackingPanel.Visibility = Visibility.Visible;
+        InspectorHeading.Text = "Project";
+        if (InspectorSubheading is not null)
+            InspectorSubheading.Text = "Site · climate · energy";
+        ClearInspectorRows();
+        AddInspectorSection("Settings");
+        AddInspectorNote("Edit site and racking fields below. These stay hidden while a canvas object is selected.");
+    }
+
+        private void OverflowMenu_Click(object sender, RoutedEventArgs e)
     {
         if (OverflowMenuButton.ContextMenu is null) return;
         var target = sender as UIElement ?? OverflowMenuButton;
@@ -1196,9 +1264,7 @@ public partial class MainWindow : Window
         var showPanelsLib = ShowsPanels;
         var showEquipLib = ShowsEquipment;
 
-        // Libraries live in the Add palette now.
-        RoofLibraryPanel.Visibility = showPanelsLib ? Visibility.Visible : Visibility.Collapsed;
-        InteriorLibraryPanel.Visibility = showEquipLib ? Visibility.Visible : Visibility.Collapsed;
+        // Category visibility is applied when opening Add (RefreshAddPalette).
         RoofToolsPanel.Visibility = Visibility.Collapsed;
         RackingPanel.Visibility = showRoofTools ? Visibility.Visible : Visibility.Collapsed;
         SiteTempsPanel.Visibility = showEquipLib || _workspacePlan == WorkspacePlan.Combined
@@ -1237,8 +1303,8 @@ public partial class MainWindow : Window
                 var empty = _project.Graph.Panels.Count == 0 && !HasAnyRoofVertices();
                 EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
                 EmptyStateTitle.Text = "Start with your roof";
-                EmptyStateBody.Text = "Draw it manually or import one.";
-                EmptyStateButton.Content = "Import Roof";
+                EmptyStateBody.Text = "Draw it manually or mark it on satellite.";
+                EmptyStateButton.Content = "Satellite map";
                 break;
             }
             case WorkspacePlan.Interior:
@@ -1258,7 +1324,7 @@ public partial class MainWindow : Window
                 EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
                 EmptyStateTitle.Text = "Build your system";
                 EmptyStateBody.Text = "Roof modules and equipment on one canvas.";
-                EmptyStateButton.Content = "Import Roof";
+                EmptyStateButton.Content = "Satellite map";
                 break;
             }
             default:
@@ -1281,8 +1347,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        SetUiTool(UiTool.Roof);
-        ShowImportRoof_Click(sender, e);
+        SatelliteMap_Click(sender, e);
     }
 
     private void EmptyStateButton_Click(object sender, RoutedEventArgs e) =>
@@ -1395,6 +1460,7 @@ public partial class MainWindow : Window
             case UiTool.Add:
                 ContextTitle.Text = "Add";
                 SetPanelVisible(AddPalette, true);
+                RefreshAddPalette();
                 break;
             case UiTool.Layers:
                 ContextTitle.Text = "Layers";
@@ -1404,6 +1470,246 @@ public partial class MainWindow : Window
             default:
                 break;
         }
+    }
+
+    private void UpdateSelectionToolbar()
+    {
+        if (ContextToolBar is null) return;
+
+        var show = _selectedPanelIds.Count > 0
+                   && _selectedConnectionIds.Count == 0
+                   && _selectedEquipmentIds.Count == 0
+                   && _uiTool == UiTool.Select;
+
+        if (!show)
+        {
+            ContextToolBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        var any = false;
+        foreach (var id in _selectedPanelIds)
+        {
+            if (!_panelVisuals.TryGetValue(id, out var v)) continue;
+            var left = Canvas.GetLeft(v.Root);
+            var top = Canvas.GetTop(v.Root);
+            if (double.IsNaN(left) || double.IsNaN(top)) continue;
+            any = true;
+            minX = Math.Min(minX, left);
+            minY = Math.Min(minY, top);
+            maxX = Math.Max(maxX, left + v.Root.Width);
+            maxY = Math.Max(maxY, top + v.Root.Height);
+        }
+
+        if (!any)
+        {
+            ContextToolBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        ContextToolBar.Visibility = Visibility.Visible;
+        ContextToolBar.UpdateLayout();
+        var tw = ContextToolBar.ActualWidth > 1 ? ContextToolBar.ActualWidth : 200;
+        var leftMargin = Math.Max(8, (minX + maxX) / 2 - tw / 2);
+        var topMargin = Math.Max(8, minY - 44);
+        ContextToolBar.Margin = new Thickness(leftMargin, topMargin, 0, 0);
+
+        if (CtxStringButton is not null)
+        {
+            var strings = _project.Graph.Strings
+                .Where(s => s.PanelIdsInSeriesOrder.Any(id => _selectedPanelIds.Contains(id)))
+                .ToList();
+            CtxStringButton.IsEnabled = strings.Count > 0;
+            CtxStringButton.Content = strings.Count == 1
+                ? strings[0].DisplayName
+                : strings.Count > 1 ? $"String ({strings.Count})" : "String";
+            CtxStringButton.Tag = strings;
+        }
+    }
+
+    private void CtxRotate_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var rotateId in _selectedPanelIds.ToList())
+        {
+            var panel = _project.Graph.GetPanel(rotateId);
+            _project.History.Execute(new RotatePanelCommand(
+                _project, rotateId, panel.RotationDegrees, panel.RotationDegrees + 90));
+        }
+        RefreshAll();
+    }
+
+    private void CtxDuplicate_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var id in _selectedPanelIds.ToList())
+            _project.History.Execute(new DuplicatePanelCommand(_project, id));
+        RefreshAll();
+    }
+
+    private void CtxString_Click(object sender, RoutedEventArgs e)
+    {
+        if (CtxStringButton?.Tag is not IEnumerable<PVString> strings) return;
+        var list = strings.ToList();
+        if (list.Count == 0) return;
+
+        if (list.Count == 1)
+        {
+            SetSelection(panels: list[0].PanelIdsInSeriesOrder);
+            return;
+        }
+
+        var menu = new ContextMenu();
+        foreach (var s in list)
+        {
+            var item = new MenuItem { Header = $"{s.DisplayName}  ·  {s.PanelIdsInSeriesOrder.Count} mod" };
+            var capture = s;
+            item.Click += (_, _) => SetSelection(panels: capture.PanelIdsInSeriesOrder);
+            menu.Items.Add(item);
+        }
+
+        menu.PlacementTarget = CtxStringButton;
+        menu.IsOpen = true;
+    }
+
+    private void RefreshAddPalette()
+    {
+        var q = (AddSearchBox?.Text ?? "").Trim();
+        PopulateAddCategory(AddSolarTiles, AddSolarSection, "Solar", q, ShowsPanels);
+        PopulateAddCategory(AddElectricalTiles, AddElectricalSection, "Electrical", q, ShowsEquipment);
+        PopulateAddCategory(AddStructuralTiles, AddStructuralSection, "Structural", q, ShowsRoofGeometry);
+
+        if (AddRecentSection is not null)
+        {
+            AddRecentTiles?.Children.Clear();
+            foreach (var key in _recentAddKeys.Take(6))
+            {
+                if (!TryGetAddCatalogItem(key, out var item)) continue;
+                if (item.Category == "Solar" && !ShowsPanels) continue;
+                if (item.Category == "Electrical" && !ShowsEquipment) continue;
+                if (item.Category == "Structural" && !ShowsRoofGeometry) continue;
+                AddRecentTiles?.Children.Add(CreateAddTile(item));
+            }
+            AddRecentSection.Visibility = string.IsNullOrEmpty(q) && (AddRecentTiles?.Children.Count ?? 0) > 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+    }
+
+    private void RememberAdd(string key)
+    {
+        _recentAddKeys.Remove(key);
+        _recentAddKeys.Insert(0, key);
+        if (_recentAddKeys.Count > 8)
+            _recentAddKeys.RemoveRange(8, _recentAddKeys.Count - 8);
+        if (_uiTool == UiTool.Add)
+            RefreshAddPalette();
+    }
+
+    private sealed record AddCatalogItem(
+        string Key,
+        string Title,
+        string Subtitle,
+        string Glyph,
+        string Category,
+        Action Invoke);
+
+    private IEnumerable<AddCatalogItem> GetAddCatalog()
+    {
+        yield return new("boviet", "Boviet", "270 W module", "▦", "Solar", () => AddBoviet_Click(this, new RoutedEventArgs()));
+        yield return new("g400", "Generic", "400 W module", "▦", "Solar", () => AddGeneric400_Click(this, new RoutedEventArgs()));
+        yield return new("g550", "Generic", "550 W module", "▦", "Solar", () => AddGeneric550_Click(this, new RoutedEventArgs()));
+        yield return new("custom", "Custom", "Custom panel…", "▦", "Solar", () => AddCustom_Click(this, new RoutedEventArgs()));
+        yield return new("combiner", "Combiner", "6-string", "▤", "Electrical", () => AddCombiner_Click(this, new RoutedEventArgs()));
+        yield return new("disconnect", "Disconnect", "DC / PV", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()));
+        yield return new("ypos", "MC4 Y", "Positive", "Y+", "Electrical", () => AddBranchYPos_Click(this, new RoutedEventArgs()));
+        yield return new("yneg", "MC4 Y", "Negative", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
+        yield return new("inv5", "Inverter", "5 kW", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
+        yield return new("inv76", "Inverter", "7.6 kW", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
+        yield return new("battery", "Battery", "Storage", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()));
+        yield return new("batdisc", "Batt disc.", "Battery disconnect", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()));
+        yield return new("acdisc", "AC disc.", "AC disconnect", "⏻", "Electrical", () => AddAcDisconnect_Click(this, new RoutedEventArgs()));
+        yield return new("aclc", "Load center", "AC load center", "☰", "Electrical", () => AddAcLoadCenter_Click(this, new RoutedEventArgs()));
+        yield return new("vent", "Roof vent", "Obstacle", "◇", "Structural", () => AddObstacleMode_Click(this, new RoutedEventArgs()));
+    }
+
+    private bool TryGetAddCatalogItem(string key, out AddCatalogItem item)
+    {
+        item = GetAddCatalog().FirstOrDefault(i => i.Key == key)!;
+        return item is not null;
+    }
+
+    private Button CreateAddTile(AddCatalogItem item)
+    {
+        var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        stack.Children.Add(new TextBlock
+        {
+            Text = item.Glyph,
+            FontSize = 18,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 2, 0, 4),
+        });
+        stack.Children.Add(new TextBlock
+        {
+            Text = item.Title,
+            FontSize = 11.5,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("TextBrush"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        stack.Children.Add(new TextBlock
+        {
+            Text = item.Subtitle,
+            FontSize = 10,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+
+        var btn = new Button
+        {
+            Style = (Style)FindResource("AddTileButton"),
+            Content = stack,
+            Tag = item.Key,
+            ToolTip = $"{item.Title} — {item.Subtitle}",
+        };
+        btn.Click += (_, _) =>
+        {
+            RememberAdd(item.Key);
+            item.Invoke();
+        };
+        return btn;
+    }
+
+    private void AddSearch_TextChanged(object sender, TextChangedEventArgs e) => RefreshAddPalette();
+
+    private void PopulateAddCategory(
+        WrapPanel? panel,
+        FrameworkElement? section,
+        string category,
+        string query,
+        bool allowed)
+    {
+        if (panel is null) return;
+        panel.Children.Clear();
+        if (!allowed)
+        {
+            if (section is not null) section.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        foreach (var item in GetAddCatalog().Where(i => i.Category == category))
+        {
+            if (!string.IsNullOrEmpty(query))
+            {
+                var hay = $"{item.Title} {item.Subtitle} {item.Category}".ToLowerInvariant();
+                if (!hay.Contains(query.ToLowerInvariant())) continue;
+            }
+            panel.Children.Add(CreateAddTile(item));
+        }
+        if (section is not null)
+            section.Visibility = panel.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private static void SetPanelVisible(UIElement? element, bool visible)
@@ -2434,15 +2740,15 @@ public partial class MainWindow : Window
 
     private void Port_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not Ellipse ellipse) return;
+        if (sender is not FrameworkElement element) return;
 
         ElectricalPort? port = null;
 
-        if (ellipse.Tag is Guid overlayPortId)
+        if (element.Tag is Guid overlayPortId)
         {
             port = _project.Graph.GetPort(overlayPortId);
         }
-        else
+        else if (element is Ellipse ellipse)
         {
             var panelVisual = _panelVisuals.Values.FirstOrDefault(v =>
                 ReferenceEquals(v.PositivePort, ellipse) || ReferenceEquals(v.NegativePort, ellipse));
@@ -2873,7 +3179,7 @@ public partial class MainWindow : Window
             Stroke = (Brush)FindResource("AccentBrush"),
             StrokeThickness = 1.5,
             StrokeDashArray = new DoubleCollection { 4, 2 },
-            Fill = new SolidColorBrush(Color.FromArgb(40, 0x2F, 0x6F, 0xED)),
+            Fill = new SolidColorBrush(Color.FromArgb(40, 0xF5, 0x9E, 0x0B)),
             IsHitTestVisible = false,
         };
         Canvas.SetLeft(_marqueeRect, start.X);
@@ -3669,20 +3975,8 @@ public partial class MainWindow : Window
 
     private async void ImportGoogleSolar_Click(object sender, RoutedEventArgs e)
     {
-        var apiKey = GoogleSolarApiKeyStore.TryResolve();
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            var go = MessageBox.Show(this,
-                "No Google API key found.\n\n"
-                + "Open the setup dialog? It includes one-click links to enable Solar API and create a key — then paste it here.\n\n"
-                + "(You can also set env SOLARSIM_GOOGLE_API_KEY.)",
-                "Google Solar",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
-            if (go == MessageBoxResult.Yes)
-                ShowGoogleApiKeyDialog();
-            return;
-        }
+        var apiKey = EnsureGoogleApiKey();
+        if (apiKey is null) return;
 
         var query = GoogleSolarAddressBox?.Text?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(query)
@@ -3703,6 +3997,84 @@ public partial class MainWindow : Window
             return;
         }
 
+        try
+        {
+            double lat;
+            double lon;
+            string label = query;
+            var client = new GoogleSolarClient(apiKey);
+            if (GoogleSolarClient.TryParseLatLon(query, out lat, out lon))
+                label = $"{lat:0.####}, {lon:0.####}";
+            else
+                (lat, lon) = await client.GeocodeAsync(query).ConfigureAwait(true);
+
+            await ImportGoogleSolarAtAsync(apiKey, lat, lon, label).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "GOOGLE SOLAR  |  Import failed";
+            MessageBox.Show(this, ex.Message, "Google Solar import failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void SatelliteMap_Click(object sender, RoutedEventArgs e)
+    {
+        // Map imagery works without a key; geocode + Solar import need one (prompted on Import).
+        var apiKey = GoogleSolarApiKeyStore.TryResolve();
+        var initialQuery = GoogleSolarAddressBox?.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(initialQuery))
+            initialQuery = _project.Site.LocationName;
+
+        double? initLat = _project.Site.LatitudeDegrees;
+        double? initLon = _project.Site.LongitudeDegrees;
+
+        var dialog = new SatelliteMapDialog(apiKey, initialQuery, initLat, initLon)
+        {
+            Owner = this,
+        };
+        if (dialog.ShowDialog() != true
+            || dialog.SelectedLatitude is not double lat
+            || dialog.SelectedLongitude is not double lon)
+            return;
+
+        var key = EnsureGoogleApiKey();
+        if (key is null) return;
+
+        try
+        {
+            await ImportGoogleSolarAtAsync(key, lat, lon, dialog.SelectedLabel).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "GOOGLE SOLAR  |  Import failed";
+            MessageBox.Show(this, ex.Message, "Google Solar import failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private string? EnsureGoogleApiKey()
+    {
+        var apiKey = GoogleSolarApiKeyStore.TryResolve();
+        if (!string.IsNullOrWhiteSpace(apiKey))
+            return apiKey;
+
+        var go = MessageBox.Show(this,
+            "No Google API key found.\n\n"
+            + "Open the setup dialog? It includes one-click links to enable Solar API and create a key — then paste it here.\n\n"
+            + "(You can also set env SOLARSIM_GOOGLE_API_KEY.)",
+            "Google Solar",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+        if (go == MessageBoxResult.Yes)
+            ShowGoogleApiKeyDialog();
+
+        apiKey = GoogleSolarApiKeyStore.TryResolve();
+        return string.IsNullOrWhiteSpace(apiKey) ? null : apiKey;
+    }
+
+    private async Task ImportGoogleSolarAtAsync(string apiKey, double lat, double lon, string label)
+    {
         if (_project.Roofs.Roofs.Count > 0)
         {
             var confirm = MessageBox.Show(this,
@@ -3714,37 +4086,20 @@ public partial class MainWindow : Window
         }
 
         StatusText.Text = "GOOGLE SOLAR  |  Requesting building insights…";
-        try
-        {
-            var client = new GoogleSolarClient(apiKey);
-            double lat;
-            double lon;
-            string label = query;
-            if (GoogleSolarClient.TryParseLatLon(query, out lat, out lon))
-            {
-                label = $"{lat:0.####}, {lon:0.####}";
-            }
-            else
-            {
-                (lat, lon) = await client.GeocodeAsync(query).ConfigureAwait(true);
-            }
+        var client = new GoogleSolarClient(apiKey);
+        var insights = await client.FindClosestBuildingAsync(lat, lon).ConfigureAwait(true);
+        var import = GoogleSolarClient.BuildRoofImport(insights, label);
+        GoogleSolarClient.ApplyToProject(_project, import, label);
+        if (GoogleSolarAddressBox is not null
+            && string.IsNullOrWhiteSpace(GoogleSolarAddressBox.Text))
+            GoogleSolarAddressBox.Text = label;
 
-            var insights = await client.FindClosestBuildingAsync(lat, lon).ConfigureAwait(true);
-            var import = GoogleSolarClient.BuildRoofImport(insights, label);
-            GoogleSolarClient.ApplyToProject(_project, import, label);
-            UpdateSiteFieldBoxes();
-            _workspacePlan = WorkspacePlan.Roof;
-            ApplyWorkspacePlanUi();
-            RefreshAll();
-            StatusText.Text = $"GOOGLE SOLAR  |  {import.Summary}";
-            MessageBox.Show(this, import.Summary, "Google Solar", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = "GOOGLE SOLAR  |  Import failed";
-            MessageBox.Show(this, ex.Message, "Google Solar import failed",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
+        UpdateSiteFieldBoxes();
+        _workspacePlan = WorkspacePlan.Roof;
+        ApplyWorkspacePlanUi();
+        RefreshAll();
+        StatusText.Text = $"GOOGLE SOLAR  |  {import.Summary}";
+        MessageBox.Show(this, import.Summary, "Google Solar", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private string? PromptText(string title, string message, string defaultValue)
@@ -3835,16 +4190,14 @@ public partial class MainWindow : Window
 
     private void SingleLine_Click(object sender, RoutedEventArgs e)
     {
-        InspectorHeading.Text = "SINGLE-LINE";
-        InspectorBody.Text = _project.BuildSingleLineSummary();
+        ShowInspectorDump("Single-Line", _project.BuildSingleLineSummary());
     }
 
     private void BomSchedule_Click(object sender, RoutedEventArgs e)
     {
         // Refresh wire lengths from current canvas geometry first.
         RebuildWireVisuals();
-        InspectorHeading.Text = "BOM / WIRE SCHEDULE";
-        InspectorBody.Text = _project.BuildBomSchedule().ToPlainText();
+        ShowInspectorDump("BOM / Wire Schedule", _project.BuildBomSchedule().ToPlainText());
     }
 
     private void ExportReport_Click(object sender, RoutedEventArgs e)
@@ -4320,7 +4673,7 @@ public partial class MainWindow : Window
                         {
                             Points = insetPoints,
                             Fill = Brushes.Transparent,
-                            Stroke = new SolidColorBrush(Color.FromArgb(180, 0x2F, 0x6F, 0xED)),
+                            Stroke = new SolidColorBrush(Color.FromArgb(180, 0xF5, 0x9E, 0x0B)),
                             StrokeThickness = 1.5,
                             StrokeDashArray = new DoubleCollection { 6, 4 },
                             IsHitTestVisible = false,
@@ -4680,7 +5033,7 @@ public partial class MainWindow : Window
             : (Brush)FindResource("AccentBrush");
         _roofCloseMarker.Fill = closing
             ? new SolidColorBrush(Color.FromArgb(60, 0x2E, 0x7D, 0x32))
-            : new SolidColorBrush(Color.FromArgb(40, 0x2F, 0x6F, 0xED));
+            : new SolidColorBrush(Color.FromArgb(40, 0xF5, 0x9E, 0x0B));
         Canvas.SetLeft(_roofCloseMarker, fx - size / 2);
         Canvas.SetTop(_roofCloseMarker, fy - size / 2);
 
@@ -4747,7 +5100,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var guideColor = new SolidColorBrush(Color.FromArgb(180, 0x2F, 0x6F, 0xED));
+        var guideColor = new SolidColorBrush(Color.FromArgb(180, 0xF5, 0x9E, 0x0B));
         var orthoColor = new SolidColorBrush(Color.FromArgb(160, 0x2E, 0x7D, 0x32));
 
         // Vertical alignment guide (same X as an earlier corner — even left/right sides).

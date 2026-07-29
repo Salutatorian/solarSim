@@ -28,6 +28,7 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 | 2.1 | Detailed monthly production (C#) | done | 10 |
 | 2.2 | Optional Python/pvlib bridge | done | — |
 | 2.3 | Combined plan + dark CAD HUD | done | — |
+| 2.4 | Satellite house picker (WPF) | done | — |
 
 \*Multi-roof + units landed with / around schema 5.
 
@@ -116,6 +117,12 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Dark CAD HUD theme by default; **Light** / **Dark** toggle in the top bar
 - Design aid only — not a stamped permit package
 
+### 2.4 — Satellite house picker (WPF)
+- **Satellite map…** (Roof rail + empty state): WebView2 + Leaflet Esri World Imagery
+- Search address (Geocoding) or paste lat,lon → click house → pin → **Import this building**
+- Feeds existing Google Solar `buildingInsights` roof import (API key still required for import)
+- Full Cesium for Unity 3D site remains later roadmap
+
 ---
 
 ## UX / stability notes (not separate phases)
@@ -126,6 +133,8 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - **Autosave:** every project change debounced-saves to `%LOCALAPPDATA%\solarSim\projects\` (or the open `.solarproj` path)
 - **Canvas-first shell (UX refactor):** narrow tool rail, contextual Roof/Panel/Wire bars, Add palette, Layers drawer, Roof / Equipment / System tabs, soft empty state, dot grid — electrical engine unchanged
 - **Canva-style layout:** icon+label left rail, expandable left tool panel, canvas as hero on dark stage, Properties inspector on demand, top File/workspace tabs + bottom zoom bar
+- **UI identity pass:** drop Canva naming; neutral charcoal + amber theme; WindowChrome title bar; 48px icon-only rail; row-based inspector; thinner wires; no blue selection glow; structured bottom HUD; contextual site/racking panels; semantic zoom on modules
+- **MC4 / Add / selection chrome:** distinctive male/female MC4 glyphs + mated wire nodes; searchable Add tile palette with Recent; floating rotate/duplicate/string toolbar above selection
 
 ---
 
@@ -133,7 +142,7 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 
 | Item | Notes |
 |------|--------|
-| Cesium site context | Likely Unity-oriented |
+| Cesium for Unity 3D site | Later; WPF satellite picker (2.4) covers mark-house now |
 | Unity roof/equipment parity | WPF is currently ahead |
 | Full TMY / bankable pvlib | Optional bridge is clearsky-only |
 
@@ -156,5 +165,5 @@ Launch entry points: `Launch-solarSim.bat` (WPF), `Launch-Unity.bat` (Unity lab)
 | Field | Value |
 |-------|--------|
 | Changelog created | 2026-07-29 |
-| Last phase recorded | 2.3 Combined plan + dark CAD HUD |
+| Last phase recorded | 2.4 Satellite house picker (WPF) |
 | Maintainer note | Keep this file updated when shipping a new numbered phase |

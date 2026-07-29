@@ -33,13 +33,14 @@ public sealed class SolarPanelInstance : IElectricalComponent
         RotationDegrees = NormalizeRotation(rotationDegrees);
         VisualMode = visualMode;
 
+        // Mechanical gender is data, not polarity. Defaults match common module lead interfaces.
         PositivePort = positivePort ?? new ElectricalPort(
             Guid.NewGuid(),
             id,
             PortType.PVPositive,
             Polarity.Positive,
             "MC4-compatible",
-            ConnectorInterface.Unspecified);
+            ConnectorInterface.Male);
 
         NegativePort = negativePort ?? new ElectricalPort(
             Guid.NewGuid(),
@@ -47,7 +48,7 @@ public sealed class SolarPanelInstance : IElectricalComponent
             PortType.PVNegative,
             Polarity.Negative,
             "MC4-compatible",
-            ConnectorInterface.Unspecified);
+            ConnectorInterface.Female);
 
         if (PositivePort.OwnerComponentId != id || NegativePort.OwnerComponentId != id)
             throw new ArgumentException("Port owner must match panel instance id.");
