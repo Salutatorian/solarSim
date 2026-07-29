@@ -242,6 +242,11 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 ### Equipment plan tool rail (`0.1.14`)
 - Equipment plan hides Select / Wire / Measure (placement planner only); Roof keeps measure and wiring tools
 
+### Smart wiring + battery ports (`0.1.15`)
+- Obstacle-aware ortho routing around equipment bounds (no cables through gear)
+- Selected wires show Canva-style white segment handles for H/V run dragging
+- Tall battery terminals on top; battery↔disconnect allowed on IN± or OUT±
+
 ---
 
 ## How to verify for submission

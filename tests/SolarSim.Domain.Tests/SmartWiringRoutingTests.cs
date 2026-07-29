@@ -96,6 +96,34 @@ public class SmartWiringRoutingTests
         AssertAxisAligned(pts);
     }
 
+    [Fact]
+    public void Route_around_stacked_equipment_avoids_body_centers()
+    {
+        var top = new PvRect(0, 0, 100, 200);
+        var bot = new PvRect(0, 240, 100, 440);
+        var start = new PvVec2(30, 200); // bottom edge of top unit
+        var end = new PvVec2(70, 240);   // top edge of bottom unit
+
+        var route = PvWireRouting.Route(
+            start, new PvVec2(0, 1),
+            end, new PvVec2(0, -1),
+            top, bot,
+            new[] { top, bot },
+            manualWaypoints: null);
+
+        AssertAxisAligned(route.PathPoints);
+        // Interior samples must not sit deep inside either body.
+        for (var i = 1; i < route.PathPoints.Count - 1; i++)
+        {
+            var p = route.PathPoints[i];
+            Assert.False(StrictInside(p, top.Inflate(-8)), $"point {p} inside top body");
+            Assert.False(StrictInside(p, bot.Inflate(-8)), $"point {p} inside bottom body");
+        }
+    }
+
+    private static bool StrictInside(PvVec2 p, PvRect r) =>
+        p.X > r.Left && p.X < r.Right && p.Y > r.Top && p.Y < r.Bottom;
+
     private static void AssertAxisAligned(IReadOnlyList<PvVec2> pts)
     {
         for (var i = 1; i < pts.Count; i++)

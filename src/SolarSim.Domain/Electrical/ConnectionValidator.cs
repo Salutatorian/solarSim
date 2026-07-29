@@ -204,13 +204,14 @@ public static class ConnectionValidator
 
         if (otherOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.BatteryDisconnect })
         {
-            if (!otherPort.Label.StartsWith("IN", StringComparison.OrdinalIgnoreCase)
-                || !batteryPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
+            var discSide = otherPort.Label.StartsWith("IN", StringComparison.OrdinalIgnoreCase)
+                           || otherPort.Label.StartsWith("OUT", StringComparison.OrdinalIgnoreCase);
+            if (!discSide || !batteryPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
             {
                 result.AddError(
-                    "BATTERY_DISCONNECT_IN",
+                    "BATTERY_DISCONNECT_SIDE",
                     "Battery disconnect",
-                    "Wire the battery to the disconnect IN+ / IN− terminals (top).",
+                    "Wire the battery to the disconnect IN± or OUT± terminals (top or bottom — use the nearer side).",
                     start.OwnerComponentId, end.OwnerComponentId);
             }
 
@@ -220,7 +221,7 @@ public static class ConnectionValidator
         result.AddError(
             "BATTERY_PATH",
             "Battery wiring",
-            "Battery cables connect to an inverter BAT± or a battery disconnect IN±.",
+            "Battery cables connect to an inverter BAT± or a battery disconnect IN± / OUT±.",
             start.OwnerComponentId, end.OwnerComponentId);
     }
 

@@ -248,12 +248,60 @@ public static class PvWireRouting
             };
             best = candidates
                 .Select(Orthogonalize)
-                .OrderBy(PolyLength)
+                .OrderBy(p => PolyLength(p) + ObstacleCrossingPenalty(p, startPanel, endPanel, obstacles) * 50_000)
                 .First();
         }
 
         return FinishOrtho(PvWireRouteType.Orthogonal, start, end, best);
     }
+
+    /// <summary>
+    /// Heavy penalty when a path's interior runs through equipment (not just grazing endpoint bodies).
+    /// </summary>
+    private static double ObstacleCrossingPenalty(
+        IReadOnlyList<PvVec2> path,
+        PvRect? startPanel,
+        PvRect? endPanel,
+        IReadOnlyList<PvRect> obstacles)
+    {
+        double penalty = 0;
+        for (var i = 0; i < path.Count - 1; i++)
+        {
+            var a = path[i];
+            var b = path[i + 1];
+            // Skip tiny exit stubs near ports (first/last segment).
+            if (i == 0 || i == path.Count - 2)
+                continue;
+
+            var mid = new PvVec2((a.X + b.X) * 0.5, (a.Y + b.Y) * 0.5);
+            var samples = new[] { mid, a * 0.25 + b * 0.75, a * 0.75 + b * 0.25 };
+            foreach (var sample in samples)
+            {
+                if (startPanel is PvRect sp && PointStrictlyInside(sample, sp.Inflate(-2)))
+                    penalty += 1;
+                if (endPanel is PvRect ep && PointStrictlyInside(sample, ep.Inflate(-2)))
+                    penalty += 1;
+                foreach (var o in obstacles)
+                {
+                    if (startPanel is PvRect s && AlmostEqualRect(o, s)) continue;
+                    if (endPanel is PvRect e && AlmostEqualRect(o, e)) continue;
+                    if (PointStrictlyInside(sample, o))
+                        penalty += 2;
+                }
+            }
+        }
+
+        return penalty;
+    }
+
+    private static bool PointStrictlyInside(PvVec2 p, PvRect r) =>
+        p.X > r.Left && p.X < r.Right && p.Y > r.Top && p.Y < r.Bottom;
+
+    private static bool AlmostEqualRect(PvRect a, PvRect b) =>
+        AlmostEqual(a.Left, b.Left)
+        && AlmostEqual(a.Top, b.Top)
+        && AlmostEqual(a.Right, b.Right)
+        && AlmostEqual(a.Bottom, b.Bottom);
 
     private static PvWireRouteResult FinishOrtho(
         PvWireRouteType type,
