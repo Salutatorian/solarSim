@@ -275,6 +275,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Root cause: custom ScrollBar/ScrollViewer/ComboBox ControlTemplates aborted Application.Resources mid-load, so later styles (`FieldLabel`, etc.) never registered — home screen crashed
 - Removed those templates; keep simple ScrollBar/ComboBox setters; move FieldLabel/SectionLabel with core chrome styles
 
+### Duplicate ComboBox crash (`0.1.23`)
+- Remove second implicit `ComboBox` style that hard-crashed startup (`Item has already been added`)
+
 ---
 
 ## How to verify for submission

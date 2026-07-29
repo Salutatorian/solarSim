@@ -1,11 +1,9 @@
-solarSim 0.1.22
+solarSim 0.1.23
 Released: 2026-07-30
 
-Startup fix (real one)
-• Home screen was crashing on missing FieldLabel — styles after the custom ScrollBar/ComboBox templates never loaded
-• Removed those ControlTemplates (they aborted App.Resources mid-load)
-• FieldLabel / SectionLabel now load with the other core chrome styles
+Crash fix
+• Removed duplicate ComboBox style that hard-crashed on launch
 
 Earlier
-• 0.1.21 — TitleBarButton workaround
-• 0.1.20 — dialog chrome polish
+• 0.1.22 — FieldLabel / App.Resources load fix
+• 0.1.21 — title-bar style workaround
