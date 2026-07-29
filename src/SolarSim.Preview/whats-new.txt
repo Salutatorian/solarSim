@@ -1,9 +1,12 @@
-solarSim 0.1.23
+solarSim 0.1.24
 Released: 2026-07-30
 
-Crash fix
-• Removed duplicate ComboBox style that hard-crashed on launch
+Stability
+• CI + unit tests now reject duplicate App.xaml styles / missing StaticResource keys (the ComboBox crash class)
+• Confirmed clean resource dictionary; home screen launches
+
+Use this build (or newer). Delete old unzipped folders from 0.1.20–0.1.22.
 
 Earlier
+• 0.1.23 — remove duplicate ComboBox style
 • 0.1.22 — FieldLabel / App.Resources load fix
-• 0.1.21 — title-bar style workaround

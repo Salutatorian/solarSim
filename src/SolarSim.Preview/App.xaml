@@ -181,7 +181,7 @@
             </Setter>
         </Style>
 
-        <!-- Chrome styles must stay above ScrollBar/ComboBox overrides so StartupUri never misses them -->
+        <!-- Home / dialog chrome styles — keep before any control overrides -->
         <Style x:Key="TitleBarButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
             <Setter Property="Width" Value="40"/>
             <Setter Property="Height" Value="32"/>
@@ -357,7 +357,7 @@
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
-        <!-- Slim scrollbars: setters only — full ControlTemplates broke App.Resources mid-load -->
+        <!-- Narrow scrollbar chrome only — do not replace ScrollBar/ComboBox ControlTemplates here -->
         <Style TargetType="ScrollBar">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Width" Value="10"/>

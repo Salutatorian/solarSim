@@ -278,6 +278,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 ### Duplicate ComboBox crash (`0.1.23`)
 - Remove second implicit `ComboBox` style that hard-crashed startup (`Item has already been added`)
 
+### XAML resource guards (`0.1.24`)
+- Unit tests + `Tools/Validate-XamlResources.ps1` (wired into Release CI) fail the build on duplicate App.xaml keys/implicit styles or missing StaticResource references
+
 ---
 
 ## How to verify for submission
