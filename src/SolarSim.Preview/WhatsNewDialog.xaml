@@ -28,7 +28,8 @@
                     BorderThickness="0,0,0,1">
                 <DockPanel Margin="14,0,6,0">
                     <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource DialogChromeButton}"
-                            Click="Ok_Click" ToolTip="Close"/>
+                            Click="Ok_Click" ToolTip="Close"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Image Style="{StaticResource AppLogoMark}" Width="18" Height="18" Margin="0,0,8,0"
                                VerticalAlignment="Center"/>

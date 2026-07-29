@@ -267,6 +267,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Dialogs (Settings / What's new / About / Custom panel / Satellite map) use borderless dark chrome instead of the OS white title bar
 - ComboBox + dropdown items restyled to match the CAD HUD
 
+### Startup resource fix (`0.1.21`)
+- Fix launch crash: missing `TitleBarButton` style (chrome styles now load before ScrollBar/ComboBox overrides)
+- Startup XAML failures shut down cleanly instead of a fake "recovered" dialog
+
 ---
 
 ## How to verify for submission

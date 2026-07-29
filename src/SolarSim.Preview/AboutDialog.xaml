@@ -27,7 +27,8 @@
                     BorderThickness="0,0,0,1">
                 <DockPanel Margin="14,0,6,0">
                     <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource DialogChromeButton}"
-                            Click="Ok_Click" ToolTip="Close"/>
+                            Click="Ok_Click" ToolTip="Close"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <TextBlock Text="About" FontFamily="{StaticResource DisplayFont}" FontSize="13"
                                FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
                                VerticalAlignment="Center"/>

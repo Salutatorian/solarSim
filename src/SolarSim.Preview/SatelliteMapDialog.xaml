@@ -46,7 +46,8 @@
                                Foreground="{DynamicResource MutedBrush}" FontSize="12.5" Margin="16,0,8,0"
                                Text="Loading map…"/>
                     <Button Grid.Column="3" Content="✕" Style="{StaticResource DialogChromeButton}"
-                            Click="Cancel_Click" ToolTip="Close" VerticalAlignment="Center"/>
+                            Click="Cancel_Click" ToolTip="Close" VerticalAlignment="Center"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </Grid>
             </Border>
 

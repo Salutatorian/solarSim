@@ -28,9 +28,11 @@
                                FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="─" Style="{StaticResource TitleBarButton}" Click="Minimize_Click"
+                    <Button Content="─" Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
+                            FontSize="12" Click="Minimize_Click"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button Content="✕" Style="{StaticResource TitleBarButton}" Click="Close_Click"
+                    <Button Content="✕" Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
+                            FontSize="12" Click="Close_Click"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </StackPanel>
             </Grid>

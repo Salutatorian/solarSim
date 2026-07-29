@@ -1,12 +1,11 @@
-solarSim 0.1.20
+solarSim 0.1.21
 Released: 2026-07-30
 
-UI chrome polish
-• Slim theme-aware scrollbars (no more chunky Windows system bars)
-• Settings, What's new, About, Custom panel, and Satellite map use dark borderless chrome
-• ComboBox dropdowns match the dark CAD look
+Startup fix
+• Fixed missing style crash on launch ("Cannot find resource named TitleBarButton")
+• Title / dialog chrome styles load before other UI overrides
+• Startup XAML failures no longer pretend to "recover"
 
 Earlier
-• 0.1.19 — spawn panels/equipment at viewport center
-• 0.1.18 — panel string wires on zoom
-• 0.1.17 — equipment wire zoom fix, free rotate, port labels
+• 0.1.20 — slim scrollbars + dark dialog chrome
+• 0.1.19 — spawn at viewport center

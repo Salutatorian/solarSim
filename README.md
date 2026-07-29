@@ -45,9 +45,11 @@ Launch-solarSim.bat
 
 Public beta builds ship on every `v*` tag:
 
-1. Open [Releases](https://github.com/Salutatorian/solarSim/releases) (latest: **v0.1.20**)
+1. Open [Releases](https://github.com/Salutatorian/solarSim/releases) (latest: **v0.1.21**)
 2. Download `solarSim-<version>-win-x64.zip`
 3. Unzip and run `solarSim.exe`
+
+Windows may show **SmartScreen / Defender** warnings because builds are not Authenticode-signed yet. That is expected for a new open-source `.exe`. Choose **More info → Run anyway**, or allow the folder under Windows Security. The app only contacts GitHub Releases for updates; projects stay local.
 4. Optional: ⋯ → **About solarSim…** for disclaimer + WebView2 note
 
 **Requirements:** Windows 10/11 x64 · [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (for **Trace roof on map**)

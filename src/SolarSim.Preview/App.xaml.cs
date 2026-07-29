@@ -13,6 +13,24 @@ public partial class App : System.Windows.Application
         {
             var detail = FormatException(e.Exception);
             TryWriteCrashLog(detail);
+
+            // Startup XAML failures leave a half-built UI — don't pretend we recovered.
+            var isStartupXaml = e.Exception is System.Windows.Markup.XamlParseException
+                                && MainWindow is null
+                                && Windows.Count == 0;
+            if (isStartupXaml)
+            {
+                MessageBox.Show(
+                    $"solarSim failed to start:\n\n{InnermostMessage(e.Exception)}\n\n" +
+                    $"Details saved to:\n{CrashLogPath()}",
+                    "solarSim",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                e.Handled = true;
+                Shutdown(1);
+                return;
+            }
+
             MessageBox.Show(
                 $"solarSim hit an error and recovered:\n\n{InnermostMessage(e.Exception)}\n\n" +
                 $"({RootTypeName(e.Exception)})\n\nDetails saved to:\n{CrashLogPath()}",

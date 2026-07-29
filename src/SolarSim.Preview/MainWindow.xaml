@@ -36,7 +36,7 @@
                            VerticalAlignment="Center"/>
                     <TextBlock Text="solarSim" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold"
                                FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="AppVersionLabel" Text="0.1.20" Foreground="{DynamicResource MutedBrush}"
+                    <TextBlock x:Name="AppVersionLabel" Text="0.1.21" Foreground="{DynamicResource MutedBrush}"
                                FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBlock Text="design aid" Foreground="{DynamicResource MutedBrush}" FontSize="11"
                                VerticalAlignment="Center" Margin="0,0,14,0" Opacity="0.85"
@@ -101,11 +101,14 @@
                     <Button x:Name="DeleteButton" Visibility="Collapsed" Click="Delete_Click"/>
                 </StackPanel>
                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Stretch">
-                    <Button Content="─" Style="{StaticResource TitleBarButton}" Click="Minimize_Click"
+                    <Button Content="─" Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
+                            FontSize="12" Click="Minimize_Click"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button x:Name="MaximizeButton" Content="□" Style="{StaticResource TitleBarButton}" Click="Maximize_Click"
+                    <Button x:Name="MaximizeButton" Content="□" Style="{StaticResource GhostButton}" Width="40" Height="32"
+                            Padding="0" FontSize="12" Click="Maximize_Click"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button Content="✕" Style="{StaticResource TitleBarButton}" Click="CloseWindow_Click"
+                    <Button Content="✕" Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
+                            FontSize="12" Click="CloseWindow_Click"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </StackPanel>
             </Grid>
