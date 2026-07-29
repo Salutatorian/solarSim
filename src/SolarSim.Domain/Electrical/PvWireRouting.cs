@@ -182,7 +182,15 @@ public static class PvWireRouting
         double laneOffset)
     {
         var dist = start.DistanceTo(end);
-        var exitDist = Clamp(dist * 0.22, 10, 28);
+        var exitDist = Clamp(dist * 0.18, 8, 22);
+
+        var towardEnd = DominantAxis(end - start);
+        var towardStart = DominantAxis(start - end);
+        if (towardEnd.Length() >= 0.5 && Dot(startExit, towardEnd) < -0.1)
+            startExit = towardEnd;
+        if (towardStart.Length() >= 0.5 && Dot(endExit, towardStart) < -0.1)
+            endExit = towardStart;
+
         var s1 = start + startExit * exitDist;
         var s2 = end + endExit * exitDist;
 
@@ -205,7 +213,8 @@ public static class PvWireRouting
             {
                 start, s1, new PvVec2(midX, s1.Y), new PvVec2(midX, s2.Y), s2, end,
             });
-            raw = PolyLength(viaY) <= PolyLength(viaX) ? viaY : viaX;
+            var direct = Orthogonalize(new[] { start, s1, s2, end });
+            raw = new[] { viaY, viaX, direct }.OrderBy(PolyLength).First();
             return FinishOrtho(PvWireRouteType.Orthogonal, start, end, raw);
         }
 
@@ -224,39 +233,86 @@ public static class PvWireRouting
         double laneOffset)
     {
         var dist = start.DistanceTo(end);
-        var exitDist = Clamp(dist * 0.12, 14, 32);
-        var aisle = Clamp(dist * 0.08, 20, 48);
+        var exitDist = Clamp(dist * 0.10, 8, 24);
+        var aisle = Clamp(dist * 0.06, 12, 36);
+
+        // Keep outward stubs, but flip when they point away from the peer so we
+        // leave the port into the gap instead of marching the long way around.
+        var towardEnd = DominantAxis(end - start);
+        var towardStart = DominantAxis(start - end);
+        if (towardEnd.Length() >= 0.5 && Dot(startExit, towardEnd) < -0.1)
+            startExit = towardEnd;
+        if (towardStart.Length() >= 0.5 && Dot(endExit, towardStart) < -0.1)
+            endExit = towardStart;
 
         var s1 = start + startExit * exitDist;
         var s2 = end + endExit * exitDist;
 
-        // Bounds for gutter choice = endpoints only. Other gear is scored as a
-        // crossing penalty — do NOT union every panel into one mega-box (that made
-        // zoomed-out strings route around the entire array with floating mid-runs).
-        var bounds = UnionBounds(startPanel, endPanel, Array.Empty<PvRect>());
-        List<PvVec2> best;
-        if (bounds is null)
+        var candidates = new List<List<PvVec2>>
         {
-            best = Orthogonalize(new[] { start, s1, s2, end });
-        }
-        else
-        {
-            var u = bounds.Value;
-            var candidates = new[]
+            // Shortest ortho through the stubs (prefer this for facing ports).
+            new() { start, s1, s2, end },
+            new()
             {
-                GutterViaY(start, s1, s2, end, u.Top - aisle + laneOffset),
-                GutterViaY(start, s1, s2, end, u.Bottom + aisle + laneOffset),
-                GutterViaX(start, s1, s2, end, u.Left - aisle + laneOffset),
-                GutterViaX(start, s1, s2, end, u.Right + aisle + laneOffset),
-            };
-            best = candidates
-                .Select(Orthogonalize)
-                .OrderBy(p => PolyLength(p) + ObstacleCrossingPenalty(p, startPanel, endPanel, obstacles) * 50_000)
-                .First();
+                start, s1,
+                new PvVec2(s1.X, (s1.Y + s2.Y) * 0.5 + laneOffset),
+                new PvVec2(s2.X, (s1.Y + s2.Y) * 0.5 + laneOffset),
+                s2, end,
+            },
+            new()
+            {
+                start, s1,
+                new PvVec2((s1.X + s2.X) * 0.5 + laneOffset, s1.Y),
+                new PvVec2((s1.X + s2.X) * 0.5 + laneOffset, s2.Y),
+                s2, end,
+            },
+        };
+
+        // Corridor in the open gap between the two bodies (battery↔disconnect).
+        if (startPanel is PvRect a && endPanel is PvRect b)
+        {
+            var gapY = VerticalGap(a, b);
+            if (gapY > 2)
+            {
+                var midY = a.Bottom < b.Top
+                    ? (a.Bottom + b.Top) * 0.5 + laneOffset
+                    : (b.Bottom + a.Top) * 0.5 + laneOffset;
+                candidates.Add(GutterViaY(start, s1, s2, end, midY));
+            }
+
+            var gapX = HorizontalGap(a, b);
+            if (gapX > 2)
+            {
+                var midX = a.Right < b.Left
+                    ? (a.Right + b.Left) * 0.5 + laneOffset
+                    : (b.Right + a.Left) * 0.5 + laneOffset;
+                candidates.Add(GutterViaX(start, s1, s2, end, midX));
+            }
         }
 
+        // Outer gutters — fallback when the short paths cross a body.
+        var bounds = UnionBounds(startPanel, endPanel, Array.Empty<PvRect>());
+        if (bounds is PvRect u)
+        {
+            candidates.Add(GutterViaY(start, s1, s2, end, u.Top - aisle + laneOffset));
+            candidates.Add(GutterViaY(start, s1, s2, end, u.Bottom + aisle + laneOffset));
+            candidates.Add(GutterViaX(start, s1, s2, end, u.Left - aisle + laneOffset));
+            candidates.Add(GutterViaX(start, s1, s2, end, u.Right + aisle + laneOffset));
+        }
+
+        if (candidates.Count == 0)
+            candidates.Add(new List<PvVec2> { start, s1, s2, end });
+
+        var best = candidates
+            .Select(Orthogonalize)
+            .OrderBy(p => PolyLength(p) + ObstacleCrossingPenalty(p, startPanel, endPanel, obstacles) * 50_000)
+            .First();
+
+        best = ApplyLaneOffset(best, laneOffset);
         return FinishOrtho(PvWireRouteType.Orthogonal, start, end, best);
     }
+
+    private static double Dot(PvVec2 a, PvVec2 b) => a.X * b.X + a.Y * b.Y;
 
     /// <summary>
     /// Heavy penalty when a path's interior runs through equipment (not just grazing endpoint bodies).

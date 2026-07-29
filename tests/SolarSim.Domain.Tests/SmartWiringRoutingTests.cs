@@ -122,6 +122,32 @@ public class SmartWiringRoutingTests
     }
 
     [Fact]
+    public void Facing_ports_across_gap_take_short_corridor_not_outer_loop()
+    {
+        // Battery below disconnect: top BAT → bottom OUT across a small gap.
+        var disc = new PvRect(40, 0, 140, 220);
+        var battery = new PvRect(20, 260, 160, 520);
+        var start = new PvVec2(80, 260);  // battery top
+        var end = new PvVec2(100, 220); // disconnect bottom OUT
+
+        var route = PvWireRouting.Route(
+            start, new PvVec2(0, -1),
+            end, new PvVec2(0, 1),
+            battery, disc,
+            new[] { battery, disc },
+            manualWaypoints: null);
+
+        AssertAxisAligned(route.PathPoints);
+        var manhattan = Math.Abs(end.X - start.X) + Math.Abs(end.Y - start.Y);
+        Assert.True(
+            route.ApproximateLength < manhattan * 2.5 + 40,
+            $"route too long ({route.ApproximateLength}); expected ~{manhattan} via the gap");
+        // Must not climb above the disconnect (the old outer-top gutter).
+        Assert.All(route.PathPoints, p => Assert.True(p.Y >= -8, $"wandered above gear: {p}"));
+        Assert.All(route.PathPoints, p => Assert.True(p.Y <= 280, $"wandered below battery top: {p}"));
+    }
+
+    [Fact]
     public void Route_between_neighbors_stays_local_despite_far_obstacles()
     {
         var a = new PvRect(0, 0, 40, 60);

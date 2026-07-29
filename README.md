@@ -45,7 +45,7 @@ Launch-solarSim.bat
 
 Public beta builds ship on every `v*` tag:
 
-1. Open [Releases](https://github.com/Salutatorian/solarSim/releases) (latest: **v0.1.27**)
+1. Open [Releases](https://github.com/Salutatorian/solarSim/releases) (latest: **v0.1.28**)
 2. Download `solarSim-<version>-win-x64.zip`
 3. Unzip and run `solarSim.exe`
 

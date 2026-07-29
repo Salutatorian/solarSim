@@ -298,6 +298,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Slimmer, quieter scrollbar chrome
 - Update check explains when a GitHub release exists but the Windows zip is still uploading
 
+### Short clean equipment wires (`0.1.28`)
+- Auto-route prefers the short gap corridor between facing ports (battery↔disconnect) instead of looping around the outside of both boxes
+- Still avoids crossing other component bodies; outer gutters remain as fallback
+
 ---
 
 ## How to verify for submission
