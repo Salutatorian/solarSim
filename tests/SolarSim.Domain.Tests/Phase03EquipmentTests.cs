@@ -94,6 +94,21 @@ public class Phase03EquipmentTests
     }
 
     [Fact]
+    public void Equipment_custom_size_roundtrips_in_project_file()
+    {
+        var project = new SolarProject();
+        var disconnect = project.AddPvDisconnect(3000, 2000);
+        disconnect.SetSize(320, 640);
+        var json = SolarProjectSerializer.Serialize(project);
+        var loaded = SolarProjectSerializer.Deserialize(json);
+
+        var roundTripped = loaded.Graph.Equipment[disconnect.Id];
+        Assert.Equal(320, roundTripped.WidthMm, 1);
+        Assert.Equal(640, roundTripped.HeightMm, 1);
+        Assert.Equal("Solar Disconnect", disconnect.Name);
+    }
+
+    [Fact]
     public void Project_voltage_drop_helper_returns_result_for_wire()
     {
         var project = new SolarProject();

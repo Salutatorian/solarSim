@@ -1,15 +1,15 @@
-solarSim 0.1.12
-Released: 2026-07-30 06:38
+solarSim 0.1.13
+Released: 2026-07-30 07:00
 
-Update toast
-• No live percentage in the mini toast (that was causing the vibrate/jitter)
-• Toast stays a fixed size with static Update / Cancel (or Installing…) text
-• Progress % only in Settings, with a stable fixed-width label
+Equipment
+• Resize any selected equipment with the corner handle (Shift keeps aspect)
+• Battery / solar disconnect defaults are a bit smaller so they don’t dominate the plan
+• Custom sizes save in your .solarproj
 
-What's new
-• Shows once after you open a project — Got it dismisses it for this version
-• Will only appear again after a future update
+Naming
+• “DC isolator” is now labeled Solar disconnect (same PV array disconnect)
 
 Earlier
-• 0.1.11 — What's new after Home when you open a project
+• 0.1.12 — toast jitter fix + What’s new once per version
+• 0.1.11 — What’s new after Home when you open a project
 • 0.1.10 — Update auto-installs at 100%

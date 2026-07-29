@@ -81,6 +81,10 @@ public sealed class EquipmentDto
     public double PositionXMm { get; set; }
     public double PositionYMm { get; set; }
     public double RotationDegrees { get; set; }
+    /// <summary>0 = use kind default size on load.</summary>
+    public double WidthMm { get; set; }
+    /// <summary>0 = use kind default size on load.</summary>
+    public double HeightMm { get; set; }
     public int StringInputCount { get; set; }
     public int RatedAmps { get; set; }
     public string CatalogSeries { get; set; } = "";
@@ -615,6 +619,8 @@ public static class SolarProjectSerializer
         PositionXMm = e.PositionXMm,
         PositionYMm = e.PositionYMm,
         RotationDegrees = e.RotationDegrees,
+        WidthMm = e.WidthMm,
+        HeightMm = e.HeightMm,
         StringInputCount = e.StringInputCount,
         RatedAmps = e.RatedAmps,
         CatalogSeries = e.CatalogSeries,
@@ -665,28 +671,32 @@ public static class SolarProjectSerializer
 
         var mpptCount = inverterSpecs?.MpptCount ?? Math.Max(dto.StringInputCount, 1);
         var hybridFace = IsHybridInverterFace(dto);
-        var width = kind switch
-        {
-            EquipmentKind.CombinerBox => 1000,
-            EquipmentKind.PvDisconnect => 580,
-            EquipmentKind.StringInverter => hybridFace ? 720 : 1100,
-            EquipmentKind.AcDisconnect => 700,
-            EquipmentKind.AcLoadCenter => 900,
-            EquipmentKind.Battery => BatteryWidthMm(dto),
-            EquipmentKind.BatteryDisconnect => 720,
-            _ => 420,
-        };
-        var height = kind switch
-        {
-            EquipmentKind.CombinerBox => 980,
-            EquipmentKind.PvDisconnect => 1360,
-            EquipmentKind.StringInverter => hybridFace ? 1280 : 520 + mpptCount * 70,
-            EquipmentKind.AcDisconnect => 520,
-            EquipmentKind.AcLoadCenter => 700,
-            EquipmentKind.Battery => BatteryHeightMm(dto),
-            EquipmentKind.BatteryDisconnect => 1600,
-            _ => 280,
-        };
+        var width = dto.WidthMm > 1
+            ? dto.WidthMm
+            : kind switch
+            {
+                EquipmentKind.CombinerBox => 1000,
+                EquipmentKind.PvDisconnect => 400,
+                EquipmentKind.StringInverter => hybridFace ? 720 : 1100,
+                EquipmentKind.AcDisconnect => 700,
+                EquipmentKind.AcLoadCenter => 900,
+                EquipmentKind.Battery => BatteryWidthMm(dto),
+                EquipmentKind.BatteryDisconnect => 420,
+                _ => 420,
+            };
+        var height = dto.HeightMm > 1
+            ? dto.HeightMm
+            : kind switch
+            {
+                EquipmentKind.CombinerBox => 980,
+                EquipmentKind.PvDisconnect => 900,
+                EquipmentKind.StringInverter => hybridFace ? 1280 : 520 + mpptCount * 70,
+                EquipmentKind.AcDisconnect => 520,
+                EquipmentKind.AcLoadCenter => 700,
+                EquipmentKind.Battery => BatteryHeightMm(dto),
+                EquipmentKind.BatteryDisconnect => 920,
+                _ => 280,
+            };
 
         return ElectricalEquipmentInstance.Restore(
             dto.Id,

@@ -235,6 +235,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Progress stays in Settings with a fixed-width percent label; download UI updates are throttled
 - What's new shows once per version after Got it — not again until the next update
 
+### Equipment resize + Solar disconnect (`0.1.13`)
+- Selected equipment shows a corner resize handle (Shift = keep aspect); size persists in `.solarproj`
+- Catalog label **Solar disconnect** (was “DC isolator”); smaller default sizes for solar / battery disconnects
+
 ---
 
 ## How to verify for submission

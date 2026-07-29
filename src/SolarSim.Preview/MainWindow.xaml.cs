@@ -53,6 +53,10 @@ public partial class MainWindow : Window
     private int? _draggingWaypointIndex;
     private Guid? _draggingPanelId;
     private Guid? _rotatingEquipmentId;
+    private Guid? _resizingEquipmentId;
+    private double _resizeStartWidthMm;
+    private double _resizeStartHeightMm;
+    private Point _resizeStartMouseCanvas;
     private double _rotateStartMouseAngleDeg;
     private double _rotateStartEquipmentDeg;
     private bool _rotateMoved;
@@ -981,11 +985,16 @@ public partial class MainWindow : Window
                 InspectorSubheading.Text = eq.Name;
             AddInspectorSection("Overview");
             AddInspectorRow("Ports", $"{eq.Ports.Count}");
+            AddInspectorSection("Size");
+            AddInspectorRow("Width", $"{eq.WidthMm:0} mm");
+            AddInspectorRow("Height", $"{eq.HeightMm:0} mm");
+            AddInspectorNote("Drag the corner handle to resize · Shift = keep aspect.");
+
             if (eq.Kind == EquipmentKind.PvDisconnect)
             {
                 AddInspectorSection("Rating check");
                 AddInspectorNote(
-                    "Isolators vary — often ~1000 V DC. Current ratings include " +
+                    "Solar disconnects / isolators vary — often ~1000 V DC. Current ratings include " +
                     "10 / 16 / 20 / 25 / 30 / 32 / 40 / 50 / 60 A. " +
                     "Check your panels’ Voc (cold) and Isc before picking a model.");
                 AddInspectorRow("Top", "IN+ / IN− (MC4)");
@@ -2930,7 +2939,7 @@ public partial class MainWindow : Window
         yield return new("g550", "Module", "Generic · 550 W", "▦", "Solar", () => AddGeneric550_Click(this, new RoutedEventArgs()));
         yield return new("custom", "Module", "Custom panel…", "▦", "Solar", () => AddCustom_Click(this, new RoutedEventArgs()));
         yield return new("combiner", "Combiner", "6-string", "▤", "Electrical", () => AddCombiner_Click(this, new RoutedEventArgs()), "combiner-6string.png");
-        yield return new("disconnect", "DC isolator", "Set Amp rating", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()), "disconnect-pv-isolator.png");
+        yield return new("disconnect", "Solar disconnect", "Set Amp rating", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()), "disconnect-pv-isolator.png");
         yield return new("ypos", "MC4 Y+", "Positive branch", "Y+", "Electrical", () => AddBranchYPos_Click(this, new RoutedEventArgs()));
         yield return new("yneg", "MC4 Y−", "Negative branch", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
         yield return new("inv5", "Inverter", "5 kW string", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
@@ -3896,6 +3905,43 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_resizingEquipmentId is Guid resizingId && e.LeftButton == MouseButtonState.Pressed)
+        {
+            if (_project.Graph.TryGetEquipment(resizingId, out var eq)
+                && _equipmentVisuals.TryGetValue(resizingId, out var visual))
+            {
+                var scale = Math.Max(MmToPx * _zoom, 1e-6);
+                var dxCanvas = pos.X - _resizeStartMouseCanvas.X;
+                var dyCanvas = pos.Y - _resizeStartMouseCanvas.Y;
+                var rad = -eq.RotationDegrees * Math.PI / 180.0;
+                var cos = Math.Cos(rad);
+                var sin = Math.Sin(rad);
+                var localDxMm = (dxCanvas * cos - dyCanvas * sin) / scale;
+                var localDyMm = (dxCanvas * sin + dyCanvas * cos) / scale;
+
+                var newW = _resizeStartWidthMm + localDxMm;
+                var newH = _resizeStartHeightMm + localDyMm;
+
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+                    && _resizeStartWidthMm > 1
+                    && _resizeStartHeightMm > 1)
+                {
+                    var sx = newW / _resizeStartWidthMm;
+                    var sy = newH / _resizeStartHeightMm;
+                    var s = Math.Abs(sx) >= Math.Abs(sy) ? sx : sy;
+                    newW = _resizeStartWidthMm * s;
+                    newH = _resizeStartHeightMm * s;
+                }
+
+                eq.SetSize(newW, newH);
+                _rotateMoved = true;
+                UpdateEquipmentVisual(visual, eq);
+                RebuildWireVisuals();
+                RefreshStatusAndInspector();
+            }
+            return;
+        }
+
         if (_rotatingRoof && e.LeftButton == MouseButtonState.Pressed)
         {
             var (cx, cy) = WorldToCanvas(_roofRotatePivot.X, _roofRotatePivot.Y);
@@ -4167,6 +4213,17 @@ public partial class MainWindow : Window
             _rotatingEquipmentId = null;
             _rotateMoved = false;
             ClearRotateDegreeLabel();
+            DesignCanvas.ReleaseMouseCapture();
+            RefreshAll();
+            return;
+        }
+
+        if (_resizingEquipmentId is not null)
+        {
+            if (_rotateMoved)
+                _project.NotifyChanged("Resize equipment");
+            _resizingEquipmentId = null;
+            _rotateMoved = false;
             DesignCanvas.ReleaseMouseCapture();
             RefreshAll();
             return;
@@ -4949,6 +5006,7 @@ public partial class MainWindow : Window
         _selectedWaypointIndex = null;
         _draggingPanelId = null;
         _rotatingEquipmentId = null;
+        _resizingEquipmentId = null;
         _dragOrigins.Clear();
         ClearAlignmentGuides();
         ClearRotateDegreeLabel();
@@ -5165,6 +5223,8 @@ public partial class MainWindow : Window
         _selectedEquipmentIds.Add(equipmentId);
         _selectedObstacleId = null;
 
+        _rotatingEquipmentId = null;
+        _resizingEquipmentId = null;
         _draggingPanelId = equipmentId;
         _dragStartMouse = canvasPos;
         _dragOrigins.Clear();
@@ -5185,12 +5245,12 @@ public partial class MainWindow : Window
     {
         MessageBox.Show(
             this,
-            "PV array DC isolators are not one-size-fits-all.\n\n" +
+            "Solar disconnects (PV array DC isolators) are not one-size-fits-all.\n\n" +
             "Common ratings are around 1000 V DC with current options such as " +
             "10 A, 16 A, 20 A, 25 A, 30 A, 32 A, 40 A, 50 A, or 60 A.\n\n" +
-            "Match the isolator to your string Voc (cold) and Isc — and to the " +
+            "Match the disconnect to your string Voc (cold) and Isc — and to the " +
             "inverter/combiner path. This app is a design aid only, not code approval.",
-            "Check your DC isolator rating",
+            "Check your solar disconnect rating",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);
 
@@ -5374,6 +5434,19 @@ public partial class MainWindow : Window
         root.Children.Add(rotateStem);
         root.Children.Add(rotateHandle);
 
+        var resizeHandle = new Rectangle
+        {
+            Width = 10,
+            Height = 10,
+            Fill = Brushes.White,
+            Stroke = (Brush)FindResource("AccentBrush"),
+            StrokeThickness = 2,
+            Cursor = Cursors.SizeNWSE,
+            Visibility = Visibility.Collapsed,
+            ToolTip = "Drag to resize · Shift = keep aspect",
+        };
+        root.Children.Add(resizeHandle);
+
         var portEllipses = new Dictionary<Guid, Ellipse>();
         foreach (var port in equipment.Ports)
         {
@@ -5400,12 +5473,19 @@ public partial class MainWindow : Window
         root.RenderTransform = rotateTransform;
 
         var visual = new EquipmentVisual(
-            equipment.Id, root, body, title, portEllipses, rotateHandle, rotateStem, rotateTransform);
+            equipment.Id, root, body, title, portEllipses, rotateHandle, rotateStem, resizeHandle, rotateTransform);
 
         rotateHandle.MouseLeftButtonDown += (_, e) =>
         {
             if (e.ChangedButton != MouseButton.Left) return;
             BeginEquipmentRotation(equipment.Id, e.GetPosition(DesignCanvas));
+            e.Handled = true;
+        };
+
+        resizeHandle.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ChangedButton != MouseButton.Left) return;
+            BeginEquipmentResize(equipment.Id, e.GetPosition(DesignCanvas));
             e.Handled = true;
         };
 
@@ -5525,12 +5605,42 @@ public partial class MainWindow : Window
         visual.RotateStem.X2 = w / 2;
         visual.RotateStem.Y2 = -handleOffset;
 
-        var showRotate = selected;
-        visual.RotateHandle.Visibility = showRotate ? Visibility.Visible : Visibility.Collapsed;
-        visual.RotateStem.Visibility = showRotate ? Visibility.Visible : Visibility.Collapsed;
+        var resizeSize = Math.Clamp(9 * _zoom, 7, 12);
+        visual.ResizeHandle.Width = resizeSize;
+        visual.ResizeHandle.Height = resizeSize;
+        Canvas.SetLeft(visual.ResizeHandle, w - resizeSize / 2);
+        Canvas.SetTop(visual.ResizeHandle, h - resizeSize / 2);
+        Panel.SetZIndex(visual.ResizeHandle, 25);
+
+        var showHandles = selected;
+        visual.RotateHandle.Visibility = showHandles ? Visibility.Visible : Visibility.Collapsed;
+        visual.RotateStem.Visibility = showHandles ? Visibility.Visible : Visibility.Collapsed;
+        visual.ResizeHandle.Visibility = showHandles ? Visibility.Visible : Visibility.Collapsed;
 
         if (selected || _wireFromPortId is not null)
             SetEquipmentPortsVisible(visual, true);
+    }
+
+    private void BeginEquipmentResize(Guid equipmentId, Point canvasPos)
+    {
+        if (!_project.Graph.TryGetEquipment(equipmentId, out var eq)) return;
+
+        _selectedPanelIds.Clear();
+        _selectedConnectionIds.Clear();
+        _selectedEquipmentIds.Clear();
+        _selectedEquipmentIds.Add(equipmentId);
+        _selectedObstacleId = null;
+        _draggingPanelId = null;
+        _rotatingEquipmentId = null;
+        _dragOrigins.Clear();
+
+        _resizingEquipmentId = equipmentId;
+        _resizeStartWidthMm = eq.WidthMm;
+        _resizeStartHeightMm = eq.HeightMm;
+        _resizeStartMouseCanvas = canvasPos;
+        _rotateMoved = false;
+        DesignCanvas.CaptureMouse();
+        RefreshAll();
     }
 
     private void BeginEquipmentRotation(Guid equipmentId, Point canvasPos)
@@ -5544,6 +5654,7 @@ public partial class MainWindow : Window
         _selectedEquipmentIds.Add(equipmentId);
         _selectedObstacleId = null;
         _draggingPanelId = null;
+        _resizingEquipmentId = null;
         _dragOrigins.Clear();
 
         var center = GetEquipmentCanvasCenter(visual);
@@ -8525,6 +8636,7 @@ public partial class MainWindow : Window
         public Dictionary<Guid, Ellipse> PortEllipses { get; }
         public Ellipse RotateHandle { get; }
         public Line RotateStem { get; }
+        public Rectangle ResizeHandle { get; }
         public RotateTransform RotateTransform { get; }
 
         public EquipmentVisual(
@@ -8535,6 +8647,7 @@ public partial class MainWindow : Window
             Dictionary<Guid, Ellipse> portEllipses,
             Ellipse rotateHandle,
             Line rotateStem,
+            Rectangle resizeHandle,
             RotateTransform rotateTransform)
         {
             InstanceId = instanceId;
@@ -8544,6 +8657,7 @@ public partial class MainWindow : Window
             PortEllipses = portEllipses;
             RotateHandle = rotateHandle;
             RotateStem = rotateStem;
+            ResizeHandle = resizeHandle;
             RotateTransform = rotateTransform;
         }
     }

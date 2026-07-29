@@ -24,8 +24,8 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
     public string Name { get; set; }
     public double PositionXMm { get; private set; }
     public double PositionYMm { get; private set; }
-    public double WidthMm { get; }
-    public double HeightMm { get; }
+    public double WidthMm { get; private set; }
+    public double HeightMm { get; private set; }
     public double RotationDegrees { get; private set; }
     public int StringInputCount { get; }
     public InverterElectricalSpecs? InverterSpecs { get; }
@@ -70,6 +70,13 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
     {
         PositionXMm = xMm;
         PositionYMm = yMm;
+    }
+
+    /// <summary>Canvas display size (mm). Clamped so ports stay usable.</summary>
+    public void SetSize(double widthMm, double heightMm)
+    {
+        WidthMm = Math.Clamp(widthMm, 180, 4000);
+        HeightMm = Math.Clamp(heightMm, 180, 4000);
     }
 
     public void SetRotation(double degrees) => RotationDegrees = NormalizeRotation(degrees);
@@ -169,11 +176,11 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         return new ElectricalEquipmentInstance(
             id,
             EquipmentKind.PvDisconnect,
-            name ?? "PV Array DC Isolator",
+            name ?? "Solar Disconnect",
             xMm,
             yMm,
-            widthMm: 580,
-            heightMm: 1360,
+            widthMm: 400,
+            heightMm: 900,
             stringInputCount: 0,
             ports);
     }
@@ -451,8 +458,8 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
             name ?? $"Battery Disconnect {ratedAmps}A",
             xMm,
             yMm,
-            widthMm: 720,
-            heightMm: 1600,
+            widthMm: 420,
+            heightMm: 920,
             stringInputCount: 0,
             ports,
             ratedAmps: ratedAmps,
