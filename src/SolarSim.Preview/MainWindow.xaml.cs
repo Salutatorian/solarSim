@@ -4921,9 +4921,10 @@ public partial class MainWindow : Window
         {
             LayoutCombinerBottomPorts(visual, equipment, w, h, portSize, half);
         }
-        else if (isAnenji)
+        else if (equipment.Kind == EquipmentKind.StringInverter)
         {
-            LayoutAnenjiBottomPorts(visual, equipment, w, h, portSize, half);
+            // All inverter terminals (MPPT / AC / BAT) sit on the bottom edge — never side columns.
+            LayoutInverterBottomPorts(visual, equipment, w, h, portSize, half);
         }
         else if (isBatteryFace)
         {
@@ -5132,7 +5133,11 @@ public partial class MainWindow : Window
             && equipment.Ports.Any(p => p.Label.Equals("AC IN L", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static void LayoutAnenjiBottomPorts(
+    /// <summary>
+    /// Every string-inverter terminal along the bottom edge (left → right).
+    /// Hybrids: AC IN · AC OUT · (PV) · BAT · (extra PV). Generics: MPPT rows then BAT.
+    /// </summary>
+    private static void LayoutInverterBottomPorts(
         EquipmentVisual visual,
         ElectricalEquipmentInstance equipment,
         double bodyW,
@@ -5140,9 +5145,17 @@ public partial class MainWindow : Window
         double portSize,
         double half)
     {
-        var y = bodyH - half * 0.35;
+        // Sit on the bottom seam (slightly overlapping the face edge).
+        var y = bodyH - half;
         var pairGap = Math.Min(portSize * 0.9, bodyW * 0.025);
-        var singlePv = equipment.InverterSpecs?.MpptCount == 1
+        var placed = new HashSet<Guid>();
+        var hybrid = equipment.Ports.Any(p =>
+            p.Label.Equals("AC IN L", StringComparison.OrdinalIgnoreCase));
+        var mpptCount = equipment.InverterSpecs?.MpptCount
+            ?? Math.Max(1, equipment.Ports.Count(p =>
+                p.Label.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase)
+                && p.Label.EndsWith("+", StringComparison.Ordinal)));
+        var singlePv = mpptCount <= 1
             || equipment.InverterSpecs?.DefinitionId == InverterDefinition.Anenji4_2kWDefinitionId;
 
         void Place(string label, double centerX)
@@ -5157,6 +5170,7 @@ public partial class MainWindow : Window
                 : label;
             Canvas.SetLeft(ellipse, centerX - half);
             Canvas.SetTop(ellipse, y);
+            placed.Add(port.Id);
         }
 
         void PlacePair(string plusLabel, string minusLabel, double centerX)
@@ -5165,22 +5179,56 @@ public partial class MainWindow : Window
             Place(minusLabel, centerX + pairGap);
         }
 
-        if (singlePv)
+        if (hybrid && singlePv)
         {
             // 4.2 kW: AC IN / AC OUT / single PV on the left · BAT in the middle.
             PlacePair("AC IN L", "AC IN N", 0.10 * bodyW);
             PlacePair("AC OUT L", "AC OUT N", 0.22 * bodyW);
             PlacePair("MPPT1+", "MPPT1-", 0.34 * bodyW);
             PlacePair("BAT+", "BAT-", 0.55 * bodyW);
-            return;
+        }
+        else if (hybrid)
+        {
+            // 6.5 / 12 kW (+): AC left · BAT middle · PV1 / PV2 right.
+            PlacePair("AC IN L", "AC IN N", 0.12 * bodyW);
+            PlacePair("AC OUT L", "AC OUT N", 0.28 * bodyW);
+            PlacePair("BAT+", "BAT-", 0.50 * bodyW);
+            PlacePair("MPPT1+", "MPPT1-", 0.72 * bodyW);
+            PlacePair("MPPT2+", "MPPT2-", 0.88 * bodyW);
+            for (var i = 3; i <= mpptCount; i++)
+            {
+                var t = 0.88 + (i - 2) * 0.06;
+                if (t > 0.96) t = 0.96;
+                PlacePair($"MPPT{i}+", $"MPPT{i}-", t * bodyW);
+            }
+        }
+        else
+        {
+            // Generic string inverter: MPPT pairs across the bottom, BAT at the right.
+            var slots = mpptCount + 1; // + BAT
+            for (var i = 1; i <= mpptCount; i++)
+            {
+                var t = (i - 0.5) / slots;
+                PlacePair($"MPPT{i}+", $"MPPT{i}-", t * bodyW);
+            }
+
+            PlacePair("BAT+", "BAT-", ((slots - 0.5) / slots) * bodyW);
         }
 
-        // 6.5 / 12 kW: AC IN / AC OUT left · BAT middle · PV1 / PV2 far right.
-        PlacePair("AC IN L", "AC IN N", 0.12 * bodyW);
-        PlacePair("AC OUT L", "AC OUT N", 0.28 * bodyW);
-        PlacePair("BAT+", "BAT-", 0.55 * bodyW);
-        PlacePair("MPPT1+", "MPPT1-", 0.78 * bodyW);
-        PlacePair("MPPT2+", "MPPT2-", 0.92 * bodyW);
+        // Safety: anything not placed yet still goes on the bottom (never left stranded at 0,0).
+        var leftovers = equipment.Ports.Where(p => !placed.Contains(p.Id)).ToList();
+        if (leftovers.Count == 0) return;
+        for (var i = 0; i < leftovers.Count; i++)
+        {
+            var port = leftovers[i];
+            if (!visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) continue;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            ellipse.ToolTip = port.Label;
+            var t = leftovers.Count == 1 ? 0.5 : (i + 0.5) / leftovers.Count;
+            Canvas.SetLeft(ellipse, t * bodyW - half);
+            Canvas.SetTop(ellipse, y);
+        }
     }
 
     private static void LayoutBatteryBottomPorts(

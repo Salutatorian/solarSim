@@ -190,6 +190,7 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Settings → GitHub repo, Releases, License, Report a bug, Suggest an idea
 - GitHub issue templates for bugs (how found / steps / cause) and suggestions
 - Photoreal equipment: 6-string combiner, ANENJI 4.2 / 6.5 / 12 kW hybrids, ANENJI 16 kWh battery, PV DC isolator, battery disconnect
+- All string-inverter terminals (MPPT / AC / BAT) sit on the bottom edge — not left/right side columns
 - Port layouts match the photos (MC4 / lugs / BAT±); 6.5 kW: AC left, BAT middle, PV1/PV2 right; battery cables 1/0–4/0; disconnect Amp ratings with recommended (not forced) wire sizes
 
 ---
