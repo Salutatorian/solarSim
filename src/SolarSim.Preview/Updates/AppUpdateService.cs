@@ -221,7 +221,8 @@ internal sealed class AppUpdateService
             {
                 Version = info.Version,
                 ZipPath = zipPath,
-                Notes = info.Notes,
+                Notes = FormatWhatsNewDocument(info.Version, info.Notes, info.PublishedAt),
+                PublishedAt = info.PublishedAt,
                 CheckedUtc = DateTime.UtcNow,
             };
             File.WriteAllText(PendingMarkerPath(), JsonSerializer.Serialize(marker, JsonOptions));
@@ -338,7 +339,10 @@ internal sealed class AppUpdateService
         var exeName = "solarSim.exe";
         var notesPath = Path.Combine(UpdatesRoot(), "whats-new.txt");
         var pendingPath = PendingMarkerPath();
-        File.WriteAllText(notesPath, pending.Notes ?? "");
+        var notes = string.IsNullOrWhiteSpace(pending.Notes)
+            ? FormatWhatsNewDocument(pending.Version, "", pending.PublishedAt)
+            : pending.Notes;
+        File.WriteAllText(notesPath, notes);
 
         // Paths via env vars avoid quoting bugs in Expand-Archive.
         File.WriteAllText(ps1, """
@@ -401,6 +405,61 @@ del "%~f0"
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Builds the post-update notes file. Released time is shown in the user's local timezone, 24-hour clock.
+    /// </summary>
+    public static string FormatWhatsNewDocument(string version, string? notes, DateTimeOffset? publishedAt)
+    {
+        var when = (publishedAt ?? DateTimeOffset.Now).ToLocalTime();
+        var body = (notes ?? "").Trim();
+        // Avoid double-header if GitHub body already starts with version / Released.
+        if (body.StartsWith("solarSim ", StringComparison.OrdinalIgnoreCase)
+            || body.StartsWith("Released:", StringComparison.OrdinalIgnoreCase))
+            return body;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("solarSim ").Append(NormalizeVersion(version)).AppendLine();
+        sb.Append("Released: ").Append(when.ToString("yyyy-MM-dd HH:mm")).AppendLine();
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            sb.AppendLine();
+            sb.Append(body);
+        }
+        return sb.ToString().TrimEnd() + Environment.NewLine;
+    }
+
+    public static (string Version, string? ReleasedLocal, string Body) ParseWhatsNewDocument(string raw)
+    {
+        var text = (raw ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return ("", null, "");
+
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+        string version = "";
+        string? released = null;
+        var start = 0;
+
+        if (lines.Length > 0 && lines[0].StartsWith("solarSim ", StringComparison.OrdinalIgnoreCase))
+        {
+            version = lines[0]["solarSim ".Length..].Trim();
+            start = 1;
+        }
+
+        if (start < lines.Length && lines[start].StartsWith("Released:", StringComparison.OrdinalIgnoreCase))
+        {
+            released = lines[start]["Released:".Length..].Trim();
+            start++;
+        }
+
+        while (start < lines.Length && string.IsNullOrWhiteSpace(lines[start]))
+            start++;
+
+        var body = start < lines.Length
+            ? string.Join("\n", lines[start..]).Trim()
+            : "";
+        return (version, released, body);
     }
 
     public static string StagedZipPath(string version) =>
@@ -470,6 +529,7 @@ internal sealed class PendingUpdateMarker
     public string Version { get; set; } = "";
     public string ZipPath { get; set; } = "";
     public string? Notes { get; set; }
+    public DateTimeOffset? PublishedAt { get; set; }
     public DateTime CheckedUtc { get; set; }
 }
 

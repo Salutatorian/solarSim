@@ -232,11 +232,11 @@ public partial class MainWindow : Window
     {
         var notes = AppUpdateService.ConsumeWhatsNewNotes();
         if (string.IsNullOrWhiteSpace(notes)) return;
-        MessageBox.Show(this,
-            $"What's new in this update:\n\n{notes}",
-            "solarSim updated",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var (version, released, body) = AppUpdateService.ParseWhatsNewDocument(notes);
+        if (string.IsNullOrWhiteSpace(version))
+            version = GetAppVersion();
+        var dlg = new WhatsNewDialog(version, released, body) { Owner = this };
+        dlg.ShowDialog();
     }
 
     private async Task StartUpdateScanningAsync()
@@ -2199,6 +2199,8 @@ public partial class MainWindow : Window
                 _selectedPanelIds.Clear();
                 _selectedObstacleId = null;
                 _layersCategory = LayersCategory.Equipment;
+                if (_uiTool is UiTool.Roof or UiTool.Panel or UiTool.Obstacle)
+                    _uiTool = UiTool.Add;
                 break;
             case WorkspacePlan.Combined:
                 if (_layersCategory == LayersCategory.Equipment && _project.Graph.Equipment.Count == 0)
@@ -2385,6 +2387,16 @@ public partial class MainWindow : Window
         StyleToolRail(ToolMeasureButton, _uiTool == UiTool.Measure);
         StyleToolRail(ToolAddButton, _uiTool == UiTool.Add);
         StyleToolRail(LayersRailButton, _uiTool == UiTool.Layers);
+
+        // Equipment plan: only equipment tools — hide roof / panel / obstacle chrome.
+        var roofish = ShowsRoofGeometry;
+        var panels = ShowsPanels;
+        if (ToolRoofButton is not null)
+            ToolRoofButton.Visibility = roofish ? Visibility.Visible : Visibility.Collapsed;
+        if (ToolPanelButton is not null)
+            ToolPanelButton.Visibility = panels ? Visibility.Visible : Visibility.Collapsed;
+        if (ToolObstacleButton is not null)
+            ToolObstacleButton.Visibility = roofish ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private static void StyleToolRail(Button? button, bool active)
@@ -2850,7 +2862,8 @@ public partial class MainWindow : Window
         string Subtitle,
         string Glyph,
         string Category,
-        Action Invoke);
+        Action Invoke,
+        string? ImageAsset = null);
 
     private IEnumerable<AddCatalogItem> GetAddCatalog()
     {
@@ -2858,20 +2871,20 @@ public partial class MainWindow : Window
         yield return new("g400", "Generic", "400 W module", "▦", "Solar", () => AddGeneric400_Click(this, new RoutedEventArgs()));
         yield return new("g550", "Generic", "550 W module", "▦", "Solar", () => AddGeneric550_Click(this, new RoutedEventArgs()));
         yield return new("custom", "Custom", "Custom panel…", "▦", "Solar", () => AddCustom_Click(this, new RoutedEventArgs()));
-        yield return new("combiner", "Combiner", "6-string", "▤", "Electrical", () => AddCombiner_Click(this, new RoutedEventArgs()));
-        yield return new("disconnect", "DC isolator", "Check Amp rating!", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()));
+        yield return new("combiner", "Combiner", "6-string", "▤", "Electrical", () => AddCombiner_Click(this, new RoutedEventArgs()), "combiner-6string.png");
+        yield return new("disconnect", "DC isolator", "Check Amp rating!", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()), "disconnect-pv-isolator.png");
         yield return new("ypos", "MC4 Y", "Positive", "Y+", "Electrical", () => AddBranchYPos_Click(this, new RoutedEventArgs()));
         yield return new("yneg", "MC4 Y", "Negative", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
         yield return new("inv5", "Inverter", "5 kW", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
         yield return new("inv76", "Inverter", "7.6 kW", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
-        yield return new("inv42", "ANENJI", "4.2 kW hybrid", "◇", "Electrical", () => AddInverterAnenji4_2k_Click(this, new RoutedEventArgs()));
-        yield return new("inv65", "ANENJI", "6.5 kW hybrid", "◇", "Electrical", () => AddInverterAnenji6_5k_Click(this, new RoutedEventArgs()));
-        yield return new("inv12", "ANENJI", "12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()));
-        yield return new("battery", "ANENJI", "16 kWh battery", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()));
-        yield return new("batt10k", "ANENJI", "10 kW wall · dual BAT±", "▣", "Electrical", () => AddBattery10kW_Click(this, new RoutedEventArgs()));
-        yield return new("battrack", "ANENJI", "5.1 kWh rack · stackable", "▣", "Electrical", () => AddBatteryRack_Click(this, new RoutedEventArgs()));
-        yield return new("batt128", "ANENJI", "12.8V 300Ah · 3.84 kWh", "▣", "Electrical", () => AddBattery12_8V_Click(this, new RoutedEventArgs()));
-        yield return new("batdisc", "Batt disc.", "Check Amp + wire size", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()));
+        yield return new("inv42", "ANENJI", "4.2 kW hybrid", "◇", "Electrical", () => AddInverterAnenji4_2k_Click(this, new RoutedEventArgs()), "inverter-anenji-4_2kw.png");
+        yield return new("inv65", "ANENJI", "6.5 kW hybrid", "◇", "Electrical", () => AddInverterAnenji6_5k_Click(this, new RoutedEventArgs()), "inverter-anenji-6_5kw.png");
+        yield return new("inv12", "ANENJI", "12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()), "inverter-anenji-12kw.png");
+        yield return new("battery", "ANENJI", "16 kWh battery", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()), "battery-anenji-16kwh.png");
+        yield return new("batt10k", "ANENJI", "10 kW wall · dual BAT±", "▣", "Electrical", () => AddBattery10kW_Click(this, new RoutedEventArgs()), "battery-anenji-10kw.png");
+        yield return new("battrack", "ANENJI", "5.1 kWh rack · stackable", "▣", "Electrical", () => AddBatteryRack_Click(this, new RoutedEventArgs()), "battery-anenji-5_1kwh-rack.png");
+        yield return new("batt128", "ANENJI", "12.8V 300Ah · 3.84 kWh", "▣", "Electrical", () => AddBattery12_8V_Click(this, new RoutedEventArgs()), "battery-anenji-12_8v-300ah.png");
+        yield return new("batdisc", "Batt disc.", "Check Amp + wire size", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()), "battery-disconnect-dhm1b.png");
         yield return new("acdisc", "AC disc.", "AC disconnect", "⏻", "Electrical", () => AddAcDisconnect_Click(this, new RoutedEventArgs()));
         yield return new("aclc", "Load center", "AC load center", "☰", "Electrical", () => AddAcLoadCenter_Click(this, new RoutedEventArgs()));
         yield return new("vent", "Roof vent", "Obstacle", "◇", "Structural", () => AddObstacleMode_Click(this, new RoutedEventArgs()));
@@ -2886,14 +2899,51 @@ public partial class MainWindow : Window
     private Button CreateAddTile(AddCatalogItem item)
     {
         var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-        stack.Children.Add(new TextBlock
+        if (!string.IsNullOrWhiteSpace(item.ImageAsset))
         {
-            Text = item.Glyph,
-            FontSize = 18,
-            Foreground = (Brush)FindResource("AccentBrush"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 2, 0, 4),
-        });
+            try
+            {
+                var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                bmp.BeginInit();
+                bmp.UriSource = new Uri($"pack://application:,,,/Assets/{item.ImageAsset}", UriKind.Absolute);
+                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bmp.DecodePixelWidth = 96;
+                bmp.EndInit();
+                bmp.Freeze();
+                stack.Children.Add(new Image
+                {
+                    Source = bmp,
+                    Width = 52,
+                    Height = 40,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 0, 0, 4),
+                });
+            }
+            catch
+            {
+                stack.Children.Add(new TextBlock
+                {
+                    Text = item.Glyph,
+                    FontSize = 18,
+                    Foreground = (Brush)FindResource("AccentBrush"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 2, 0, 4),
+                });
+            }
+        }
+        else
+        {
+            stack.Children.Add(new TextBlock
+            {
+                Text = item.Glyph,
+                FontSize = 18,
+                Foreground = (Brush)FindResource("AccentBrush"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 2, 0, 4),
+            });
+        }
+
         stack.Children.Add(new TextBlock
         {
             Text = item.Title,
@@ -2919,6 +2969,11 @@ public partial class MainWindow : Window
             Tag = item.Key,
             ToolTip = $"{item.Title} — {item.Subtitle}",
         };
+        if (!string.IsNullOrWhiteSpace(item.ImageAsset))
+        {
+            btn.Width = 92;
+            btn.Height = 96;
+        }
         btn.Click += (_, _) =>
         {
             RememberAdd(item.Key);

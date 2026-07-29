@@ -206,6 +206,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Settings and bottom-right mini toast both show Update / Cancel when a release is available
 - Clicking Update downloads (if needed) and auto-installs at 100% — no need to leave Settings for the toast
 - Cancel dismisses the notice (and stops an in-progress download)
+- After install, a What's new dialog box lists updates / fixes with release date & local time (24-hour)
+- Electrical Add catalog uses real equipment photos (ANENJI inverters & batteries, combiner, isolators)
+- Equipment workspace hides roof / panel / obstacle tools so the canvas stays equipment-focused
 
 ---
 

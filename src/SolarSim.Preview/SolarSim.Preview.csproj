@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="whats-new.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\Tools\pvlib_estimate.py" Link="Tools\pvlib_estimate.py" CopyToOutputDirectory="PreserveNewest" />
     <None Include="SiteMap\satellite-picker.html" CopyToOutputDirectory="PreserveNewest" />
     <None Include="SiteMap\leaflet.css" CopyToOutputDirectory="PreserveNewest" />
