@@ -177,9 +177,8 @@
                         <TextBlock x:Name="ContextTitle" Text="Roof" FontWeight="SemiBold" FontSize="15"
                                    Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     </DockPanel>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Style="{StaticResource PanelScrollViewer}">
                         <StackPanel>
-                            <!-- Roof -->
                             <StackPanel x:Name="RoofContextPanel" Visibility="Collapsed">
                                 <Button x:Name="DrawRoofButton" Content="Draw roof" Style="{StaticResource PaletteRowButton}" Click="DrawRoof_Click"/>
                                 <Button Content="Trace roof on map…" Style="{StaticResource PaletteRowButton}" Click="SatelliteMap_Click"/>
@@ -337,8 +336,8 @@
             <!-- Properties inspector -->
             <Border x:Name="InspectorPanel" Grid.Column="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1,0,0,0" Visibility="Collapsed">
-                <DockPanel Margin="16,12,12,12">
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <DockPanel Margin="16,12,8,12">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,8,12">
                         <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource IconGhostButton}"
                                 Width="28" Click="ToggleInspector_Click"/>
                         <Button DockPanel.Dock="Right" Content="Delete" Style="{StaticResource DangerButton}"
@@ -346,15 +345,16 @@
                         <TextBlock Text="Properties" FontWeight="SemiBold" FontSize="14"
                                    Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     </DockPanel>
-                    <Border DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                    <Border DockPanel.Dock="Bottom" Margin="0,12,14,0">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Top" Text="Strings" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
                             <ListBox x:Name="StringsList" MaxHeight="120" BorderThickness="0" Background="Transparent"
                                      SelectionChanged="StringsList_SelectionChanged"/>
                         </DockPanel>
                     </Border>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
+                    <!-- Right padding reserves a gutter so overlay scrollbars never cover values -->
+                    <ScrollViewer Style="{StaticResource PanelScrollViewer}">
+                        <StackPanel Margin="0,0,4,0">
                             <TextBlock x:Name="InspectorHeading" Text="Project" FontSize="15" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4"/>
                             <TextBlock x:Name="InspectorSubheading" FontSize="12.5"

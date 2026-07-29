@@ -34,6 +34,8 @@ internal sealed class AppUpdateService
     public double DownloadProgress01 { get; private set; }
     public bool DownloadProgressIndeterminate { get; private set; }
     public string? DownloadError { get; private set; }
+    /// <summary>Latest GitHub release version from the last successful check (even when already up to date).</summary>
+    public string? LastCheckedLatest { get; private set; }
     public bool DownloadComplete { get; private set; }
     public bool UserDismissedToast { get; set; }
     public bool ApplyOnExit { get; set; } = true;
@@ -94,6 +96,7 @@ internal sealed class AppUpdateService
                     DownloadProgress01 = 0;
                     DownloadProgressIndeterminate = false;
                     DownloadError = null;
+                    LastCheckedLatest = remote;
                 }
                 Raise();
                 return;
@@ -105,7 +108,17 @@ internal sealed class AppUpdateService
                 && IsAllowedAssetUrl(a.BrowserDownloadUrl));
 
             if (asset?.BrowserDownloadUrl is null)
+            {
+                // Tag exists but CI has not uploaded the zip yet — common for ~1–3 minutes after push.
+                lock (_gate)
+                {
+                    Available = null;
+                    DownloadError =
+                        $"Release {remote} is on GitHub but the Windows zip is not ready yet. Wait a minute and check again.";
+                }
+                Raise();
                 return;
+            }
 
             var info = new UpdateInfo
             {
@@ -120,6 +133,7 @@ internal sealed class AppUpdateService
             lock (_gate)
             {
                 Available = info;
+                LastCheckedLatest = remote;
                 if (DownloadComplete && File.Exists(StagedZipPath(info.Version)))
                 {
                     DownloadProgress01 = 1;

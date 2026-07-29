@@ -1,14 +1,12 @@
-solarSim 0.1.26
+solarSim 0.1.27
 Released: 2026-07-30
 
-Battery wiring + zoom
-• Battery disconnect snaps/validates to inverter BAT± — not PV1/PV2
-• Solar disconnect already on a battery also prefers BAT terminals
-• Hybrid BAT bank spaced farther from PV so snap does not steal the hit
-• Auto wire routes lock into world waypoints — zoom no longer moves cables around
-
-Tip: reconnect any old battery→PV mis-wires once; then zoom freely.
+Properties panel
+• Scrollbar no longer covers Ports / Width / MPPT values
+• Side drawers keep the same right gutter
+• Slimmer, quieter scroll chrome
+• Update check says when a release zip is still uploading (retry in a minute)
 
 Earlier
+• 0.1.26 — battery BAT snap + sticky zoom wires
 • 0.1.25 — battery top ports, wire drag, aspect resize
-• 0.1.24 — XAML resource guards

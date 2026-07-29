@@ -49,9 +49,13 @@ public partial class SettingsDialog : Window
 
         if (avail is null)
         {
-            UpdateStatusText.Text = string.IsNullOrEmpty(svc.DownloadError)
-                ? $"You're on {_currentVersion}. No update found."
-                : $"Update check: {svc.DownloadError}";
+            if (!string.IsNullOrEmpty(svc.DownloadError))
+                UpdateStatusText.Text = $"Update check: {svc.DownloadError}";
+            else if (!string.IsNullOrEmpty(svc.LastCheckedLatest))
+                UpdateStatusText.Text =
+                    $"You're on {_currentVersion}. Latest release is {svc.LastCheckedLatest} — up to date.";
+            else
+                UpdateStatusText.Text = $"You're on {_currentVersion}. No update found.";
             UpdateNotesPreview.Text = "";
             DownloadUpdateButton.Visibility = Visibility.Collapsed;
             CancelDownloadButton.Visibility = Visibility.Collapsed;

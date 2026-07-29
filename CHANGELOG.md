@@ -293,6 +293,11 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Hybrid inverter layout spaces BAT away from PV1/PV2
 - Auto-routed cables bake to world-mm waypoints so zoom no longer reshuffles paths
 
+### Inspector scrollbar gutter (`0.1.27`)
+- Properties / side-panel scroll areas keep a right gutter so overlay scrollbars no longer cover values
+- Slimmer, quieter scrollbar chrome
+- Update check explains when a GitHub release exists but the Windows zip is still uploading
+
 ---
 
 ## How to verify for submission

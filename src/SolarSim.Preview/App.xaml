@@ -360,17 +360,33 @@
         <!-- Narrow scrollbar chrome only — do not replace ScrollBar/ComboBox ControlTemplates here -->
         <Style TargetType="ScrollBar">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Width" Value="10"/>
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="MinWidth" Value="8"/>
+            <Setter Property="Opacity" Value="0.72"/>
             <Style.Triggers>
                 <Trigger Property="Orientation" Value="Horizontal">
                     <Setter Property="Width" Value="Auto"/>
-                    <Setter Property="Height" Value="10"/>
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="Height" Value="8"/>
+                    <Setter Property="MinHeight" Value="8"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="1"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style TargetType="ScrollViewer">
             <Setter Property="Focusable" Value="False"/>
+        </Style>
+
+        <!-- Side drawers / inspector — gutter so overlay scrollbars never cover values -->
+        <Style x:Key="PanelScrollViewer" TargetType="ScrollViewer">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Padding" Value="0,0,14,0"/>
+            <Setter Property="CanContentScroll" Value="False"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
         </Style>
 
         <Style x:Key="NavTabButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
@@ -478,6 +494,8 @@
             <Setter Property="TextAlignment" Value="Right"/>
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,2,0"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
     </Application.Resources>
 </Application>
