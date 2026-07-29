@@ -15,9 +15,18 @@ public partial class App : System.Windows.Application
             TryWriteCrashLog(detail);
 
             // Startup XAML failures leave a half-built UI — don't pretend we recovered.
-            var isStartupXaml = e.Exception is System.Windows.Markup.XamlParseException
-                                && MainWindow is null
-                                && Windows.Count == 0;
+            // Window may already be in Windows[] while BAML is still parsing.
+            var anyLoaded = false;
+            foreach (Window w in Windows)
+            {
+                if (w.IsLoaded)
+                {
+                    anyLoaded = true;
+                    break;
+                }
+            }
+
+            var isStartupXaml = e.Exception is System.Windows.Markup.XamlParseException && !anyLoaded;
             if (isStartupXaml)
             {
                 MessageBox.Show(

@@ -271,6 +271,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Fix launch crash: missing `TitleBarButton` style (chrome styles now load before ScrollBar/ComboBox overrides)
 - Startup XAML failures shut down cleanly instead of a fake "recovered" dialog
 
+### App.Resources load fix (`0.1.22`)
+- Root cause: custom ScrollBar/ScrollViewer/ComboBox ControlTemplates aborted Application.Resources mid-load, so later styles (`FieldLabel`, etc.) never registered — home screen crashed
+- Removed those templates; keep simple ScrollBar/ComboBox setters; move FieldLabel/SectionLabel with core chrome styles
+
 ---
 
 ## How to verify for submission

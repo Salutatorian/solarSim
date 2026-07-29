@@ -1,11 +1,11 @@
-solarSim 0.1.21
+solarSim 0.1.22
 Released: 2026-07-30
 
-Startup fix
-• Fixed missing style crash on launch ("Cannot find resource named TitleBarButton")
-• Title / dialog chrome styles load before other UI overrides
-• Startup XAML failures no longer pretend to "recover"
+Startup fix (real one)
+• Home screen was crashing on missing FieldLabel — styles after the custom ScrollBar/ComboBox templates never loaded
+• Removed those ControlTemplates (they aborted App.Resources mid-load)
+• FieldLabel / SectionLabel now load with the other core chrome styles
 
 Earlier
-• 0.1.20 — slim scrollbars + dark dialog chrome
-• 0.1.19 — spawn at viewport center
+• 0.1.21 — TitleBarButton workaround
+• 0.1.20 — dialog chrome polish
