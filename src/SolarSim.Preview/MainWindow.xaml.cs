@@ -245,17 +245,36 @@ public partial class MainWindow : Window
 
     private void ShowWhatsNewIfPresent()
     {
+        var current = GetAppVersion();
+        // Once per version — after Got it, stay quiet until the next update.
+        if (!AppUpdateService.ShouldShowWhatsNew(current))
+        {
+            // Clear any leftover bundled notes so they don't linger.
+            _ = AppUpdateService.ConsumeWhatsNewNotes();
+            return;
+        }
+
         var notes = AppUpdateService.ConsumeWhatsNewNotes();
-        if (string.IsNullOrWhiteSpace(notes)) return;
+        if (string.IsNullOrWhiteSpace(notes))
+        {
+            // No notes file (e.g. first run without update) — don't nag; mark current as seen.
+            AppUpdateService.MarkWhatsNewSeen(current);
+            return;
+        }
+
         var (version, released, body) = AppUpdateService.ParseWhatsNewDocument(notes);
         if (string.IsNullOrWhiteSpace(version))
-            version = GetAppVersion();
-        // Drop GitHub install boilerplate if an older staged note slipped through.
+            version = current;
         body = AppUpdateService.StripInstallBoilerplate(body);
         if (string.IsNullOrWhiteSpace(body) && string.IsNullOrWhiteSpace(released))
+        {
+            AppUpdateService.MarkWhatsNewSeen(current);
             return;
+        }
+
         var dlg = new WhatsNewDialog(version, released, body) { Owner = this };
         dlg.ShowDialog();
+        AppUpdateService.MarkWhatsNewSeen(current);
     }
 
     private async Task StartUpdateScanningAsync()

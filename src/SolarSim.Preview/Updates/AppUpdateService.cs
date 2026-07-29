@@ -410,12 +410,61 @@ del "%~f0"
             var path = Path.Combine(AppContext.BaseDirectory, "whats-new.txt");
             if (!File.Exists(path)) return null;
             var text = File.ReadAllText(path).Trim();
-            File.Delete(path);
+            try { File.Delete(path); } catch { /* still show once; seen-version gate blocks repeats */ }
             return string.IsNullOrWhiteSpace(text) ? null : text;
         }
         catch
         {
             return null;
+        }
+    }
+
+    /// <summary>Local marker so What's new shows once per installed version.</summary>
+    public static string SeenWhatsNewPath() =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "solarSim",
+            "seen-whats-new-version.txt");
+
+    public static bool ShouldShowWhatsNew(string currentVersion)
+    {
+        var current = NormalizeVersion(currentVersion);
+        try
+        {
+            var path = SeenWhatsNewPath();
+            if (!File.Exists(path)) return true;
+            var seen = NormalizeVersion(File.ReadAllText(path).Trim());
+            return !string.Equals(seen, current, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    public static void MarkWhatsNewSeen(string currentVersion)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(SeenWhatsNewPath());
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+            File.WriteAllText(SeenWhatsNewPath(), NormalizeVersion(currentVersion) + Environment.NewLine);
+        }
+        catch
+        {
+            // non-fatal
+        }
+
+        try
+        {
+            var bundled = Path.Combine(AppContext.BaseDirectory, "whats-new.txt");
+            if (File.Exists(bundled))
+                File.Delete(bundled);
+        }
+        catch
+        {
+            // non-fatal
         }
     }
 

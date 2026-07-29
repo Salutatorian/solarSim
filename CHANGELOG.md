@@ -233,6 +233,7 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 ### Toast jitter fix (`0.1.12`)
 - Mini toast no longer shows a live download % (that caused layout vibrate)
 - Progress stays in Settings with a fixed-width percent label; download UI updates are throttled
+- What's new shows once per version after Got it — not again until the next update
 
 ---
 

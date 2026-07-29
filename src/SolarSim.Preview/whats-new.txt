@@ -1,10 +1,14 @@
 solarSim 0.1.12
-Released: 2026-07-30 06:33
+Released: 2026-07-30 06:38
 
 Update toast
 • No live percentage in the mini toast (that was causing the vibrate/jitter)
 • Toast stays a fixed size with static Update / Cancel (or Installing…) text
 • Progress % only in Settings, with a stable fixed-width label
+
+What's new
+• Shows once after you open a project — Got it dismisses it for this version
+• Will only appear again after a future update
 
 Earlier
 • 0.1.11 — What's new after Home when you open a project
