@@ -214,6 +214,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Stripped black matte / floor-shadow fringe from photoreal equipment PNGs
 - Photo faces render without a dark rounded chrome border; alpha composites cleanly (no black halo)
 
+### Add catalog labels (`0.1.8`)
+- Electrical (and Solar) Add tiles lead with type — Inverter, Battery, Module, etc. — brand and size on the second line
+- Subtitles wrap inside the tile so you can tell models apart without guessing
+
 ---
 
 ## How to verify for submission

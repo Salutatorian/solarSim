@@ -2867,26 +2867,26 @@ public partial class MainWindow : Window
 
     private IEnumerable<AddCatalogItem> GetAddCatalog()
     {
-        yield return new("boviet", "Boviet", "270 W module", "▦", "Solar", () => AddBoviet_Click(this, new RoutedEventArgs()));
-        yield return new("g400", "Generic", "400 W module", "▦", "Solar", () => AddGeneric400_Click(this, new RoutedEventArgs()));
-        yield return new("g550", "Generic", "550 W module", "▦", "Solar", () => AddGeneric550_Click(this, new RoutedEventArgs()));
-        yield return new("custom", "Custom", "Custom panel…", "▦", "Solar", () => AddCustom_Click(this, new RoutedEventArgs()));
+        yield return new("boviet", "Module", "Boviet · 270 W", "▦", "Solar", () => AddBoviet_Click(this, new RoutedEventArgs()));
+        yield return new("g400", "Module", "Generic · 400 W", "▦", "Solar", () => AddGeneric400_Click(this, new RoutedEventArgs()));
+        yield return new("g550", "Module", "Generic · 550 W", "▦", "Solar", () => AddGeneric550_Click(this, new RoutedEventArgs()));
+        yield return new("custom", "Module", "Custom panel…", "▦", "Solar", () => AddCustom_Click(this, new RoutedEventArgs()));
         yield return new("combiner", "Combiner", "6-string", "▤", "Electrical", () => AddCombiner_Click(this, new RoutedEventArgs()), "combiner-6string.png");
-        yield return new("disconnect", "DC isolator", "Check Amp rating!", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()), "disconnect-pv-isolator.png");
-        yield return new("ypos", "MC4 Y", "Positive", "Y+", "Electrical", () => AddBranchYPos_Click(this, new RoutedEventArgs()));
-        yield return new("yneg", "MC4 Y", "Negative", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
-        yield return new("inv5", "Inverter", "5 kW", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
-        yield return new("inv76", "Inverter", "7.6 kW", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
-        yield return new("inv42", "ANENJI", "4.2 kW hybrid", "◇", "Electrical", () => AddInverterAnenji4_2k_Click(this, new RoutedEventArgs()), "inverter-anenji-4_2kw.png");
-        yield return new("inv65", "ANENJI", "6.5 kW hybrid", "◇", "Electrical", () => AddInverterAnenji6_5k_Click(this, new RoutedEventArgs()), "inverter-anenji-6_5kw.png");
-        yield return new("inv12", "ANENJI", "12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()), "inverter-anenji-12kw.png");
-        yield return new("battery", "ANENJI", "16 kWh battery", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()), "battery-anenji-16kwh.png");
-        yield return new("batt10k", "ANENJI", "10 kW wall · dual BAT±", "▣", "Electrical", () => AddBattery10kW_Click(this, new RoutedEventArgs()), "battery-anenji-10kw.png");
-        yield return new("battrack", "ANENJI", "5.1 kWh rack · stackable", "▣", "Electrical", () => AddBatteryRack_Click(this, new RoutedEventArgs()), "battery-anenji-5_1kwh-rack.png");
-        yield return new("batt128", "ANENJI", "12.8V 300Ah · 3.84 kWh", "▣", "Electrical", () => AddBattery12_8V_Click(this, new RoutedEventArgs()), "battery-anenji-12_8v-300ah.png");
-        yield return new("batdisc", "Batt disc.", "Check Amp + wire size", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()), "battery-disconnect-dhm1b.png");
-        yield return new("acdisc", "AC disc.", "AC disconnect", "⏻", "Electrical", () => AddAcDisconnect_Click(this, new RoutedEventArgs()));
-        yield return new("aclc", "Load center", "AC load center", "☰", "Electrical", () => AddAcLoadCenter_Click(this, new RoutedEventArgs()));
+        yield return new("disconnect", "DC isolator", "Set Amp rating", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()), "disconnect-pv-isolator.png");
+        yield return new("ypos", "MC4 Y+", "Positive branch", "Y+", "Electrical", () => AddBranchYPos_Click(this, new RoutedEventArgs()));
+        yield return new("yneg", "MC4 Y−", "Negative branch", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
+        yield return new("inv5", "Inverter", "5 kW string", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
+        yield return new("inv76", "Inverter", "7.6 kW string", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
+        yield return new("inv42", "Inverter", "ANENJI · 4.2 kW hybrid", "◇", "Electrical", () => AddInverterAnenji4_2k_Click(this, new RoutedEventArgs()), "inverter-anenji-4_2kw.png");
+        yield return new("inv65", "Inverter", "ANENJI · 6.5 kW hybrid", "◇", "Electrical", () => AddInverterAnenji6_5k_Click(this, new RoutedEventArgs()), "inverter-anenji-6_5kw.png");
+        yield return new("inv12", "Inverter", "ANENJI · 12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()), "inverter-anenji-12kw.png");
+        yield return new("battery", "Battery", "ANENJI · 16 kWh", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()), "battery-anenji-16kwh.png");
+        yield return new("batt10k", "Battery", "ANENJI · 10 kW wall", "▣", "Electrical", () => AddBattery10kW_Click(this, new RoutedEventArgs()), "battery-anenji-10kw.png");
+        yield return new("battrack", "Battery", "ANENJI · 5.1 kWh rack", "▣", "Electrical", () => AddBatteryRack_Click(this, new RoutedEventArgs()), "battery-anenji-5_1kwh-rack.png");
+        yield return new("batt128", "Battery", "ANENJI · 12.8V 300Ah", "▣", "Electrical", () => AddBattery12_8V_Click(this, new RoutedEventArgs()), "battery-anenji-12_8v-300ah.png");
+        yield return new("batdisc", "Batt disconnect", "Set Amp + wire", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()), "battery-disconnect-dhm1b.png");
+        yield return new("acdisc", "AC disconnect", "AC side", "⏻", "Electrical", () => AddAcDisconnect_Click(this, new RoutedEventArgs()));
+        yield return new("aclc", "Load center", "AC panel", "☰", "Electrical", () => AddAcLoadCenter_Click(this, new RoutedEventArgs()));
         yield return new("vent", "Roof vent", "Obstacle", "◇", "Structural", () => AddObstacleMode_Click(this, new RoutedEventArgs()));
     }
 
@@ -2938,6 +2938,9 @@ public partial class MainWindow : Window
             });
         }
 
+        var tileW = !string.IsNullOrWhiteSpace(item.ImageAsset) ? 108.0 : 96.0;
+        var textMax = tileW - 12;
+
         stack.Children.Add(new TextBlock
         {
             Text = item.Title,
@@ -2945,15 +2948,20 @@ public partial class MainWindow : Window
             FontWeight = FontWeights.SemiBold,
             Foreground = (Brush)FindResource("TextBrush"),
             HorizontalAlignment = HorizontalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.NoWrap,
+            MaxWidth = textMax,
         });
         stack.Children.Add(new TextBlock
         {
             Text = item.Subtitle,
-            FontSize = 10,
+            FontSize = 9.5,
             Foreground = (Brush)FindResource("MutedBrush"),
             HorizontalAlignment = HorizontalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = textMax,
+            LineHeight = 12,
         });
 
         var btn = new Button
@@ -2961,13 +2969,12 @@ public partial class MainWindow : Window
             Style = (Style)FindResource("AddTileButton"),
             Content = stack,
             Tag = item.Key,
+            Width = tileW,
+            Height = double.NaN,
+            MinHeight = !string.IsNullOrWhiteSpace(item.ImageAsset) ? 108 : 86,
+            Padding = new Thickness(6, 6, 6, 7),
             ToolTip = $"{item.Title} — {item.Subtitle}",
         };
-        if (!string.IsNullOrWhiteSpace(item.ImageAsset))
-        {
-            btn.Width = 92;
-            btn.Height = 96;
-        }
         btn.Click += (_, _) =>
         {
             RememberAdd(item.Key);

@@ -424,8 +424,8 @@
         </Style>
 
         <Style x:Key="AddTileButton" TargetType="Button" BasedOn="{StaticResource ModernButtonBase}">
-            <Setter Property="Width" Value="84"/>
-            <Setter Property="Height" Value="78"/>
+            <Setter Property="Width" Value="96"/>
+            <Setter Property="MinHeight" Value="86"/>
             <Setter Property="Margin" Value="0,0,6,6"/>
             <Setter Property="Padding" Value="6,6"/>
             <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>

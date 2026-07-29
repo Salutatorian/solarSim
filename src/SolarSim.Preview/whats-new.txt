@@ -1,13 +1,10 @@
-solarSim 0.1.7
-Released: 2026-07-30 05:57
+solarSim 0.1.8
+Released: 2026-07-30 06:01
 
-Equipment photo faces
-• Removed the black matte / drop-shadow fringe baked into equipment cutouts
-• Photo faces no longer draw a dark rounded border (selection accent only)
-• Transparent PNGs composite cleanly in WPF (no black halo)
+Add catalog labels
+• Tiles lead with the equipment type (Inverter, Battery, Combiner…) — not only the brand
+• Brand and size sit on the second line and wrap so you can read what you’re adding
 
-Earlier in 0.1.6
-• Settings + mini toast Update / Cancel; auto-install at 100%
-• What’s new dialog after update
-• Electrical Add tiles use real equipment photos
-• Equipment workspace hides roof / panel tools
+Earlier
+• 0.1.7 — cleaned black matte / halo on equipment photos
+• 0.1.6 — Update toast, What’s new dialog, photo tiles, Equipment-only tools
