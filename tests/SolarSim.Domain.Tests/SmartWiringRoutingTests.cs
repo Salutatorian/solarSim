@@ -121,6 +121,29 @@ public class SmartWiringRoutingTests
         }
     }
 
+    [Fact]
+    public void Route_between_neighbors_stays_local_despite_far_obstacles()
+    {
+        var a = new PvRect(0, 0, 40, 60);
+        var b = new PvRect(50, 0, 90, 60);
+        var far = new PvRect(500, 500, 600, 700);
+        var start = new PvVec2(23, 60);
+        var end = new PvVec2(67, 60);
+
+        var route = PvWireRouting.Route(
+            start, new PvVec2(0, 1),
+            end, new PvVec2(0, 1),
+            a, b,
+            new[] { a, b, far },
+            manualWaypoints: null);
+
+        AssertAxisAligned(route.PathPoints);
+        // Must not take a tour around the far obstacle mega-box.
+        Assert.True(route.ApproximateLength < 200, $"route too long: {route.ApproximateLength}");
+        foreach (var p in route.PathPoints)
+            Assert.True(p.X < 200 && p.Y < 200, $"point wandered to {p}");
+    }
+
     private static bool StrictInside(PvVec2 p, PvRect r) =>
         p.X > r.Left && p.X < r.Right && p.Y > r.Top && p.Y < r.Bottom;
 

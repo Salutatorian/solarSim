@@ -255,6 +255,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Resize keeps aspect; free 360° rotation by default
 - Visible inverter labels (PV1/PV2, BAT, AC L/N/G); battery↔solar disconnect allowed; 16 kWh ports on bottom
 
+### Panel string wires on zoom (`0.1.18`)
+- Neighbor panel cables stay local when zoomed out (no mega-box detour / floating mid-runs)
+- Zoom rebuilds routes from live ports
+
 ---
 
 ## How to verify for submission

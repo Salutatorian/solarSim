@@ -2989,6 +2989,7 @@ public partial class MainWindow : Window
             viewH / 2 - cy * MmToPx * _zoom);
         if (ZoomLabel is not null)
             ZoomLabel.Text = $"{_zoom * 100:0}%";
+        ClearAllWireWaypointsForReroute();
         RefreshAll();
     }
 
@@ -3251,6 +3252,8 @@ public partial class MainWindow : Window
         var after = WorldToCanvas(beforeX, beforeY);
         _panOffset.X += cx - after.x;
         _panOffset.Y += cy - after.y;
+        // Drop frozen canvas-era waypoints so Smart Wiring re-anchors to live ports.
+        ClearAllWireWaypointsForReroute();
         RefreshAll();
     }
 
@@ -3827,6 +3830,7 @@ public partial class MainWindow : Window
         var after = WorldToCanvas(beforeX, beforeY);
         _panOffset.X += mouse.X - after.x;
         _panOffset.Y += mouse.Y - after.y;
+        ClearAllWireWaypointsForReroute();
         RefreshAll();
         e.Handled = true;
     }
@@ -4355,6 +4359,16 @@ public partial class MainWindow : Window
             if (start.OwnerComponentId == equipmentId || end.OwnerComponentId == equipmentId)
                 connection.Wire.Waypoints.Clear();
         }
+    }
+
+    /// <summary>
+    /// Zoom changes canvas spacing; drop manual midpoints so routes rebuild from live ports.
+    /// (Segment-handle edits are intentionally reset on zoom — connection stays correct.)
+    /// </summary>
+    private void ClearAllWireWaypointsForReroute()
+    {
+        foreach (var connection in _project.Graph.Connections.Values)
+            connection.Wire.Waypoints.Clear();
     }
 
     /// <summary>

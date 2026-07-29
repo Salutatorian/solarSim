@@ -1,20 +1,11 @@
-solarSim 0.1.17
-Released: 2026-07-30 07:40
+solarSim 0.1.18
+Released: 2026-07-30 07:45
 
-Wiring that stays put
-• Zoom / pan no longer breaks equipment wires (port positions are math-stable)
-• Moving gear keeps connections attached — shared runs move with both ends; one-end moves re-route cleanly
-• Selecting a wire no longer freezes a broken path
-
-Equipment edit
-• Resize keeps aspect (no stretch)
-• Rotation is free 360° by default (Shift=15°, Ctrl=90°)
-
-Ports & connections
-• Inverter terminals show clear labels: PV1 / PV2, BAT±, IN/OUT L·N·G
-• Hybrid AC includes Ground (G) with Line and Neutral
-• Battery can wire to solar disconnect IN/OUT; 16 kWh terminals on the bottom
+Panel wiring on zoom
+• Fixed stretched / floating string wires when zooming out
+• Router no longer treats the whole array as one giant obstacle box
+• Zoom clears stale midpoints so every wire re-anchors to its ports
 
 Earlier
+• 0.1.17 — equipment wire zoom fix, free rotate, port labels
 • 0.1.16 — photo catalog first
-• 0.1.15 — obstacle routing + segment handles

@@ -230,7 +230,10 @@ public static class PvWireRouting
         var s1 = start + startExit * exitDist;
         var s2 = end + endExit * exitDist;
 
-        var bounds = UnionBounds(startPanel, endPanel, obstacles);
+        // Bounds for gutter choice = endpoints only. Other gear is scored as a
+        // crossing penalty — do NOT union every panel into one mega-box (that made
+        // zoomed-out strings route around the entire array with floating mid-runs).
+        var bounds = UnionBounds(startPanel, endPanel, Array.Empty<PvRect>());
         List<PvVec2> best;
         if (bounds is null)
         {
