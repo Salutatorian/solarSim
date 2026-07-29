@@ -2023,13 +2023,27 @@ public partial class MainWindow : Window
             var rightDist = bodyW - cx;
             var topDist = cy;
             var botDist = bodyH - cy;
+            Vector local;
             if (topDist <= leftDist && topDist <= rightDist && topDist <= botDist)
-                return new Vector(0, -1);
-            if (botDist <= leftDist && botDist <= rightDist)
-                return new Vector(0, 1);
-            if (leftDist <= rightDist)
-                return new Vector(-1, 0);
-            return new Vector(1, 0);
+                local = new Vector(0, -1);
+            else if (botDist <= leftDist && botDist <= rightDist)
+                local = new Vector(0, 1);
+            else if (leftDist <= rightDist)
+                local = new Vector(-1, 0);
+            else
+                local = new Vector(1, 0);
+
+            if (_project.Graph.TryGetEquipment(port.OwnerComponentId, out var eq)
+                && Math.Abs(eq.RotationDegrees) > 0.05)
+            {
+                var rad = eq.RotationDegrees * Math.PI / 180.0;
+                var cos = Math.Cos(rad);
+                var sin = Math.Sin(rad);
+                // Clockwise (WPF) rotation of the local exit vector.
+                return new Vector(local.X * cos + local.Y * sin, -local.X * sin + local.Y * cos);
+            }
+
+            return local;
         }
 
         // Fallback before visuals exist.
@@ -3265,20 +3279,29 @@ public partial class MainWindow : Window
             return new Point(rootX + lx * scale, rootY + ly * scale);
         }
 
-        if (_equipmentVisuals.TryGetValue(port.OwnerComponentId, out var eqVisual)
+        if (_project.Graph.TryGetEquipment(port.OwnerComponentId, out var eq)
+            && _equipmentVisuals.TryGetValue(eq.Id, out var eqVisual)
             && eqVisual.PortEllipses.TryGetValue(port.Id, out var eqEllipse))
         {
-            try
-            {
-                var local = new Point(eqEllipse.Width / 2, eqEllipse.Height / 2);
-                return eqEllipse.TranslatePoint(local, DesignCanvas);
-            }
-            catch
-            {
-                var left = Canvas.GetLeft(eqVisual.Root) + Canvas.GetLeft(eqEllipse) + eqEllipse.Width / 2;
-                var top = Canvas.GetTop(eqVisual.Root) + Canvas.GetTop(eqEllipse) + eqEllipse.Height / 2;
-                return new Point(left, top);
-            }
+            // Math (not TranslatePoint) so zoom/pan never desync ports from world waypoints.
+            var scale = MmToPx * _zoom;
+            var (rootX, rootY) = WorldToCanvas(eq.PositionXMm, eq.PositionYMm);
+            var bodyW = Math.Max(eq.WidthMm * scale, 1);
+            var bodyH = Math.Max(eq.HeightMm * scale, 1);
+            var localX = Canvas.GetLeft(eqEllipse) + eqEllipse.Width / 2.0;
+            var localY = Canvas.GetTop(eqEllipse) + eqEllipse.Height / 2.0;
+            if (double.IsNaN(localX) || double.IsNaN(localY))
+                return new Point(rootX + bodyW / 2, rootY + bodyH / 2);
+
+            var dx = localX - bodyW / 2;
+            var dy = localY - bodyH / 2;
+            var rad = eq.RotationDegrees * Math.PI / 180.0;
+            var cos = Math.Cos(rad);
+            var sin = Math.Sin(rad);
+            // Match WPF RotateTransform (positive = clockwise) around body center.
+            var rx = dx * cos + dy * sin;
+            var ry = -dx * sin + dy * cos;
+            return new Point(rootX + bodyW / 2 + rx, rootY + bodyH / 2 + ry);
         }
 
         return new Point();
@@ -3996,22 +4019,15 @@ public partial class MainWindow : Window
                 var delta = mouseAngle - _rotateStartMouseAngleDeg;
                 var next = _rotateStartEquipmentDeg + delta;
 
-                // Default: snap to 0 / 90 / 180 / 270. Shift = 15°, Alt = free.
-                if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt))
-                {
-                    // free
-                }
-                else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-                {
-                    next = Math.Round(next / 15.0) * 15.0;
-                }
-                else
-                {
+                // Default: free 360°. Shift = 15°, Ctrl = 90° snap.
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                     next = Math.Round(next / 90.0) * 90.0;
-                }
+                else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                    next = Math.Round(next / 15.0) * 15.0;
 
                 eq.SetRotation(next);
                 _rotateMoved = true;
+                ClearWaypointsTouchingEquipment(eq.Id);
                 UpdateEquipmentVisual(visual, eq);
                 UpdateRotateDegreeLabel(center, eq.RotationDegrees);
                 RebuildWireVisuals();
@@ -4037,9 +4053,8 @@ public partial class MainWindow : Window
                 var newW = _resizeStartWidthMm + localDxMm;
                 var newH = _resizeStartHeightMm + localDyMm;
 
-                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
-                    && _resizeStartWidthMm > 1
-                    && _resizeStartHeightMm > 1)
+                // Always keep aspect — never stretch the face.
+                if (_resizeStartWidthMm > 1 && _resizeStartHeightMm > 1)
                 {
                     var sx = newW / _resizeStartWidthMm;
                     var sy = newH / _resizeStartHeightMm;
@@ -4050,6 +4065,7 @@ public partial class MainWindow : Window
 
                 eq.SetSize(newW, newH);
                 _rotateMoved = true;
+                ClearWaypointsTouchingEquipment(eq.Id);
                 UpdateEquipmentVisual(visual, eq);
                 RebuildWireVisuals();
                 RefreshStatusAndInspector();
@@ -4286,11 +4302,58 @@ public partial class MainWindow : Window
                 panel.SetPosition(nx, ny);
             }
 
+            // Keep wires attached: translate shared corridors, or clear so auto-route rebuilds.
+            SyncWaypointsAfterComponentDrag(_dragOrigins.Keys.ToHashSet(), snapDx, snapDy);
+
             RefreshAll();
             if (isEquipment)
                 UpdateEquipmentAlignmentGuides(_draggingPanelId.Value, _dragOrigins.Keys.ToHashSet());
             else
                 UpdatePanelAlignmentGuides(_draggingPanelId.Value, _dragOrigins.Keys.ToHashSet());
+        }
+    }
+
+    /// <summary>
+    /// After moving components: if both ends of a wire moved together, shift waypoints;
+    /// if only one end moved, drop waypoints so Smart Wiring re-routes to the live ports.
+    /// </summary>
+    private void SyncWaypointsAfterComponentDrag(HashSet<Guid> movedIds, double dxMm, double dyMm)
+    {
+        if (movedIds.Count == 0) return;
+        foreach (var connection in _project.Graph.Connections.Values)
+        {
+            if (!_project.Graph.TryGetPort(connection.StartPortId, out var start)
+                || !_project.Graph.TryGetPort(connection.EndPortId, out var end))
+                continue;
+
+            var startMoved = movedIds.Contains(start.OwnerComponentId);
+            var endMoved = movedIds.Contains(end.OwnerComponentId);
+            if (!startMoved && !endMoved) continue;
+
+            if (startMoved && endMoved)
+            {
+                for (var i = 0; i < connection.Wire.Waypoints.Count; i++)
+                {
+                    var wp = connection.Wire.Waypoints[i];
+                    connection.Wire.Waypoints[i] = new Point2Mm(wp.X + dxMm, wp.Y + dyMm);
+                }
+            }
+            else
+            {
+                connection.Wire.Waypoints.Clear();
+            }
+        }
+    }
+
+    private void ClearWaypointsTouchingEquipment(Guid equipmentId)
+    {
+        foreach (var connection in _project.Graph.Connections.Values)
+        {
+            if (!_project.Graph.TryGetPort(connection.StartPortId, out var start)
+                || !_project.Graph.TryGetPort(connection.EndPortId, out var end))
+                continue;
+            if (start.OwnerComponentId == equipmentId || end.OwnerComponentId == equipmentId)
+                connection.Wire.Waypoints.Clear();
         }
     }
 
@@ -5087,21 +5150,12 @@ public partial class MainWindow : Window
                 _selectedConnectionIds.Remove(id);
             else
                 _selectedConnectionIds.Add(id);
-            // Bake so segment handles appear for newly selected wires.
-            if (_selectedConnectionIds.Contains(id)
-                && _project.Graph.Connections.TryGetValue(id, out var conn)
-                && _project.Graph.TryGetPort(conn.StartPortId, out var s)
-                && _project.Graph.TryGetPort(conn.EndPortId, out var e))
-                BakeAutoRouteWaypoints(conn, s, e);
             RefreshAll();
             return;
         }
 
-        if (_project.Graph.Connections.TryGetValue(id, out var connection)
-            && _project.Graph.TryGetPort(connection.StartPortId, out var start)
-            && _project.Graph.TryGetPort(connection.EndPortId, out var end))
-            BakeAutoRouteWaypoints(connection, start, end);
-
+        // Do not bake on select — baking freezes canvas corners in world space and breaks
+        // on zoom/move. Bake only when the user starts dragging a segment handle.
         SetSelection(connections: new[] { id });
     }
 
@@ -5555,7 +5609,7 @@ public partial class MainWindow : Window
             StrokeThickness = 2,
             Cursor = Cursors.Arrow,
             Visibility = Visibility.Collapsed,
-            ToolTip = "Drag to rotate · snaps to 90° · Shift=15° · Alt=free · R / Shift+R nudge",
+            ToolTip = "Drag to rotate freely · Shift=15° · Ctrl=90° · R / Shift+R nudge",
         };
         root.Children.Add(rotateStem);
         root.Children.Add(rotateHandle);
@@ -5569,20 +5623,26 @@ public partial class MainWindow : Window
             StrokeThickness = 2,
             Cursor = Cursors.SizeNWSE,
             Visibility = Visibility.Collapsed,
-            ToolTip = "Drag to resize · Shift = keep aspect",
+            ToolTip = "Drag to resize (keeps aspect)",
         };
         root.Children.Add(resizeHandle);
 
         var portEllipses = new Dictionary<Guid, Ellipse>();
+        var portLabels = new Dictionary<Guid, TextBlock>();
         foreach (var port in equipment.Ports)
         {
+            var isGround = port.PortType == PortType.AcGround
+                           || port.Label.EndsWith(" G", StringComparison.OrdinalIgnoreCase)
+                           || port.Label.Equals("GND", StringComparison.OrdinalIgnoreCase);
             var ellipse = new Ellipse
             {
                 Width = 12,
                 Height = 12,
                 Fill = port.Polarity == Polarity.Positive
                     ? (Brush)FindResource("PositiveBrush")
-                    : (Brush)FindResource("NegativeBrush"),
+                    : isGround
+                        ? new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32))
+                        : (Brush)FindResource("NegativeBrush"),
                 Stroke = Brushes.White,
                 StrokeThickness = 1.5,
                 Visibility = Visibility.Collapsed,
@@ -5592,6 +5652,20 @@ public partial class MainWindow : Window
             ellipse.MouseLeftButtonDown += Port_MouseLeftButtonDown;
             root.Children.Add(ellipse);
             portEllipses[port.Id] = ellipse;
+
+            var label = new TextBlock
+            {
+                Text = FormatEquipmentPortLabel(port.Label),
+                FontSize = 9,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brushes.White,
+                Background = new SolidColorBrush(Color.FromArgb(210, 18, 18, 22)),
+                Padding = new Thickness(3, 1, 3, 1),
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed,
+            };
+            root.Children.Add(label);
+            portLabels[port.Id] = label;
         }
 
         var rotateTransform = new RotateTransform(0);
@@ -5599,7 +5673,7 @@ public partial class MainWindow : Window
         root.RenderTransform = rotateTransform;
 
         var visual = new EquipmentVisual(
-            equipment.Id, root, body, title, portEllipses, rotateHandle, rotateStem, resizeHandle, rotateTransform);
+            equipment.Id, root, body, title, portEllipses, portLabels, rotateHandle, rotateStem, resizeHandle, rotateTransform);
 
         rotateHandle.MouseLeftButtonDown += (_, e) =>
         {
@@ -5697,9 +5771,11 @@ public partial class MainWindow : Window
                 LayoutBatteryTopLeftRightPorts(visual, equipment, w, h, portSize, half);
             else if (ElectricalEquipmentInstance.IsRackBattery(equipment))
                 LayoutBatteryRackTopDualPorts(visual, equipment, w, h, portSize, half);
-            else
-                // Tall packs (16 kWh / 10 kW wall): top terminals for disconnect-above stacks.
+            else if (ElectricalEquipmentInstance.IsWall10kWBattery(equipment))
                 LayoutBatteryTopDualPorts(visual, equipment, w, h, portSize, half);
+            else
+                // Tall 16 kWh packs: bottom terminals (common for battery under disconnect).
+                LayoutBatteryBottomDualPorts(visual, equipment, w, h, portSize, half);
         }
         else if (isPvIsolatorFace)
         {
@@ -5744,6 +5820,19 @@ public partial class MainWindow : Window
 
         if (selected || _wireFromPortId is not null)
             SetEquipmentPortsVisible(visual, true);
+
+        PositionAllEquipmentPortLabels(visual, h);
+    }
+
+    private static void PositionAllEquipmentPortLabels(EquipmentVisual visual, double bodyH)
+    {
+        foreach (var (portId, ellipse) in visual.PortEllipses)
+        {
+            var cx = Canvas.GetLeft(ellipse) + ellipse.Width / 2;
+            var cy = Canvas.GetTop(ellipse) + ellipse.Height / 2;
+            if (double.IsNaN(cx) || double.IsNaN(cy)) continue;
+            PositionEquipmentPortLabel(visual, portId, cx, cy, ellipse.Width, bodyH);
+        }
     }
 
     private void BeginEquipmentResize(Guid equipmentId, Point canvasPos)
@@ -5941,7 +6030,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Every string-inverter terminal along the bottom edge (left → right).
-    /// Hybrids: AC IN · AC OUT · (PV) · BAT · (extra PV). Generics: MPPT rows then BAT.
+    /// Hybrids: AC IN (L/N/G) · AC OUT (L/N/G) · BAT · PV1 · PV2.
     /// </summary>
     private static void LayoutInverterBottomPorts(
         EquipmentVisual visual,
@@ -5953,7 +6042,7 @@ public partial class MainWindow : Window
     {
         // Sit on the bottom seam (slightly overlapping the face edge).
         var y = bodyH - half;
-        var pairGap = Math.Min(portSize * 0.9, bodyW * 0.025);
+        var pairGap = Math.Min(portSize * 0.75, bodyW * 0.018);
         var placed = new HashSet<Guid>();
         var hybrid = equipment.Ports.Any(p =>
             p.Label.Equals("AC IN L", StringComparison.OrdinalIgnoreCase));
@@ -5963,6 +6052,8 @@ public partial class MainWindow : Window
                 && p.Label.EndsWith("+", StringComparison.Ordinal)));
         var singlePv = mpptCount <= 1
             || equipment.InverterSpecs?.DefinitionId == InverterDefinition.Anenji4_2kWDefinitionId;
+        var hasAcG = equipment.Ports.Any(p =>
+            p.Label.Equals("AC IN G", StringComparison.OrdinalIgnoreCase));
 
         void Place(string label, double centerX)
         {
@@ -5971,9 +6062,9 @@ public partial class MainWindow : Window
             if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
             ellipse.Width = portSize;
             ellipse.Height = portSize;
-            ellipse.ToolTip = label.StartsWith("MPPT1", StringComparison.OrdinalIgnoreCase) ? $"PV1 ({label})"
-                : label.StartsWith("MPPT2", StringComparison.OrdinalIgnoreCase) ? $"PV2 ({label})"
-                : label;
+            ellipse.ToolTip = FormatEquipmentPortLabel(label);
+            if (visual.PortLabels.TryGetValue(port.Id, out var tb))
+                tb.Text = FormatEquipmentPortLabel(label);
             Canvas.SetLeft(ellipse, centerX - half);
             Canvas.SetTop(ellipse, y);
             placed.Add(port.Id);
@@ -5985,25 +6076,33 @@ public partial class MainWindow : Window
             Place(minusLabel, centerX + pairGap);
         }
 
+        void PlaceLng(string prefix, double centerX)
+        {
+            // Line · Neutral · Ground (common AC).
+            Place($"{prefix} L", centerX - pairGap * 2);
+            Place($"{prefix} N", centerX);
+            if (hasAcG)
+                Place($"{prefix} G", centerX + pairGap * 2);
+        }
+
         if (hybrid && singlePv)
         {
-            // 4.2 kW: AC IN / AC OUT / single PV on the left · BAT in the middle.
-            PlacePair("AC IN L", "AC IN N", 0.10 * bodyW);
-            PlacePair("AC OUT L", "AC OUT N", 0.22 * bodyW);
-            PlacePair("MPPT1+", "MPPT1-", 0.34 * bodyW);
-            PlacePair("BAT+", "BAT-", 0.55 * bodyW);
+            PlaceLng("AC IN", 0.10 * bodyW);
+            PlaceLng("AC OUT", 0.28 * bodyW);
+            PlacePair("MPPT1+", "MPPT1-", 0.48 * bodyW);
+            PlacePair("BAT+", "BAT-", 0.72 * bodyW);
         }
         else if (hybrid)
         {
-            // 6.5 / 12 kW (+): AC left · BAT middle · PV1 / PV2 right.
-            PlacePair("AC IN L", "AC IN N", 0.12 * bodyW);
-            PlacePair("AC OUT L", "AC OUT N", 0.28 * bodyW);
-            PlacePair("BAT+", "BAT-", 0.50 * bodyW);
-            PlacePair("MPPT1+", "MPPT1-", 0.72 * bodyW);
-            PlacePair("MPPT2+", "MPPT2-", 0.88 * bodyW);
+            // AC left · BAT · PV1 / PV2 right — rightmost is PV2.
+            PlaceLng("AC IN", 0.10 * bodyW);
+            PlaceLng("AC OUT", 0.26 * bodyW);
+            PlacePair("BAT+", "BAT-", 0.44 * bodyW);
+            PlacePair("MPPT1+", "MPPT1-", 0.66 * bodyW);
+            PlacePair("MPPT2+", "MPPT2-", 0.86 * bodyW);
             for (var i = 3; i <= mpptCount; i++)
             {
-                var t = 0.88 + (i - 2) * 0.06;
+                var t = 0.86 + (i - 2) * 0.06;
                 if (t > 0.96) t = 0.96;
                 PlacePair($"MPPT{i}+", $"MPPT{i}-", t * bodyW);
             }
@@ -6030,7 +6129,9 @@ public partial class MainWindow : Window
             if (!visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) continue;
             ellipse.Width = portSize;
             ellipse.Height = portSize;
-            ellipse.ToolTip = port.Label;
+            ellipse.ToolTip = FormatEquipmentPortLabel(port.Label);
+            if (visual.PortLabels.TryGetValue(port.Id, out var tb))
+                tb.Text = FormatEquipmentPortLabel(port.Label);
             var t = leftovers.Count == 1 ? 0.5 : (i + 0.5) / leftovers.Count;
             Canvas.SetLeft(ellipse, t * bodyW - half);
             Canvas.SetTop(ellipse, y);
@@ -6315,6 +6416,52 @@ public partial class MainWindow : Window
         var v = visible ? Visibility.Visible : Visibility.Collapsed;
         foreach (var ellipse in visual.PortEllipses.Values)
             ellipse.Visibility = v;
+        foreach (var label in visual.PortLabels.Values)
+            label.Visibility = v;
+    }
+
+    /// <summary>Readable terminal coding for canvas labels (PV1, BAT, L/N/G, …).</summary>
+    private static string FormatEquipmentPortLabel(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return raw;
+        if (raw.StartsWith("MPPT1", StringComparison.OrdinalIgnoreCase))
+            return raw.Replace("MPPT1", "PV1", StringComparison.OrdinalIgnoreCase);
+        if (raw.StartsWith("MPPT2", StringComparison.OrdinalIgnoreCase))
+            return raw.Replace("MPPT2", "PV2", StringComparison.OrdinalIgnoreCase);
+        if (raw.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase))
+            return raw.Replace("MPPT", "PV", StringComparison.OrdinalIgnoreCase);
+        return raw switch
+        {
+            "AC IN L" => "IN L",
+            "AC IN N" => "IN N",
+            "AC IN G" => "IN G",
+            "AC OUT L" => "OUT L",
+            "AC OUT N" => "OUT N",
+            "AC OUT G" => "OUT G",
+            "GND" => "G",
+            _ => raw,
+        };
+    }
+
+    private static void PositionEquipmentPortLabel(
+        EquipmentVisual visual,
+        Guid portId,
+        double portCenterX,
+        double portCenterY,
+        double portSize,
+        double bodyH)
+    {
+        if (!visual.PortLabels.TryGetValue(portId, out var label)) return;
+        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var lw = label.DesiredSize.Width;
+        var lh = label.DesiredSize.Height;
+        // Prefer below the port when on the bottom edge; otherwise above.
+        var below = portCenterY > bodyH * 0.55;
+        Canvas.SetLeft(label, portCenterX - lw / 2);
+        Canvas.SetTop(label, below
+            ? portCenterY + portSize * 0.55
+            : portCenterY - portSize * 0.55 - lh);
+        Panel.SetZIndex(label, 30);
     }
 
     private Guid? FindEquipmentAt(Point canvasPoint)
@@ -8759,6 +8906,7 @@ public partial class MainWindow : Window
         public Border Body { get; }
         public TextBlock Title { get; }
         public Dictionary<Guid, Ellipse> PortEllipses { get; }
+        public Dictionary<Guid, TextBlock> PortLabels { get; }
         public Ellipse RotateHandle { get; }
         public Line RotateStem { get; }
         public Rectangle ResizeHandle { get; }
@@ -8770,6 +8918,7 @@ public partial class MainWindow : Window
             Border body,
             TextBlock title,
             Dictionary<Guid, Ellipse> portEllipses,
+            Dictionary<Guid, TextBlock> portLabels,
             Ellipse rotateHandle,
             Line rotateStem,
             Rectangle resizeHandle,
@@ -8780,6 +8929,7 @@ public partial class MainWindow : Window
             Body = body;
             Title = title;
             PortEllipses = portEllipses;
+            PortLabels = portLabels;
             RotateHandle = rotateHandle;
             RotateStem = rotateStem;
             ResizeHandle = resizeHandle;

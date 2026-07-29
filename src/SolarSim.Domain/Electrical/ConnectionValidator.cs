@@ -218,10 +218,26 @@ public static class ConnectionValidator
             return;
         }
 
+        if (otherOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.PvDisconnect })
+        {
+            var discSide = otherPort.Label.StartsWith("IN", StringComparison.OrdinalIgnoreCase)
+                           || otherPort.Label.StartsWith("OUT", StringComparison.OrdinalIgnoreCase);
+            if (!discSide || !batteryPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
+            {
+                result.AddError(
+                    "BATTERY_SOLAR_DISCONNECT",
+                    "Solar disconnect",
+                    "Wire the battery to the solar disconnect IN± or OUT± (design-aid layout).",
+                    start.OwnerComponentId, end.OwnerComponentId);
+            }
+
+            return;
+        }
+
         result.AddError(
             "BATTERY_PATH",
             "Battery wiring",
-            "Battery cables connect to an inverter BAT± or a battery disconnect IN± / OUT±.",
+            "Battery cables connect to an inverter BAT±, a battery disconnect, or a solar disconnect.",
             start.OwnerComponentId, end.OwnerComponentId);
     }
 

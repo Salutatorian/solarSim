@@ -250,6 +250,11 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 ### Electrical catalog order (`0.1.16`)
 - Photo equipment tiles list first; generic icon tiles (MC4 Y±, string inverters, AC) at the bottom
 
+### Wire stability + port labels (`0.1.17`)
+- Equipment wires stay attached across zoom and moves (no more broken floating segments)
+- Resize keeps aspect; free 360° rotation by default
+- Visible inverter labels (PV1/PV2, BAT, AC L/N/G); battery↔solar disconnect allowed; 16 kWh ports on bottom
+
 ---
 
 ## How to verify for submission

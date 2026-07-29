@@ -242,9 +242,13 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
             ports.Add(new ElectricalPort(
                 Guid.NewGuid(), id, PortType.AcNeutral, Polarity.Negative, label: "AC IN N"));
             ports.Add(new ElectricalPort(
+                Guid.NewGuid(), id, PortType.AcGround, Polarity.Negative, label: "AC IN G"));
+            ports.Add(new ElectricalPort(
                 Guid.NewGuid(), id, PortType.AcLine, Polarity.Positive, label: "AC OUT L"));
             ports.Add(new ElectricalPort(
                 Guid.NewGuid(), id, PortType.AcNeutral, Polarity.Negative, label: "AC OUT N"));
+            ports.Add(new ElectricalPort(
+                Guid.NewGuid(), id, PortType.AcGround, Polarity.Negative, label: "AC OUT G"));
         }
 
         // Battery DC terminals on every string inverter (hybrid or future storage-ready).

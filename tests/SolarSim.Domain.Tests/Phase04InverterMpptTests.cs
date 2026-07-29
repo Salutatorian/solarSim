@@ -139,10 +139,12 @@ public class Phase04InverterMpptTests
         Assert.Contains(inv.Ports, p => p.Label == "MPPT1+");
         Assert.Contains(inv.Ports, p => p.Label == "MPPT2-");
         Assert.Contains(inv.Ports, p => p.Label == "AC IN L");
+        Assert.Contains(inv.Ports, p => p.Label == "AC IN G");
         Assert.Contains(inv.Ports, p => p.Label == "AC OUT N");
+        Assert.Contains(inv.Ports, p => p.Label == "AC OUT G");
         Assert.Contains(inv.Ports, p => p.Label == "BAT+");
         Assert.Contains(inv.Ports, p => p.Label == "BAT-");
-        Assert.Equal(10, inv.Ports.Count);
+        Assert.Equal(12, inv.Ports.Count);
     }
 
     [Fact]
@@ -154,8 +156,9 @@ public class Phase04InverterMpptTests
         Assert.Contains(inv.Ports, p => p.Label == "MPPT1+");
         Assert.DoesNotContain(inv.Ports, p => p.Label == "MPPT2+");
         Assert.Contains(inv.Ports, p => p.Label == "AC IN L");
+        Assert.Contains(inv.Ports, p => p.Label == "AC IN G");
         Assert.Contains(inv.Ports, p => p.Label == "BAT+");
-        Assert.Equal(8, inv.Ports.Count);
+        Assert.Equal(10, inv.Ports.Count);
     }
 
     [Fact]
@@ -168,7 +171,8 @@ public class Phase04InverterMpptTests
         Assert.Contains(inv.Ports, p => p.Label == "MPPT1+");
         Assert.Contains(inv.Ports, p => p.Label == "MPPT2-");
         Assert.Contains(inv.Ports, p => p.Label == "AC IN L");
+        Assert.Contains(inv.Ports, p => p.Label == "AC OUT G");
         Assert.Contains(inv.Ports, p => p.Label == "BAT+");
-        Assert.Equal(10, inv.Ports.Count);
+        Assert.Equal(12, inv.Ports.Count);
     }
 }

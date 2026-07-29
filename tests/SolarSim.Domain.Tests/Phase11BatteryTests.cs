@@ -84,6 +84,18 @@ public class Phase11BatteryTests
     }
 
     [Fact]
+    public void Battery_connects_to_solar_disconnect()
+    {
+        var project = new SolarProject();
+        var battery = project.AddBattery(0, 0);
+        var disc = project.AddPvDisconnect(2000, 0);
+
+        var batPos = battery.Ports.First(p => p.Label == "BAT1+");
+        var outPos = disc.Ports.First(p => p.Label == "OUT+");
+        Assert.True(project.Graph.TryConnect(batPos.Id, outPos.Id, null, out _).IsValid);
+    }
+
+    [Fact]
     public void Battery_cannot_mix_with_ac_ports()
     {
         var project = new SolarProject();
