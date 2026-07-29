@@ -6,6 +6,8 @@ public enum PvWireRouteType
     AdjacentJumper,
     GutterRoute,
     ManualRoute,
+    /// <summary>Smart Wiring — axis-aligned (Manhattan) polyline.</summary>
+    Orthogonal,
 }
 
 /// <summary>2D point in the same space the caller uses (canvas px or world mm).</summary>
@@ -44,24 +46,25 @@ public sealed class PvWireRouteResult
     public required PvVec2 Start { get; init; }
     public required PvVec2 End { get; init; }
 
-    /// <summary>Cubic Bezier control points P1, P2 (AdjacentJumper), or empty.</summary>
+    /// <summary>Legacy Bezier controls — unused for Smart Wiring (always empty).</summary>
     public IReadOnlyList<PvVec2> BezierControls { get; init; } = Array.Empty<PvVec2>();
 
-    /// <summary>Polyline / sampled path for hit-testing and length (includes start and end).</summary>
+    /// <summary>Orthogonal polyline corners (includes start and end).</summary>
     public required IReadOnlyList<PvVec2> PathPoints { get; init; }
 
     public double ApproximateLength { get; init; }
 }
 
 /// <summary>
-/// Physical PV cable routing: short adjacent jumpers, gutter runs for farther panels,
-/// manual waypoints when the user has edited the path.
+/// Smart Wiring: orthogonal/Manhattan cable routing with optional parallel lane offset.
+/// Manual waypoints are orthogonalized so edits stay H/V.
 /// </summary>
 public static class PvWireRouting
 {
     /// <summary>
-    /// Route a panel↔panel (or generic) cable. Manual waypoints take precedence.
+    /// Route a cable. Manual waypoints take precedence; otherwise adjacent or gutter ortho.
     /// </summary>
+    /// <param name="laneOffset">Parallel-bundle offset applied to shared corridor runs (same units as points).</param>
     public static PvWireRouteResult Route(
         PvVec2 start,
         PvVec2 startExit,
@@ -70,21 +73,34 @@ public static class PvWireRouting
         PvRect? startPanel,
         PvRect? endPanel,
         IReadOnlyList<PvRect> obstacles,
-        IReadOnlyList<PvVec2>? manualWaypoints)
+        IReadOnlyList<PvVec2>? manualWaypoints,
+        double laneOffset = 0)
     {
         if (manualWaypoints is { Count: > 0 })
             return Manual(start, end, manualWaypoints);
 
-        startExit = startExit.Normalized();
-        endExit = endExit.Normalized();
+        startExit = DominantAxis(startExit);
+        endExit = DominantAxis(endExit);
         if (startExit.Length() < 0.5) startExit = new PvVec2(0, 1);
         if (endExit.Length() < 0.5) endExit = new PvVec2(0, 1);
 
         if (startPanel is PvRect a && endPanel is PvRect b && AreAdjacent(a, b))
-            return AdjacentJumper(start, startExit, end, endExit, a, b);
+            return AdjacentOrtho(start, startExit, end, endExit, laneOffset);
 
-        return GutterRoute(start, startExit, end, endExit, startPanel, endPanel, obstacles);
+        return GutterOrtho(start, startExit, end, endExit, startPanel, endPanel, obstacles, laneOffset);
     }
+
+    /// <summary>Backward-compatible overload without lane offset.</summary>
+    public static PvWireRouteResult Route(
+        PvVec2 start,
+        PvVec2 startExit,
+        PvVec2 end,
+        PvVec2 endExit,
+        PvRect? startPanel,
+        PvRect? endPanel,
+        IReadOnlyList<PvRect> obstacles,
+        IReadOnlyList<PvVec2>? manualWaypoints) =>
+        Route(start, startExit, end, endExit, startPanel, endPanel, obstacles, manualWaypoints, 0);
 
     public static bool AreAdjacent(PvRect a, PvRect b)
     {
@@ -93,17 +109,61 @@ public static class PvWireRouting
         var size = Math.Max(Math.Max(a.Width, a.Height), Math.Max(b.Width, b.Height));
         var maxGap = Math.Clamp(size * 0.45, 36, 120);
 
-        // Neighbors on one axis with limited gap, roughly aligned on the other.
         var horizNeighbors = gapX >= -4 && gapX <= maxGap && Overlap1D(a.Top, a.Bottom, b.Top, b.Bottom) > size * 0.25;
         var vertNeighbors = gapY >= -4 && gapY <= maxGap && Overlap1D(a.Left, a.Right, b.Left, b.Right) > size * 0.25;
         return horizNeighbors || vertNeighbors;
     }
 
+    /// <summary>
+    /// Insert intermediate corners so consecutive points are axis-aligned (Manhattan).
+    /// Prefers horizontal-then-vertical elbows.
+    /// </summary>
+    public static List<PvVec2> Orthogonalize(IReadOnlyList<PvVec2> points)
+    {
+        if (points.Count == 0) return new List<PvVec2>();
+        var result = new List<PvVec2> { points[0] };
+        for (var i = 1; i < points.Count; i++)
+        {
+            var prev = result[^1];
+            var next = points[i];
+            if (AlmostEqual(prev.X, next.X) || AlmostEqual(prev.Y, next.Y))
+            {
+                if (!AlmostEqual(prev.X, next.X) || !AlmostEqual(prev.Y, next.Y))
+                    result.Add(next);
+                continue;
+            }
+
+            // Elbow: horizontal first, then vertical.
+            var mid = new PvVec2(next.X, prev.Y);
+            if (!AlmostEqual(prev.X, mid.X) || !AlmostEqual(prev.Y, mid.Y))
+                result.Add(mid);
+            if (!AlmostEqual(mid.X, next.X) || !AlmostEqual(mid.Y, next.Y))
+                result.Add(next);
+        }
+
+        return CollapseColinear(result);
+    }
+
+    /// <summary>Simple L or Z ortho preview from start→end with exit stubs.</summary>
+    public static List<PvVec2> OrthoPreview(PvVec2 start, PvVec2 startExit, PvVec2 end, PvVec2 endExit)
+    {
+        startExit = DominantAxis(startExit);
+        endExit = DominantAxis(endExit);
+        if (startExit.Length() < 0.5) startExit = new PvVec2(0, 1);
+        if (endExit.Length() < 0.5) endExit = new PvVec2(0, 1);
+        var dist = start.DistanceTo(end);
+        var exitDist = Clamp(dist * 0.12, 10, 28);
+        var s1 = start + startExit * exitDist;
+        var s2 = end + endExit * exitDist;
+        return Orthogonalize(new[] { start, s1, s2, end });
+    }
+
     private static PvWireRouteResult Manual(PvVec2 start, PvVec2 end, IReadOnlyList<PvVec2> waypoints)
     {
-        var pts = new List<PvVec2>(waypoints.Count + 2) { start };
-        pts.AddRange(waypoints);
-        pts.Add(end);
+        var raw = new List<PvVec2>(waypoints.Count + 2) { start };
+        raw.AddRange(waypoints);
+        raw.Add(end);
+        var pts = Orthogonalize(raw);
         return new PvWireRouteResult
         {
             RouteType = PvWireRouteType.ManualRoute,
@@ -114,62 +174,54 @@ public static class PvWireRouting
         };
     }
 
-    private static PvWireRouteResult AdjacentJumper(
+    private static PvWireRouteResult AdjacentOrtho(
         PvVec2 start,
         PvVec2 startExit,
         PvVec2 end,
         PvVec2 endExit,
-        PvRect a,
-        PvRect b)
+        double laneOffset)
     {
         var dist = start.DistanceTo(end);
-        var exitDist = Clamp(dist * 0.28, 12, 34);
-        var sag = Clamp(dist * 0.14, 10, 28);
+        var exitDist = Clamp(dist * 0.22, 10, 28);
+        var s1 = start + startExit * exitDist;
+        var s2 = end + endExit * exitDist;
 
-        var p0 = start;
-        var p3 = end;
-        var p1 = start + startExit * exitDist;
-        var p2 = end + endExit * exitDist;
-
-        var avgExit = (startExit + endExit).Normalized();
-        if (avgExit.Length() >= 0.4)
+        List<PvVec2> raw;
+        if (AlmostEqual(s1.X, s2.X) || AlmostEqual(s1.Y, s2.Y))
         {
-            // Same-side leads: hang outward with slack.
-            p1 += avgExit * sag;
-            p2 += avgExit * sag;
+            raw = new List<PvVec2> { start, s1, s2, end };
         }
         else
         {
-            // Opposite edges (e.g. top(+) → bottom(−)): pull through the inter-panel gap.
-            var gap = GapPull(a, b, start, end);
-            p1 += gap * (sag * 0.85);
-            p2 += gap * (sag * 0.85);
-            // Soften toward the gap center so the cable sits between modules.
-            var mid = new PvVec2((a.Center.X + b.Center.X) * 0.5, (a.Center.Y + b.Center.Y) * 0.5);
-            p1 = Lerp(p1, mid, 0.22);
-            p2 = Lerp(p2, mid, 0.22);
+            // Prefer mid corridor between stubs (Z or U).
+            var midY = (s1.Y + s2.Y) * 0.5 + laneOffset;
+            var midX = (s1.X + s2.X) * 0.5 + laneOffset;
+            // Choose the shorter orthog path: via shared Y vs shared X.
+            var viaY = Orthogonalize(new[]
+            {
+                start, s1, new PvVec2(s1.X, midY), new PvVec2(s2.X, midY), s2, end,
+            });
+            var viaX = Orthogonalize(new[]
+            {
+                start, s1, new PvVec2(midX, s1.Y), new PvVec2(midX, s2.Y), s2, end,
+            });
+            raw = PolyLength(viaY) <= PolyLength(viaX) ? viaY : viaX;
+            return FinishOrtho(PvWireRouteType.Orthogonal, start, end, raw);
         }
 
-        var samples = SampleCubic(p0, p1, p2, p3, 16);
-        return new PvWireRouteResult
-        {
-            RouteType = PvWireRouteType.AdjacentJumper,
-            Start = p0,
-            End = p3,
-            BezierControls = new[] { p1, p2 },
-            PathPoints = samples,
-            ApproximateLength = PolyLength(samples),
-        };
+        var pts = ApplyLaneOffset(Orthogonalize(raw), laneOffset);
+        return FinishOrtho(PvWireRouteType.Orthogonal, start, end, pts);
     }
 
-    private static PvWireRouteResult GutterRoute(
+    private static PvWireRouteResult GutterOrtho(
         PvVec2 start,
         PvVec2 startExit,
         PvVec2 end,
         PvVec2 endExit,
         PvRect? startPanel,
         PvRect? endPanel,
-        IReadOnlyList<PvRect> obstacles)
+        IReadOnlyList<PvRect> obstacles,
+        double laneOffset)
     {
         var dist = start.DistanceTo(end);
         var exitDist = Clamp(dist * 0.12, 14, 32);
@@ -178,49 +230,74 @@ public static class PvWireRouting
         var s1 = start + startExit * exitDist;
         var s2 = end + endExit * exitDist;
 
-        // Union of relevant bounds (connected panels + nearby obstacles).
         var bounds = UnionBounds(startPanel, endPanel, obstacles);
+        List<PvVec2> best;
         if (bounds is null)
         {
-            // Fall back to a soft cubic.
-            var sag = Clamp(dist * 0.12, 12, 36);
-            var avg = (startExit + endExit).Normalized();
-            if (avg.Length() < 0.4) avg = new PvVec2(0, 1);
-            var p1 = s1 + avg * sag;
-            var p2 = s2 + avg * sag;
-            var samples = SampleCubic(start, p1, p2, end, 16);
-            return new PvWireRouteResult
+            best = Orthogonalize(new[] { start, s1, s2, end });
+        }
+        else
+        {
+            var u = bounds.Value;
+            var candidates = new[]
             {
-                RouteType = PvWireRouteType.GutterRoute,
-                Start = start,
-                End = end,
-                BezierControls = new[] { p1, p2 },
-                PathPoints = samples,
-                ApproximateLength = PolyLength(samples),
+                GutterViaY(start, s1, s2, end, u.Top - aisle + laneOffset),
+                GutterViaY(start, s1, s2, end, u.Bottom + aisle + laneOffset),
+                GutterViaX(start, s1, s2, end, u.Left - aisle + laneOffset),
+                GutterViaX(start, s1, s2, end, u.Right + aisle + laneOffset),
             };
+            best = candidates
+                .Select(Orthogonalize)
+                .OrderBy(PolyLength)
+                .First();
         }
 
-        var u = bounds.Value;
-        var candidates = new[]
-        {
-            GutterViaY(start, s1, s2, end, u.Top - aisle),
-            GutterViaY(start, s1, s2, end, u.Bottom + aisle),
-            GutterViaX(start, s1, s2, end, u.Left - aisle),
-            GutterViaX(start, s1, s2, end, u.Right + aisle),
-        };
+        return FinishOrtho(PvWireRouteType.Orthogonal, start, end, best);
+    }
 
-        var best = candidates.OrderBy(c => PolyLength(c)).First();
-        // Smooth the gutter polyline into a cubic through the corridor midpoints.
-        var smoothed = SmoothGutter(best);
-        return new PvWireRouteResult
+    private static PvWireRouteResult FinishOrtho(
+        PvWireRouteType type,
+        PvVec2 start,
+        PvVec2 end,
+        IReadOnlyList<PvVec2> pts) =>
+        new()
         {
-            RouteType = PvWireRouteType.GutterRoute,
+            RouteType = type,
             Start = start,
             End = end,
-            BezierControls = smoothed.Controls,
-            PathPoints = smoothed.Samples,
-            ApproximateLength = PolyLength(smoothed.Samples),
+            PathPoints = pts,
+            ApproximateLength = PolyLength(pts),
         };
+
+    /// <summary>
+    /// Offset interior points for parallel bundles while keeping ports fixed.
+    /// Horizontal runs shift in Y; vertical runs shift in X.
+    /// </summary>
+    private static List<PvVec2> ApplyLaneOffset(List<PvVec2> pts, double laneOffset)
+    {
+        if (Math.Abs(laneOffset) < 1e-6 || pts.Count < 3)
+            return pts;
+
+        var result = new List<PvVec2>(pts.Count) { pts[0] };
+        for (var i = 1; i < pts.Count - 1; i++)
+        {
+            var prev = pts[i - 1];
+            var cur = pts[i];
+            var next = pts[i + 1];
+            var alongH = AlmostEqual(prev.Y, cur.Y) || AlmostEqual(cur.Y, next.Y);
+            var alongV = AlmostEqual(prev.X, cur.X) || AlmostEqual(cur.X, next.X);
+            if (alongH && !alongV)
+                result.Add(new PvVec2(cur.X, cur.Y + laneOffset));
+            else if (alongV && !alongH)
+                result.Add(new PvVec2(cur.X + laneOffset, cur.Y));
+            else if (alongH)
+                result.Add(new PvVec2(cur.X, cur.Y + laneOffset));
+            else
+                result.Add(new PvVec2(cur.X + laneOffset, cur.Y));
+        }
+
+        result.Add(pts[^1]);
+        return Orthogonalize(result);
     }
 
     private static List<PvVec2> GutterViaY(PvVec2 start, PvVec2 s1, PvVec2 s2, PvVec2 end, double y) =>
@@ -228,51 +305,6 @@ public static class PvWireRouting
 
     private static List<PvVec2> GutterViaX(PvVec2 start, PvVec2 s1, PvVec2 s2, PvVec2 end, double x) =>
         new() { start, s1, new PvVec2(x, s1.Y), new PvVec2(x, s2.Y), s2, end };
-
-    private static (IReadOnlyList<PvVec2> Controls, IReadOnlyList<PvVec2> Samples) SmoothGutter(
-        IReadOnlyList<PvVec2> poly)
-    {
-        if (poly.Count < 4)
-        {
-            var p0 = poly[0];
-            var p3 = poly[^1];
-            var p1 = poly.Count > 1 ? poly[1] : p0;
-            var p2 = poly.Count > 2 ? poly[^2] : p3;
-            return (new[] { p1, p2 }, SampleCubic(p0, p1, p2, p3, 18));
-        }
-
-        // Use first stub and last stub as cubic controls — keeps exit directions, softens the run.
-        var start = poly[0];
-        var end = poly[^1];
-        var c1 = poly[1];
-        var c2 = poly[^2];
-        // Pull controls slightly toward the gutter mid-segment for slack.
-        if (poly.Count >= 6)
-        {
-            var g0 = poly[2];
-            var g1 = poly[3];
-            c1 = Lerp(c1, g0, 0.35);
-            c2 = Lerp(c2, g1, 0.35);
-        }
-
-        return (new[] { c1, c2 }, SampleCubic(start, c1, c2, end, 20));
-    }
-
-    private static PvVec2 GapPull(PvRect a, PvRect b, PvVec2 start, PvVec2 end)
-    {
-        // Direction from chord midpoint into the open gap between the two panels.
-        var mid = new PvVec2((start.X + end.X) * 0.5, (start.Y + end.Y) * 0.5);
-        var between = new PvVec2((a.Center.X + b.Center.X) * 0.5, (a.Center.Y + b.Center.Y) * 0.5);
-        var intoGap = (between - mid).Normalized();
-        if (intoGap.Length() >= 0.3)
-            return intoGap;
-
-        // Side-by-side: prefer downward hang (leads under modules).
-        if (HorizontalGap(a, b) < VerticalGap(a, b) * 2)
-            return new PvVec2(0, 1);
-
-        return new PvVec2(1, 0);
-    }
 
     private static PvRect? UnionBounds(PvRect? a, PvRect? b, IReadOnlyList<PvRect> obstacles)
     {
@@ -315,6 +347,36 @@ public static class PvWireRouting
         return p0 * uuu + p1 * (3 * uu * t) + p2 * (3 * u * tt) + p3 * ttt;
     }
 
+    private static List<PvVec2> CollapseColinear(List<PvVec2> pts)
+    {
+        if (pts.Count < 3) return pts;
+        var result = new List<PvVec2> { pts[0] };
+        for (var i = 1; i < pts.Count - 1; i++)
+        {
+            var a = result[^1];
+            var b = pts[i];
+            var c = pts[i + 1];
+            var colinearH = AlmostEqual(a.Y, b.Y) && AlmostEqual(b.Y, c.Y);
+            var colinearV = AlmostEqual(a.X, b.X) && AlmostEqual(b.X, c.X);
+            if (colinearH || colinearV)
+                continue;
+            result.Add(b);
+        }
+
+        result.Add(pts[^1]);
+        return result;
+    }
+
+    private static PvVec2 DominantAxis(PvVec2 v)
+    {
+        if (v.Length() < 1e-9) return new PvVec2(0, 0);
+        return Math.Abs(v.X) >= Math.Abs(v.Y)
+            ? new PvVec2(Math.Sign(v.X), 0)
+            : new PvVec2(0, Math.Sign(v.Y));
+    }
+
+    private static bool AlmostEqual(double a, double b) => Math.Abs(a - b) < 0.5;
+
     private static double PolyLength(IReadOnlyList<PvVec2> pts)
     {
         double len = 0;
@@ -327,7 +389,7 @@ public static class PvWireRouting
     {
         if (a.Right < b.Left) return b.Left - a.Right;
         if (b.Right < a.Left) return a.Left - b.Right;
-        return 0; // overlap
+        return 0;
     }
 
     private static double VerticalGap(PvRect a, PvRect b)
@@ -339,9 +401,6 @@ public static class PvWireRouting
 
     private static double Overlap1D(double a0, double a1, double b0, double b1) =>
         Math.Max(0, Math.Min(a1, b1) - Math.Max(a0, b0));
-
-    private static PvVec2 Lerp(PvVec2 a, PvVec2 b, double t) =>
-        new(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
 
     private static double Clamp(double v, double min, double max) =>
         Math.Max(min, Math.Min(max, v));

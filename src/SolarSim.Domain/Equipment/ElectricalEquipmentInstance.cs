@@ -320,12 +320,6 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         double yMm,
         string? name = null)
     {
-        var ports = new List<ElectricalPort>
-        {
-            new(Guid.NewGuid(), id, PortType.OutputPositive, Polarity.Positive, label: "BAT+"),
-            new(Guid.NewGuid(), id, PortType.OutputNegative, Polarity.Negative, label: "BAT-"),
-        };
-
         return new ElectricalEquipmentInstance(
             id,
             EquipmentKind.Battery,
@@ -335,8 +329,100 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
             widthMm: 720,
             heightMm: 1380,
             stringInputCount: 0,
-            ports);
+            CreateDualBatPorts(id),
+            catalogSeries: "ANENJI-16kWh");
     }
+
+    /// <summary>ANENJI 10 kW wall pack (51.2V 200Ah) — dual BAT± on top.</summary>
+    public static ElectricalEquipmentInstance CreateBattery10kWWall(
+        Guid id,
+        double xMm,
+        double yMm,
+        string? name = null)
+    {
+        return new ElectricalEquipmentInstance(
+            id,
+            EquipmentKind.Battery,
+            name ?? "ANENJI 10kW",
+            xMm,
+            yMm,
+            widthMm: 720,
+            heightMm: 1280,
+            stringInputCount: 0,
+            CreateDualBatPorts(id),
+            catalogSeries: "ANENJI-10kW");
+    }
+
+    /// <summary>ANENJI rack 51.2V 100Ah (~5.1 kWh) — stackable; dual − left / dual + right on top.</summary>
+    public static ElectricalEquipmentInstance CreateBattery5_1kWhRack(
+        Guid id,
+        double xMm,
+        double yMm,
+        string? name = null)
+    {
+        return new ElectricalEquipmentInstance(
+            id,
+            EquipmentKind.Battery,
+            name ?? "ANENJI 5.1kWh Rack",
+            xMm,
+            yMm,
+            widthMm: 1600,
+            heightMm: 500,
+            stringInputCount: 0,
+            CreateDualBatPorts(id),
+            catalogSeries: "ANENJI-5.1kWh-Rack");
+    }
+
+    /// <summary>ANENJI 12.8V 300Ah (~3.84 kWh) golf-cart style — single BAT± on top far left/right.</summary>
+    public static ElectricalEquipmentInstance CreateBattery12_8V300Ah(
+        Guid id,
+        double xMm,
+        double yMm,
+        string? name = null)
+    {
+        var ports = new List<ElectricalPort>
+        {
+            new(Guid.NewGuid(), id, PortType.OutputPositive, Polarity.Positive, label: "BAT+"),
+            new(Guid.NewGuid(), id, PortType.OutputNegative, Polarity.Negative, label: "BAT-"),
+        };
+
+        return new ElectricalEquipmentInstance(
+            id,
+            EquipmentKind.Battery,
+            name ?? "ANENJI 12.8V 300Ah",
+            xMm,
+            yMm,
+            widthMm: 1400,
+            heightMm: 620,
+            stringInputCount: 0,
+            ports,
+            catalogSeries: "ANENJI-12.8V-300Ah");
+    }
+
+    private static List<ElectricalPort> CreateDualBatPorts(Guid id) =>
+    [
+        new(Guid.NewGuid(), id, PortType.OutputPositive, Polarity.Positive, label: "BAT1+"),
+        new(Guid.NewGuid(), id, PortType.OutputNegative, Polarity.Negative, label: "BAT1-"),
+        new(Guid.NewGuid(), id, PortType.OutputPositive, Polarity.Positive, label: "BAT2+"),
+        new(Guid.NewGuid(), id, PortType.OutputNegative, Polarity.Negative, label: "BAT2-"),
+    ];
+
+    /// <summary>Small prismatic / golf-cart style — single ± only.</summary>
+    public static bool IsLandscapePrismaticBattery(ElectricalEquipmentInstance equipment) =>
+        equipment.Kind == EquipmentKind.Battery
+        && string.Equals(equipment.CatalogSeries, "ANENJI-12.8V-300Ah", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsRackBattery(ElectricalEquipmentInstance equipment) =>
+        equipment.Kind == EquipmentKind.Battery
+        && string.Equals(equipment.CatalogSeries, "ANENJI-5.1kWh-Rack", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsWall10kWBattery(ElectricalEquipmentInstance equipment) =>
+        equipment.Kind == EquipmentKind.Battery
+        && string.Equals(equipment.CatalogSeries, "ANENJI-10kW", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Large storage packs expose two parallel BAT+ and two BAT− lugs.</summary>
+    public static bool HasDualBatteryTerminals(ElectricalEquipmentInstance equipment) =>
+        equipment.Kind == EquipmentKind.Battery && !IsLandscapePrismaticBattery(equipment);
 
     public static ElectricalEquipmentInstance CreateBatteryDisconnect(
         Guid id,

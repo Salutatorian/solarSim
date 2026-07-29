@@ -672,7 +672,7 @@ public static class SolarProjectSerializer
             EquipmentKind.StringInverter => hybridFace ? 720 : 1100,
             EquipmentKind.AcDisconnect => 700,
             EquipmentKind.AcLoadCenter => 900,
-            EquipmentKind.Battery => 720,
+            EquipmentKind.Battery => BatteryWidthMm(dto),
             EquipmentKind.BatteryDisconnect => 720,
             _ => 420,
         };
@@ -683,7 +683,7 @@ public static class SolarProjectSerializer
             EquipmentKind.StringInverter => hybridFace ? 1280 : 520 + mpptCount * 70,
             EquipmentKind.AcDisconnect => 520,
             EquipmentKind.AcLoadCenter => 700,
-            EquipmentKind.Battery => 1380,
+            EquipmentKind.Battery => BatteryHeightMm(dto),
             EquipmentKind.BatteryDisconnect => 1600,
             _ => 280,
         };
@@ -712,6 +712,27 @@ public static class SolarProjectSerializer
             return true;
         var labels = dto.Ports.Select(p => p.Label).ToHashSet(StringComparer.OrdinalIgnoreCase);
         return labels.Contains("BAT+") && labels.Contains("AC IN L");
+    }
+
+    private static bool IsLandscapeBatteryDto(EquipmentDto dto) =>
+        string.Equals(dto.CatalogSeries, "ANENJI-12.8V-300Ah", StringComparison.OrdinalIgnoreCase);
+
+    private static double BatteryWidthMm(EquipmentDto dto)
+    {
+        if (IsLandscapeBatteryDto(dto)) return 1400;
+        if (string.Equals(dto.CatalogSeries, "ANENJI-5.1kWh-Rack", StringComparison.OrdinalIgnoreCase))
+            return 1600;
+        return 720;
+    }
+
+    private static double BatteryHeightMm(EquipmentDto dto)
+    {
+        if (IsLandscapeBatteryDto(dto)) return 620;
+        if (string.Equals(dto.CatalogSeries, "ANENJI-5.1kWh-Rack", StringComparison.OrdinalIgnoreCase))
+            return 500;
+        if (string.Equals(dto.CatalogSeries, "ANENJI-10kW", StringComparison.OrdinalIgnoreCase))
+            return 1280;
+        return 1380;
     }
 
     private static ElectricalPort FromDto(

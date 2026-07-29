@@ -123,12 +123,16 @@ public partial class MainWindow : Window
     private Guid? _wireFromPortId;
     private readonly Dictionary<Guid, FrameworkElement> _panelPortHitOverlays = new();
     private readonly List<string> _recentAddKeys = new();
-    private Line? _previewWire;
+    private System.Windows.Shapes.Path? _previewWire;
     private Ellipse? _hoverPortMarker;
     private TextBlock? _connectedToast;
     private TextBlock? _previewPlugHint;
     private bool _refreshRunning;
     private bool _refreshQueued;
+
+    private Guid? _draggingWireSegmentConnectionId;
+    private int _draggingWireSegmentIndex = -1; // index of segment start in full path (start+waypoints+end)
+    private bool _draggingWireSegmentHorizontal;
 
     private enum LayersCategory
     {
@@ -1358,6 +1362,8 @@ public partial class MainWindow : Window
         var obstacles = CollectPanelObstacleRects();
         var cableBrush = NeutralCableBrush();
         var cableBrushSelected = NeutralCableBrush(selected: true);
+        var laneByConnection = ComputeWireLaneIndices();
+        var laneSpacing = Math.Clamp(8 * Math.Max(_zoom, 0.55), 5, 14);
 
         foreach (var connection in _project.Graph.Connections.Values)
         {
@@ -1383,18 +1389,19 @@ public partial class MainWindow : Window
             var wireZ = selected ? 720 : 40;
             var hitZ = selected ? 721 : 41;
 
-            var route = BuildPvWireRoute(start, end, p1, p2, connection, obstacles);
+            laneByConnection.TryGetValue(connection.Id, out var lane);
+            var route = BuildPvWireRoute(start, end, p1, p2, connection, obstacles, lane.offset * laneSpacing);
             var pathPoints = route.PathPoints.Select(v => new Point(v.X, v.Y)).ToList();
 
             var visual = new WireCanvasVisual { ConnectionId = connection.Id, HitPoints = pathPoints };
 
             // Fat invisible hit geometry (clickable without thick visible cable).
-            var hitPath = CreateWirePath(route, Brushes.Transparent, 12, connection.Id, isHitTarget: true);
+            var hitPath = CreateWirePath(route, Brushes.Transparent, 14, connection.Id, isHitTarget: true, rounded: false);
             visual.Shapes.Add(hitPath);
             AddWireShape(hitPath, z: hitZ);
 
-            // Visible neutral cable.
-            var cablePath = CreateWirePath(route, stroke, thickness, connection.Id, isHitTarget: false);
+            // Visible Smart Wiring cable (rounded ortho elbows).
+            var cablePath = CreateWirePath(route, stroke, thickness, connection.Id, isHitTarget: false, rounded: true);
             visual.Shapes.Add(cablePath);
             AddWireShape(cablePath, z: wireZ);
 
@@ -1460,13 +1467,55 @@ public partial class MainWindow : Window
         RebuildPanelPortHitOverlays();
     }
 
+    /// <summary>
+    /// Stable parallel-lane index within each owner-pair bundle (centered around 0).
+    /// </summary>
+    private Dictionary<Guid, (int index, double offset)> ComputeWireLaneIndices()
+    {
+        var groups = new Dictionary<(Guid, Guid), List<Guid>>();
+        foreach (var connection in _project.Graph.Connections.Values)
+        {
+            if (!_project.Graph.TryGetPort(connection.StartPortId, out var start)
+                || !_project.Graph.TryGetPort(connection.EndPortId, out var end))
+                continue;
+            if (connection.Wire.Waypoints.Count > 0)
+                continue; // manual routes keep absolute geometry
+
+            var a = start.OwnerComponentId;
+            var b = end.OwnerComponentId;
+            var key = a.CompareTo(b) <= 0 ? (a, b) : (b, a);
+            if (!groups.TryGetValue(key, out var list))
+            {
+                list = new List<Guid>();
+                groups[key] = list;
+            }
+
+            list.Add(connection.Id);
+        }
+
+        var result = new Dictionary<Guid, (int index, double offset)>();
+        foreach (var list in groups.Values)
+        {
+            list.Sort();
+            var n = list.Count;
+            for (var i = 0; i < n; i++)
+            {
+                var offset = n <= 1 ? 0 : i - (n - 1) / 2.0;
+                result[list[i]] = (i, offset);
+            }
+        }
+
+        return result;
+    }
+
     private PvWireRouteResult BuildPvWireRoute(
         ElectricalPort start,
         ElectricalPort end,
         Point p1,
         Point p2,
         ElectricalConnection connection,
-        IReadOnlyList<PvRect> obstacles)
+        IReadOnlyList<PvRect> obstacles,
+        double laneOffset = 0)
     {
         PvRect? startPanel = null;
         PvRect? endPanel = null;
@@ -1497,7 +1546,8 @@ public partial class MainWindow : Window
             startPanel,
             endPanel,
             obstacles,
-            manual);
+            manual,
+            laneOffset);
     }
 
     private List<PvRect> CollectPanelObstacleRects()
@@ -1523,35 +1573,16 @@ public partial class MainWindow : Window
         Brush stroke,
         double thickness,
         Guid connectionId,
-        bool isHitTarget)
+        bool isHitTarget,
+        bool rounded)
     {
-        var geo = new PathGeometry();
-        if (route.BezierControls.Count >= 2
-            && route.RouteType is not PvWireRouteType.ManualRoute)
-        {
-            var p0 = new Point(route.Start.X, route.Start.Y);
-            var p1 = new Point(route.BezierControls[0].X, route.BezierControls[0].Y);
-            var p2 = new Point(route.BezierControls[1].X, route.BezierControls[1].Y);
-            var p3 = new Point(route.End.X, route.End.Y);
-            var fig = new PathFigure { StartPoint = p0, IsClosed = false };
-            fig.Segments.Add(new BezierSegment(p1, p2, p3, true));
-            geo.Figures.Add(fig);
-        }
-        else
-        {
-            var pts = route.PathPoints.Count > 0
-                ? route.PathPoints
-                : new[] { route.Start, route.End };
+        var pts = route.PathPoints.Count > 0
+            ? route.PathPoints
+            : new[] { route.Start, route.End };
 
-            var fig = new PathFigure
-            {
-                StartPoint = new Point(pts[0].X, pts[0].Y),
-                IsClosed = false,
-            };
-            for (var i = 1; i < pts.Count; i++)
-                fig.Segments.Add(new LineSegment(new Point(pts[i].X, pts[i].Y), true));
-            geo.Figures.Add(fig);
-        }
+        var geo = rounded && !isHitTarget
+            ? BuildRoundedOrthoGeometry(pts, cornerRadius: Math.Clamp(7 * _zoom, 5, 12))
+            : BuildPolylineGeometry(pts);
 
         var path = new System.Windows.Shapes.Path
         {
@@ -1565,10 +1596,89 @@ public partial class MainWindow : Window
             Tag = connectionId,
             // Visible stroke is decorative; fat transparent sibling owns hit-testing.
             IsHitTestVisible = isHitTarget,
-            Cursor = Cursors.Arrow,
+            Cursor = Cursors.SizeAll,
         };
         AttachWireInteraction(path, connectionId);
         return path;
+    }
+
+    private static PathGeometry BuildPolylineGeometry(IReadOnlyList<PvVec2> pts)
+    {
+        var geo = new PathGeometry();
+        if (pts.Count == 0) return geo;
+        var fig = new PathFigure
+        {
+            StartPoint = new Point(pts[0].X, pts[0].Y),
+            IsClosed = false,
+        };
+        for (var i = 1; i < pts.Count; i++)
+            fig.Segments.Add(new LineSegment(new Point(pts[i].X, pts[i].Y), true));
+        geo.Figures.Add(fig);
+        return geo;
+    }
+
+    /// <summary>Orthogonal polyline with short ArcSegment fillets at elbows.</summary>
+    private static PathGeometry BuildRoundedOrthoGeometry(IReadOnlyList<PvVec2> pts, double cornerRadius)
+    {
+        var geo = new PathGeometry();
+        if (pts.Count == 0) return geo;
+        if (pts.Count < 3)
+            return BuildPolylineGeometry(pts);
+
+        var fig = new PathFigure
+        {
+            StartPoint = new Point(pts[0].X, pts[0].Y),
+            IsClosed = false,
+        };
+
+        for (var i = 1; i < pts.Count - 1; i++)
+        {
+            var a = pts[i - 1];
+            var b = pts[i];
+            var c = pts[i + 1];
+            var inDx = b.X - a.X;
+            var inDy = b.Y - a.Y;
+            var outDx = c.X - b.X;
+            var outDy = c.Y - b.Y;
+            var inLen = Math.Sqrt(inDx * inDx + inDy * inDy);
+            var outLen = Math.Sqrt(outDx * outDx + outDy * outDy);
+            if (inLen < 1e-6 || outLen < 1e-6)
+            {
+                fig.Segments.Add(new LineSegment(new Point(b.X, b.Y), true));
+                continue;
+            }
+
+            var r = Math.Min(cornerRadius, Math.Min(inLen, outLen) * 0.45);
+            if (r < 1.5)
+            {
+                fig.Segments.Add(new LineSegment(new Point(b.X, b.Y), true));
+                continue;
+            }
+
+            var inUx = inDx / inLen;
+            var inUy = inDy / inLen;
+            var outUx = outDx / outLen;
+            var outUy = outDy / outLen;
+            var before = new Point(b.X - inUx * r, b.Y - inUy * r);
+            var after = new Point(b.X + outUx * r, b.Y + outUy * r);
+            fig.Segments.Add(new LineSegment(before, true));
+
+            // Screen coords (Y down): positive cross = clockwise turn.
+            var cross = inUx * outUy - inUy * outUx;
+            var sweep = cross >= 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise;
+            fig.Segments.Add(new ArcSegment(
+                after,
+                new Size(r, r),
+                0,
+                false,
+                sweep,
+                true));
+        }
+
+        var last = pts[^1];
+        fig.Segments.Add(new LineSegment(new Point(last.X, last.Y), true));
+        geo.Figures.Add(fig);
+        return geo;
     }
 
     private Line CreatePolarityTip(Point port, Vector exit, double length, Brush brush, Guid connectionId)
@@ -1708,6 +1818,12 @@ public partial class MainWindow : Window
             return new Vector(layout.ExitNormalX, layout.ExitNormalY);
         }
 
+        if (_project.Graph.TryGetEquipment(port.OwnerComponentId, out var eq)
+            && (ElectricalEquipmentInstance.IsLandscapePrismaticBattery(eq)
+                || ElectricalEquipmentInstance.IsRackBattery(eq)
+                || ElectricalEquipmentInstance.IsWall10kWBattery(eq)))
+            return new Vector(0, -1); // top terminals — exit upward
+
         // Equipment / unknown: keep prior polarity-based outward guess.
         return port.Polarity == Polarity.Positive ? new Vector(0, -1) : new Vector(0, 1);
     }
@@ -1734,6 +1850,14 @@ public partial class MainWindow : Window
                 return;
             }
 
+            var pos = e.GetPosition(DesignCanvas);
+            if (_selectedConnectionIds.Contains(connectionId)
+                && TryBeginWireSegmentDrag(connectionId, pos))
+            {
+                e.Handled = true;
+                return;
+            }
+
             SelectConnection(connectionId);
             e.Handled = true;
         };
@@ -1753,6 +1877,8 @@ public partial class MainWindow : Window
             || !_project.Graph.TryGetPort(connection.EndPortId, out var end))
             return;
 
+        BakeAutoRouteWaypoints(connection, start, end);
+
         var (xMm, yMm) = CanvasToWorld(canvasPos);
         var startPt = CanvasToWorld(GetPortCanvasPoint(start));
         var endPt = CanvasToWorld(GetPortCanvasPoint(end));
@@ -1771,6 +1897,97 @@ public partial class MainWindow : Window
             SetSelection(connections: new[] { connectionId });
         else
             RefreshAll();
+    }
+
+    /// <summary>
+    /// Persist current Smart Wiring corners as editable waypoints (excludes port endpoints).
+    /// </summary>
+    private void BakeAutoRouteWaypoints(
+        ElectricalConnection connection,
+        ElectricalPort start,
+        ElectricalPort end)
+    {
+        if (connection.Wire.Waypoints.Count > 0) return;
+
+        var p1 = GetPortCanvasPoint(start);
+        var p2 = GetPortCanvasPoint(end);
+        var route = BuildPvWireRoute(start, end, p1, p2, connection, CollectPanelObstacleRects());
+        var pts = route.PathPoints;
+        if (pts.Count < 3) return;
+
+        connection.Wire.Waypoints.Clear();
+        for (var i = 1; i < pts.Count - 1; i++)
+        {
+            var (xMm, yMm) = CanvasToWorld(new Point(pts[i].X, pts[i].Y));
+            connection.Wire.Waypoints.Add(new Point2Mm(xMm, yMm));
+        }
+    }
+
+    private bool TryBeginWireSegmentDrag(Guid connectionId, Point canvasPos)
+    {
+        if (!_project.Graph.Connections.TryGetValue(connectionId, out var connection))
+            return false;
+        if (!_project.Graph.TryGetPort(connection.StartPortId, out var start)
+            || !_project.Graph.TryGetPort(connection.EndPortId, out var end))
+            return false;
+
+        BakeAutoRouteWaypoints(connection, start, end);
+        if (connection.Wire.Waypoints.Count == 0) return false;
+
+        var points = BuildWireWorldPolyline(connection, start, end);
+        var bestSeg = -1;
+        var bestDist = 14.0; // canvas px
+        for (var i = 0; i < points.Count - 1; i++)
+        {
+            var a = WorldToCanvas(points[i].X, points[i].Y);
+            var b = WorldToCanvas(points[i + 1].X, points[i + 1].Y);
+            var proj = ProjectPointOntoSegmentCanvas(canvasPos, new Point(a.x, a.y), new Point(b.x, b.y));
+            var d = Hypot(canvasPos.X - proj.X, canvasPos.Y - proj.Y);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                bestSeg = i;
+            }
+        }
+
+        if (bestSeg < 0) return false;
+
+        var pa = points[bestSeg];
+        var pb = points[bestSeg + 1];
+        var horizontal = Math.Abs(pa.Y - pb.Y) <= Math.Abs(pa.X - pb.X);
+        // Need at least one waypoint endpoint on this segment.
+        if (bestSeg == 0 && bestSeg + 1 == points.Count - 1) return false;
+
+        _draggingWireSegmentConnectionId = connectionId;
+        _draggingWireSegmentIndex = bestSeg;
+        _draggingWireSegmentHorizontal = horizontal;
+        DesignCanvas.CaptureMouse();
+        RebuildWireVisuals();
+        return true;
+    }
+
+    private List<Point2Mm> BuildWireWorldPolyline(
+        ElectricalConnection connection,
+        ElectricalPort start,
+        ElectricalPort end)
+    {
+        var startPt = CanvasToWorld(GetPortCanvasPoint(start));
+        var endPt = CanvasToWorld(GetPortCanvasPoint(end));
+        var pts = new List<Point2Mm> { new(startPt.xMm, startPt.yMm) };
+        pts.AddRange(connection.Wire.Waypoints);
+        pts.Add(new Point2Mm(endPt.xMm, endPt.yMm));
+        return pts;
+    }
+
+    private static Point ProjectPointOntoSegmentCanvas(Point p, Point a, Point b)
+    {
+        var dx = b.X - a.X;
+        var dy = b.Y - a.Y;
+        var lenSq = dx * dx + dy * dy;
+        if (lenSq < 1e-9) return a;
+        var t = ((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lenSq;
+        t = Math.Clamp(t, 0, 1);
+        return new Point(a.X + t * dx, a.Y + t * dy);
     }
 
     private bool ConnectionVisibleInCurrentPlan(ElectricalConnection connection)
@@ -2615,6 +2832,9 @@ public partial class MainWindow : Window
         yield return new("inv65", "ANENJI", "6.5 kW hybrid", "◇", "Electrical", () => AddInverterAnenji6_5k_Click(this, new RoutedEventArgs()));
         yield return new("inv12", "ANENJI", "12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()));
         yield return new("battery", "ANENJI", "16 kWh battery", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()));
+        yield return new("batt10k", "ANENJI", "10 kW wall · dual BAT±", "▣", "Electrical", () => AddBattery10kW_Click(this, new RoutedEventArgs()));
+        yield return new("battrack", "ANENJI", "5.1 kWh rack · stackable", "▣", "Electrical", () => AddBatteryRack_Click(this, new RoutedEventArgs()));
+        yield return new("batt128", "ANENJI", "12.8V 300Ah · 3.84 kWh", "▣", "Electrical", () => AddBattery12_8V_Click(this, new RoutedEventArgs()));
         yield return new("batdisc", "Batt disc.", "Check Amp + wire size", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()));
         yield return new("acdisc", "AC disc.", "AC disconnect", "⏻", "Electrical", () => AddAcDisconnect_Click(this, new RoutedEventArgs()));
         yield return new("aclc", "Load center", "AC load center", "☰", "Electrical", () => AddAcLoadCenter_Click(this, new RoutedEventArgs()));
@@ -3587,6 +3807,42 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_draggingWireSegmentConnectionId is Guid segConnId
+            && _draggingWireSegmentIndex >= 0
+            && e.LeftButton == MouseButtonState.Pressed
+            && _project.Graph.Connections.TryGetValue(segConnId, out var segWire)
+            && _project.Graph.TryGetPort(segWire.StartPortId, out var segStart)
+            && _project.Graph.TryGetPort(segWire.EndPortId, out var segEnd))
+        {
+            var (xMm, yMm) = CanvasToWorld(pos);
+            var points = BuildWireWorldPolyline(segWire, segStart, segEnd);
+            var i = _draggingWireSegmentIndex;
+            if (i < 0 || i >= points.Count - 1) return;
+
+            // Path index → waypoint index is pathIndex - 1 (ports are not waypoints).
+            void MovePathPoint(int pathIndex, double nx, double ny)
+            {
+                var wpIndex = pathIndex - 1;
+                if (wpIndex < 0 || wpIndex >= segWire.Wire.Waypoints.Count) return;
+                segWire.Wire.Waypoints[wpIndex] = new Point2Mm(nx, ny);
+            }
+
+            if (_draggingWireSegmentHorizontal)
+            {
+                MovePathPoint(i, points[i].X, yMm);
+                MovePathPoint(i + 1, points[i + 1].X, yMm);
+            }
+            else
+            {
+                MovePathPoint(i, xMm, points[i].Y);
+                MovePathPoint(i + 1, xMm, points[i + 1].Y);
+            }
+
+            RebuildWireVisuals();
+            RefreshStatusAndInspector();
+            return;
+        }
+
         if (_draggingRoofVertexIndex is int vIndex && e.LeftButton == MouseButtonState.Pressed
             && GetActiveRoofSurface() is { } dragRoof)
         {
@@ -3636,30 +3892,37 @@ public partial class MainWindow : Window
             EnsurePreviewWire();
             var fromPort = _project.Graph.GetPort(fromPortId);
             var start = GetPortCanvasPoint(fromPort);
-            _previewWire!.Stroke = PolarityBrush(fromPort.Polarity);
-            _previewWire.X1 = start.X;
-            _previewWire.Y1 = start.Y;
+            var n1 = PortExitNormalCanvas(fromPort);
 
+            Point endPt;
+            Vector n2;
             var target = FindCompatiblePortNear(pos, fromPortId);
             if (target is not null)
             {
-                var snap = GetPortCanvasPoint(target);
-                _previewWire.X2 = snap.X;
-                _previewWire.Y2 = snap.Y;
-                _previewWire.StrokeThickness = 3.5;
+                endPt = GetPortCanvasPoint(target);
+                n2 = PortExitNormalCanvas(target);
+                _previewWire!.StrokeThickness = 3.5;
                 _previewWire.StrokeDashArray = null;
-                ShowHoverPort(snap, target.Polarity);
-                UpdatePreviewPlugHint(fromPort.Polarity, target.Polarity, snap);
+                ShowHoverPort(endPt, target.Polarity);
+                UpdatePreviewPlugHint(fromPort.Polarity, target.Polarity, endPt);
             }
             else
             {
-                _previewWire.X2 = pos.X;
-                _previewWire.Y2 = pos.Y;
-                _previewWire.StrokeThickness = 2.5;
+                endPt = pos;
+                n2 = new Vector(0, 1);
+                _previewWire!.StrokeThickness = 2.5;
                 _previewWire.StrokeDashArray = new DoubleCollection { 5, 3 };
                 HideHoverPort();
                 ClearPreviewPlugHint();
             }
+
+            _previewWire.Stroke = PolarityBrush(fromPort.Polarity);
+            var ortho = PvWireRouting.OrthoPreview(
+                new PvVec2(start.X, start.Y),
+                new PvVec2(n1.X, n1.Y),
+                new PvVec2(endPt.X, endPt.Y),
+                new PvVec2(n2.X, n2.Y));
+            _previewWire.Data = BuildRoundedOrthoGeometry(ortho, cornerRadius: Math.Clamp(6 * _zoom, 4, 10));
             return;
         }
 
@@ -3816,6 +4079,16 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_draggingWireSegmentConnectionId is not null)
+        {
+            _project.NotifyChanged("Move wire segment");
+            _draggingWireSegmentConnectionId = null;
+            _draggingWireSegmentIndex = -1;
+            DesignCanvas.ReleaseMouseCapture();
+            RefreshAll();
+            return;
+        }
+
         if (_draggingRoofVertexIndex is not null)
         {
             _draggingRoofVertexIndex = null;
@@ -3958,13 +4231,15 @@ public partial class MainWindow : Window
     private void EnsurePreviewWire()
     {
         if (_previewWire is not null) return;
-        _previewWire = new Line
+        _previewWire = new System.Windows.Shapes.Path
         {
             Stroke = (Brush)FindResource("PositiveBrush"),
             StrokeThickness = 2.5,
             StrokeDashArray = new DoubleCollection { 5, 3 },
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent,
             IsHitTestVisible = false,
         };
         DesignCanvas.Children.Add(_previewWire);
@@ -4756,7 +5031,7 @@ public partial class MainWindow : Window
                 : isAnenji
                     ? CreateAnenjiFaceBrush(equipment)
                     : isBatteryFace
-                        ? CreateBatteryFaceBrush()
+                        ? CreateBatteryFaceBrush(equipment)
                         : isPvIsolatorFace
                             ? CreateDisconnectFaceBrush()
                             : isBattDiscFace
@@ -4928,7 +5203,14 @@ public partial class MainWindow : Window
         }
         else if (isBatteryFace)
         {
-            LayoutBatteryBottomPorts(visual, equipment, w, h, portSize, half);
+            if (ElectricalEquipmentInstance.IsLandscapePrismaticBattery(equipment))
+                LayoutBatteryTopLeftRightPorts(visual, equipment, w, h, portSize, half);
+            else if (ElectricalEquipmentInstance.IsRackBattery(equipment))
+                LayoutBatteryRackTopDualPorts(visual, equipment, w, h, portSize, half);
+            else if (ElectricalEquipmentInstance.IsWall10kWBattery(equipment))
+                LayoutBatteryTopDualPorts(visual, equipment, w, h, portSize, half);
+            else
+                LayoutBatteryBottomDualPorts(visual, equipment, w, h, portSize, half);
         }
         else if (isPvIsolatorFace)
         {
@@ -5073,11 +5355,22 @@ public partial class MainWindow : Window
         };
     }
 
-    private static ImageBrush CreateBatteryFaceBrush()
+    private static ImageBrush CreateBatteryFaceBrush(ElectricalEquipmentInstance? equipment = null)
     {
+        var asset = "battery-anenji-16kwh.png";
+        if (equipment is not null)
+        {
+            if (ElectricalEquipmentInstance.IsLandscapePrismaticBattery(equipment))
+                asset = "battery-anenji-12_8v-300ah.png";
+            else if (ElectricalEquipmentInstance.IsRackBattery(equipment))
+                asset = "battery-anenji-5_1kwh-rack.png";
+            else if (ElectricalEquipmentInstance.IsWall10kWBattery(equipment))
+                asset = "battery-anenji-10kw.png";
+        }
+
         var bmp = new System.Windows.Media.Imaging.BitmapImage();
         bmp.BeginInit();
-        bmp.UriSource = new Uri("pack://application:,,,/Assets/battery-anenji-16kwh.png", UriKind.Absolute);
+        bmp.UriSource = new Uri($"pack://application:,,,/Assets/{asset}", UriKind.Absolute);
         bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
         bmp.EndInit();
         bmp.Freeze();
@@ -5231,7 +5524,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void LayoutBatteryBottomPorts(
+    private static void LayoutBatteryBottomDualPorts(
         EquipmentVisual visual,
         ElectricalEquipmentInstance equipment,
         double bodyW,
@@ -5240,7 +5533,7 @@ public partial class MainWindow : Window
         double half)
     {
         var y = bodyH - half * 0.35;
-        var pairGap = Math.Min(portSize * 1.1, bodyW * 0.04);
+        var pairGap = Math.Min(portSize * 0.95, bodyW * 0.03);
 
         void Place(string label, double centerX)
         {
@@ -5254,8 +5547,100 @@ public partial class MainWindow : Window
             Canvas.SetTop(ellipse, y);
         }
 
-        Place("BAT+", 0.42 * bodyW - pairGap);
-        Place("BAT-", 0.42 * bodyW + pairGap);
+        // 16 kWh: two −/+ pairs along the bottom (parallel lugs).
+        Place("BAT1-", 0.28 * bodyW - pairGap);
+        Place("BAT1+", 0.28 * bodyW + pairGap);
+        Place("BAT2-", 0.72 * bodyW - pairGap);
+        Place("BAT2+", 0.72 * bodyW + pairGap);
+    }
+
+    /// <summary>
+    /// 12.8V 300Ah prismatic: BAT− far left, BAT+ far right on the top edge.
+    /// </summary>
+    private static void LayoutBatteryTopLeftRightPorts(
+        EquipmentVisual visual,
+        ElectricalEquipmentInstance equipment,
+        double bodyW,
+        double bodyH,
+        double portSize,
+        double half)
+    {
+        var y = half * 0.35;
+
+        void Place(string label, double centerX)
+        {
+            var port = equipment.Ports.FirstOrDefault(p =>
+                p.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
+            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            ellipse.ToolTip = label;
+            Canvas.SetLeft(ellipse, centerX - half);
+            Canvas.SetTop(ellipse, y);
+        }
+
+        Place("BAT-", 0.06 * bodyW);
+        Place("BAT+", 0.94 * bodyW);
+    }
+
+    /// <summary>10 kW wall: dual − left / dual + right on the top edge.</summary>
+    private static void LayoutBatteryTopDualPorts(
+        EquipmentVisual visual,
+        ElectricalEquipmentInstance equipment,
+        double bodyW,
+        double bodyH,
+        double portSize,
+        double half)
+    {
+        var y = half * 0.35;
+        var pairGap = Math.Min(portSize * 0.95, bodyW * 0.035);
+
+        void Place(string label, double centerX)
+        {
+            var port = equipment.Ports.FirstOrDefault(p =>
+                p.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
+            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            ellipse.ToolTip = label;
+            Canvas.SetLeft(ellipse, centerX - half);
+            Canvas.SetTop(ellipse, y);
+        }
+
+        Place("BAT1-", 0.18 * bodyW - pairGap);
+        Place("BAT2-", 0.18 * bodyW + pairGap);
+        Place("BAT1+", 0.82 * bodyW - pairGap);
+        Place("BAT2+", 0.82 * bodyW + pairGap);
+    }
+
+    /// <summary>Rack 5.1 kWh: two − on top-left block, two + on top-right block.</summary>
+    private static void LayoutBatteryRackTopDualPorts(
+        EquipmentVisual visual,
+        ElectricalEquipmentInstance equipment,
+        double bodyW,
+        double bodyH,
+        double portSize,
+        double half)
+    {
+        var y = half * 0.45;
+        var pairGap = Math.Min(portSize * 1.05, bodyW * 0.028);
+
+        void Place(string label, double centerX)
+        {
+            var port = equipment.Ports.FirstOrDefault(p =>
+                p.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
+            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            ellipse.ToolTip = label;
+            Canvas.SetLeft(ellipse, centerX - half);
+            Canvas.SetTop(ellipse, y);
+        }
+
+        Place("BAT1-", 0.12 * bodyW - pairGap);
+        Place("BAT2-", 0.12 * bodyW + pairGap);
+        Place("BAT1+", 0.88 * bodyW - pairGap);
+        Place("BAT2+", 0.88 * bodyW + pairGap);
     }
 
     /// <summary>
@@ -6072,6 +6457,24 @@ public partial class MainWindow : Window
     {
         var (x, y) = NextEquipmentPlaceMm(1000);
         PlaceAndSelectEquipment(_project.AddBattery(x, y));
+    }
+
+    private void AddBattery10kW_Click(object sender, RoutedEventArgs e)
+    {
+        var (x, y) = NextEquipmentPlaceMm(1000);
+        PlaceAndSelectEquipment(_project.AddBattery10kWWall(x, y));
+    }
+
+    private void AddBatteryRack_Click(object sender, RoutedEventArgs e)
+    {
+        var (x, y) = NextEquipmentPlaceMm(1700);
+        PlaceAndSelectEquipment(_project.AddBattery5_1kWhRack(x, y));
+    }
+
+    private void AddBattery12_8V_Click(object sender, RoutedEventArgs e)
+    {
+        var (x, y) = NextEquipmentPlaceMm(1500);
+        PlaceAndSelectEquipment(_project.AddBattery12_8V300Ah(x, y));
     }
 
     private void AddBatteryDisconnect_Click(object sender, RoutedEventArgs e)

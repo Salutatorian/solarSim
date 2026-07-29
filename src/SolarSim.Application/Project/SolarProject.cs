@@ -237,6 +237,30 @@ public sealed class SolarProject
         return equipment;
     }
 
+    public ElectricalEquipmentInstance AddBattery10kWWall(double xMm, double yMm)
+    {
+        var equipment = ElectricalEquipmentInstance.CreateBattery10kWWall(Guid.NewGuid(), xMm, yMm);
+        Graph.AddEquipment(equipment);
+        NotifyChanged("Add ANENJI 10kW battery");
+        return equipment;
+    }
+
+    public ElectricalEquipmentInstance AddBattery5_1kWhRack(double xMm, double yMm)
+    {
+        var equipment = ElectricalEquipmentInstance.CreateBattery5_1kWhRack(Guid.NewGuid(), xMm, yMm);
+        Graph.AddEquipment(equipment);
+        NotifyChanged("Add ANENJI 5.1kWh rack battery");
+        return equipment;
+    }
+
+    public ElectricalEquipmentInstance AddBattery12_8V300Ah(double xMm, double yMm)
+    {
+        var equipment = ElectricalEquipmentInstance.CreateBattery12_8V300Ah(Guid.NewGuid(), xMm, yMm);
+        Graph.AddEquipment(equipment);
+        NotifyChanged("Add ANENJI 12.8V 300Ah battery");
+        return equipment;
+    }
+
     public ElectricalEquipmentInstance AddBatteryDisconnect(double xMm, double yMm)
     {
         var equipment = ElectricalEquipmentInstance.CreateBatteryDisconnect(Guid.NewGuid(), xMm, yMm);

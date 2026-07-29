@@ -14,16 +14,49 @@ public class Phase11BatteryTests
         var battery = project.AddBattery(0, 0);
         var inv = project.AddStringInverter(2000, 0, InverterDefinition.CreateAnenji12kW2Mppt());
 
-        var batPos = battery.Ports.First(p => p.Label == "BAT+");
+        var batPos = battery.Ports.First(p => p.Label == "BAT1+");
         var invPos = inv.Ports.First(p => p.Label == "BAT+");
         Assert.True(project.Graph.TryConnect(batPos.Id, invPos.Id, null, out var conn).IsValid);
         Assert.NotNull(conn);
         Assert.Equal(WireGaugeAwg.Awg2_0, conn!.Wire.Gauge);
         Assert.Equal("Battery cable", conn.Wire.WireType);
 
-        var batNeg = battery.Ports.First(p => p.Label == "BAT-");
+        var batNeg = battery.Ports.First(p => p.Label == "BAT1-");
         var invNeg = inv.Ports.First(p => p.Label == "BAT-");
         Assert.True(project.Graph.TryConnect(batNeg.Id, invNeg.Id, null, out _).IsValid);
+    }
+
+    [Fact]
+    public void Large_batteries_have_dual_bat_terminals()
+    {
+        var project = new SolarProject();
+        var wall16 = project.AddBattery(0, 0);
+        var wall10 = project.AddBattery10kWWall(2000, 0);
+        var rack = project.AddBattery5_1kWhRack(4000, 0);
+
+        foreach (var bat in new[] { wall16, wall10, rack })
+        {
+            Assert.True(ElectricalEquipmentInstance.HasDualBatteryTerminals(bat));
+            Assert.Equal(4, bat.Ports.Count);
+            Assert.Contains(bat.Ports, p => p.Label == "BAT1+");
+            Assert.Contains(bat.Ports, p => p.Label == "BAT1-");
+            Assert.Contains(bat.Ports, p => p.Label == "BAT2+");
+            Assert.Contains(bat.Ports, p => p.Label == "BAT2-");
+        }
+    }
+
+    [Fact]
+    public void Anenji_12_8v_300ah_is_landscape_with_bat_ports()
+    {
+        var project = new SolarProject();
+        var battery = project.AddBattery12_8V300Ah(0, 0);
+        Assert.Equal("ANENJI-12.8V-300Ah", battery.CatalogSeries);
+        Assert.True(ElectricalEquipmentInstance.IsLandscapePrismaticBattery(battery));
+        Assert.False(ElectricalEquipmentInstance.HasDualBatteryTerminals(battery));
+        Assert.True(battery.WidthMm > battery.HeightMm);
+        Assert.Contains(battery.Ports, p => p.Label == "BAT+");
+        Assert.Contains(battery.Ports, p => p.Label == "BAT-");
+        Assert.Equal(2, battery.Ports.Count);
     }
 
     [Fact]
@@ -33,7 +66,7 @@ public class Phase11BatteryTests
         var battery = project.AddBattery(0, 0);
         var disc = project.AddBatteryDisconnect(2000, 0);
 
-        var batPos = battery.Ports.First(p => p.Label == "BAT+");
+        var batPos = battery.Ports.First(p => p.Label == "BAT1+");
         var inPos = disc.Ports.First(p => p.Label == "IN+");
         Assert.True(project.Graph.TryConnect(batPos.Id, inPos.Id, null, out _).IsValid);
     }
@@ -44,7 +77,7 @@ public class Phase11BatteryTests
         var project = new SolarProject();
         var battery = project.AddBattery(0, 0);
         var ac = project.AddAcDisconnect(2000, 0);
-        var batPos = battery.Ports.First(p => p.Label == "BAT+");
+        var batPos = battery.Ports.First(p => p.Label == "BAT1+");
         var acL = ac.Ports.First(p => p.Label == "AC IN L");
         Assert.False(project.Graph.TryConnect(batPos.Id, acL.Id, null, out _).IsValid);
     }
@@ -55,7 +88,7 @@ public class Phase11BatteryTests
         var project = new SolarProject();
         var battery = project.AddBattery(0, 0);
         var inv = project.AddStringInverter(2000, 0, InverterDefinition.CreateGeneric5kW2Mppt());
-        var batPos = battery.Ports.First(p => p.Label == "BAT+");
+        var batPos = battery.Ports.First(p => p.Label == "BAT1+");
         var invPos = inv.Ports.First(p => p.Label == "BAT+");
         Assert.True(project.Graph.TryConnect(batPos.Id, invPos.Id, null, out var conn).IsValid);
         foreach (var g in WireGaugeFormat.BatteryCableGauges)
@@ -105,7 +138,8 @@ public class Phase11BatteryTests
         Assert.Equal(400, loaded.Graph.Equipment[disc.Id].RatedAmps);
         Assert.Equal("DHM1X", loaded.Graph.Equipment[disc.Id].CatalogSeries);
         Assert.Equal(90, loaded.Graph.Equipment[battery.Id].RotationDegrees, 3);
-        Assert.Contains(loaded.Graph.Equipment[battery.Id].Ports, p => p.Label == "BAT+");
+        Assert.Contains(loaded.Graph.Equipment[battery.Id].Ports, p => p.Label == "BAT1+");
+        Assert.Contains(loaded.Graph.Equipment[battery.Id].Ports, p => p.Label == "BAT2-");
         Assert.Contains("ANENJI", loaded.BuildBomSchedule().ToPlainText());
     }
 }

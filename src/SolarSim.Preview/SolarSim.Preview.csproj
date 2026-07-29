@@ -10,10 +10,10 @@
     <AssemblyName>solarSim</AssemblyName>
     <ApplicationTitle>solarSim</ApplicationTitle>
     <Product>solarSim</Product>
-    <Version>0.1.4</Version>
-    <AssemblyVersion>0.1.4.0</AssemblyVersion>
-    <FileVersion>0.1.4.0</FileVersion>
-    <InformationalVersion>0.1.4</InformationalVersion>
+    <Version>0.1.5</Version>
+    <AssemblyVersion>0.1.5.0</AssemblyVersion>
+    <FileVersion>0.1.5.0</FileVersion>
+    <InformationalVersion>0.1.5</InformationalVersion>
     <Company>solarSim</Company>
     <Description>Visual solar design lab for Windows (design aid — not stamped approval). Local projects only; proprietary — see LICENSE.</Description>
     <ApplicationIcon>Assets\solarsim-logo.ico</ApplicationIcon>
@@ -37,6 +37,9 @@
     <Resource Include="Assets\inverter-anenji-4_2kw.png" />
     <Resource Include="Assets\inverter-anenji-6_5kw.png" />
     <Resource Include="Assets\battery-anenji-16kwh.png" />
+    <Resource Include="Assets\battery-anenji-12_8v-300ah.png" />
+    <Resource Include="Assets\battery-anenji-10kw.png" />
+    <Resource Include="Assets\battery-anenji-5_1kwh-rack.png" />
     <Resource Include="Assets\disconnect-pv-isolator.png" />
     <Resource Include="Assets\battery-disconnect-dhm1b.png" />
   </ItemGroup>

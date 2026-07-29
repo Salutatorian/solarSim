@@ -193,6 +193,15 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - All string-inverter terminals (MPPT / AC / BAT) sit on the bottom edge — not left/right side columns
 - Port layouts match the photos (MC4 / lugs / BAT±); 6.5 kW: AC left, BAT middle, PV1/PV2 right; battery cables 1/0–4/0; disconnect Amp ratings with recommended (not forced) wire sizes
 
+### Smart Wiring (`0.1.5`)
+- Default cable routing is rounded orthogonal / Manhattan (H/V only) — no soft Bezier sag
+- Parallel lane spacing for bundled auto-routes between the same equipment pair
+- Draggable bend points; drag a selected wire segment to move a whole run
+- Double-click bakes the auto route into editable waypoints; rubber-band preview is ortho while connecting
+- Moving equipment with unedited wires re-routes cleanly
+- ANENJI 12.8V 300Ah (~3.84 kWh) prismatic battery — BAT− left / BAT+ right on the top edge
+- ANENJI 10 kW wall + 5.1 kWh rack (stackable) batteries; large packs (16 kWh / 10 kW / rack) expose dual BAT1± and BAT2±; golf-cart 12.8V stays single ±
+
 ---
 
 ## How to verify for submission
