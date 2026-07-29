@@ -210,6 +210,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Electrical Add catalog uses real equipment photos (ANENJI inverters & batteries, combiner, isolators)
 - Equipment workspace hides roof / panel / obstacle tools so the canvas stays equipment-focused
 
+### Equipment face cleanup (`0.1.7`)
+- Stripped black matte / floor-shadow fringe from photoreal equipment PNGs
+- Photo faces render without a dark rounded chrome border; alpha composites cleanly (no black halo)
+
 ---
 
 ## How to verify for submission

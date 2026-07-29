@@ -1,15 +1,13 @@
-solarSim 0.1.6
-Released: 2026-07-30 05:46
+solarSim 0.1.7
+Released: 2026-07-30 05:57
 
-Updates & notices
-• Settings and a bottom-right mini toast both show Update / Cancel when a release is available
-• Click Update to download and auto-install at 100% — no need to leave Settings for the corner button
-• After install, this What’s new box lists what changed (with release date & time)
+Equipment photo faces
+• Removed the black matte / drop-shadow fringe baked into equipment cutouts
+• Photo faces no longer draw a dark rounded border (selection accent only)
+• Transparent PNGs composite cleanly in WPF (no black halo)
 
-Equipment catalog
-• Electrical Add tiles use the real equipment photos (ANENJI inverters & batteries, combiner, isolators) instead of generic glyphs
-• Equipment workspace stays equipment-only — roof outline and panels stay on Roof / System
-
-Earlier in 0.1.5–0.1.6
-• Smart Wiring: rounded orthogonal routes, parallel lanes, bend & segment drag
-• Photoreal ANENJI faces and dual BAT± on large battery packs
+Earlier in 0.1.6
+• Settings + mini toast Update / Cancel; auto-install at 100%
+• What’s new dialog after update
+• Electrical Add tiles use real equipment photos
+• Equipment workspace hides roof / panel tools

@@ -2903,13 +2903,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var bmp = new System.Windows.Media.Imaging.BitmapImage();
-                bmp.BeginInit();
-                bmp.UriSource = new Uri($"pack://application:,,,/Assets/{item.ImageAsset}", UriKind.Absolute);
-                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                bmp.DecodePixelWidth = 96;
-                bmp.EndInit();
-                bmp.Freeze();
+                var bmp = LoadEquipmentFaceBitmap(item.ImageAsset!);
                 stack.Children.Add(new Image
                 {
                     Source = bmp,
@@ -5115,33 +5109,33 @@ public partial class MainWindow : Window
         var isPvIsolatorFace = equipment.Kind == EquipmentKind.PvDisconnect;
         var isBattDiscFace = equipment.Kind == EquipmentKind.BatteryDisconnect;
         var photoFace = isCombiner || isAnenji || isBatteryFace || isPvIsolatorFace || isBattDiscFace;
+        ImageBrush? faceBrush = null;
+        if (isCombiner) faceBrush = CreateCombinerFaceBrush();
+        else if (isAnenji) faceBrush = CreateAnenjiFaceBrush(equipment);
+        else if (isBatteryFace) faceBrush = CreateBatteryFaceBrush(equipment);
+        else if (isPvIsolatorFace) faceBrush = CreateDisconnectFaceBrush();
+        else if (isBattDiscFace) faceBrush = CreateBatteryDisconnectFaceBrush();
+
         var body = new Border
         {
-            Background = isCombiner
-                ? CreateCombinerFaceBrush()
-                : isAnenji
-                    ? CreateAnenjiFaceBrush(equipment)
-                    : isBatteryFace
-                        ? CreateBatteryFaceBrush(equipment)
-                        : isPvIsolatorFace
-                            ? CreateDisconnectFaceBrush()
-                            : isBattDiscFace
-                                ? CreateBatteryDisconnectFaceBrush()
-                                : isInverter
-                                    ? new SolidColorBrush(Color.FromRgb(0xE8, 0xEE, 0xF5))
-                                    : isStorage && !isBattDiscFace
-                                        ? new SolidColorBrush(Color.FromRgb(0xE8, 0xF5, 0xEE))
-                                        : new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF1)),
+            Background = faceBrush is not null
+                ? Brushes.Transparent
+                : isInverter
+                    ? new SolidColorBrush(Color.FromRgb(0xE8, 0xEE, 0xF5))
+                    : isStorage && !isBattDiscFace
+                        ? new SolidColorBrush(Color.FromRgb(0xE8, 0xF5, 0xEE))
+                        : new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF1)),
             BorderBrush = photoFace
-                ? new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3C))
+                ? Brushes.Transparent
                 : isInverter
                     ? new SolidColorBrush(Color.FromRgb(0x37, 0x47, 0x4F))
                     : isStorage
                         ? new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x4F))
                         : new SolidColorBrush(Color.FromRgb(0x54, 0x6E, 0x7A)),
-            BorderThickness = new Thickness(photoFace ? 1.5 : 2),
-            CornerRadius = new CornerRadius(photoFace ? 10 : 4),
+            BorderThickness = new Thickness(photoFace ? 0 : 2),
+            CornerRadius = new CornerRadius(photoFace ? 0 : 4),
             Cursor = Cursors.SizeAll,
+            ClipToBounds = true,
         };
         var title = new TextBlock
         {
@@ -5157,8 +5151,28 @@ public partial class MainWindow : Window
             Padding = photoFace ? new Thickness(6, 3, 6, 3) : new Thickness(0),
             Margin = new Thickness(8, 6, 8, 0),
             IsHitTestVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
         };
-        body.Child = title;
+
+        if (faceBrush is not null)
+        {
+            var face = new Image
+            {
+                Source = faceBrush.ImageSource,
+                Stretch = Stretch.Fill,
+                IsHitTestVisible = false,
+            };
+            RenderOptions.SetBitmapScalingMode(face, BitmapScalingMode.HighQuality);
+            var layer = new Grid();
+            layer.Children.Add(face);
+            layer.Children.Add(title);
+            body.Child = layer;
+        }
+        else
+        {
+            body.Child = title;
+        }
         root.Children.Add(body);
 
         var rotateStem = new Line
@@ -5266,9 +5280,10 @@ public partial class MainWindow : Window
         visual.Body.BorderBrush = selected
             ? (Brush)FindResource("AccentBrush")
             : photoFace
-                ? new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3C))
+                ? Brushes.Transparent
                 : new SolidColorBrush(Color.FromRgb(0x54, 0x6E, 0x7A));
-        visual.Body.BorderThickness = new Thickness(selected ? 3 : photoFace ? 1.5 : 2);
+        visual.Body.BorderThickness = new Thickness(selected ? 3 : photoFace ? 0 : 2);
+        visual.Body.CornerRadius = new CornerRadius(photoFace ? 0 : 4);
 
         var portSize = photoFace
             ? Math.Clamp(8 * _zoom, 4, 9)
@@ -5410,12 +5425,7 @@ public partial class MainWindow : Window
 
     private static ImageBrush CreateCombinerFaceBrush()
     {
-        var bmp = new System.Windows.Media.Imaging.BitmapImage();
-        bmp.BeginInit();
-        bmp.UriSource = new Uri("pack://application:,,,/Assets/combiner-6string.png", UriKind.Absolute);
-        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-        bmp.EndInit();
-        bmp.Freeze();
+        var bmp = LoadEquipmentFaceBitmap("combiner-6string.png");
         return new ImageBrush(bmp)
         {
             Stretch = Stretch.Fill,
@@ -5432,12 +5442,7 @@ public partial class MainWindow : Window
             : id == InverterDefinition.Anenji6_5kWDefinitionId
                 ? "inverter-anenji-6_5kw.png"
                 : "inverter-anenji-12kw.png";
-        var bmp = new System.Windows.Media.Imaging.BitmapImage();
-        bmp.BeginInit();
-        bmp.UriSource = new Uri($"pack://application:,,,/Assets/{asset}", UriKind.Absolute);
-        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-        bmp.EndInit();
-        bmp.Freeze();
+        var bmp = LoadEquipmentFaceBitmap(asset);
         return new ImageBrush(bmp)
         {
             Stretch = Stretch.Fill,
@@ -5459,12 +5464,7 @@ public partial class MainWindow : Window
                 asset = "battery-anenji-10kw.png";
         }
 
-        var bmp = new System.Windows.Media.Imaging.BitmapImage();
-        bmp.BeginInit();
-        bmp.UriSource = new Uri($"pack://application:,,,/Assets/{asset}", UriKind.Absolute);
-        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-        bmp.EndInit();
-        bmp.Freeze();
+        var bmp = LoadEquipmentFaceBitmap(asset);
         return new ImageBrush(bmp)
         {
             Stretch = Stretch.Fill,
@@ -5475,12 +5475,7 @@ public partial class MainWindow : Window
 
     private static ImageBrush CreateDisconnectFaceBrush()
     {
-        var bmp = new System.Windows.Media.Imaging.BitmapImage();
-        bmp.BeginInit();
-        bmp.UriSource = new Uri("pack://application:,,,/Assets/disconnect-pv-isolator.png", UriKind.Absolute);
-        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-        bmp.EndInit();
-        bmp.Freeze();
+        var bmp = LoadEquipmentFaceBitmap("disconnect-pv-isolator.png");
         return new ImageBrush(bmp)
         {
             Stretch = Stretch.Fill,
@@ -5491,18 +5486,31 @@ public partial class MainWindow : Window
 
     private static ImageBrush CreateBatteryDisconnectFaceBrush()
     {
-        var bmp = new System.Windows.Media.Imaging.BitmapImage();
-        bmp.BeginInit();
-        bmp.UriSource = new Uri("pack://application:,,,/Assets/battery-disconnect-dhm1b.png", UriKind.Absolute);
-        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-        bmp.EndInit();
-        bmp.Freeze();
+        var bmp = LoadEquipmentFaceBitmap("battery-disconnect-dhm1b.png");
         return new ImageBrush(bmp)
         {
             Stretch = Stretch.Fill,
             AlignmentX = AlignmentX.Center,
             AlignmentY = AlignmentY.Center,
         };
+    }
+
+    private static System.Windows.Media.Imaging.BitmapSource LoadEquipmentFaceBitmap(string assetFile)
+    {
+        var bmp = new System.Windows.Media.Imaging.BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri($"pack://application:,,,/Assets/{assetFile}", UriKind.Absolute);
+        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        bmp.CreateOptions = System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat;
+        bmp.EndInit();
+        // Pbgra32 so transparent cutouts composite cleanly (no black matte in WPF).
+        var converted = new System.Windows.Media.Imaging.FormatConvertedBitmap(
+            bmp,
+            PixelFormats.Pbgra32,
+            null,
+            0);
+        converted.Freeze();
+        return converted;
     }
 
     private static bool IsAnenjiHybridFace(ElectricalEquipmentInstance equipment)
