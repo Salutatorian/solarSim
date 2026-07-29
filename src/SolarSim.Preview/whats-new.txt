@@ -1,10 +1,12 @@
-solarSim 0.1.8
-Released: 2026-07-30 06:01
+solarSim 0.1.9
+Released: 2026-07-30 06:08
 
-Add catalog labels
-• Tiles lead with the equipment type (Inverter, Battery, Combiner…) — not only the brand
-• Brand and size sit on the second line and wrap so you can read what you’re adding
+Equipment snap guides
+• Dragging equipment snaps to neighbors (edges, centers, spaced seats) like solar panels
+• Magenta dotted alignment guides appear while you drag
+• Hold Alt to drag freely without snap
 
 Earlier
-• 0.1.7 — cleaned black matte / halo on equipment photos
-• 0.1.6 — Update toast, What’s new dialog, photo tiles, Equipment-only tools
+• 0.1.8 — Add tiles lead with Inverter / Battery type
+• 0.1.7 — cleaned black halo on equipment photos
+• 0.1.6 — Update UX + What’s new dialog

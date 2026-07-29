@@ -218,6 +218,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Electrical (and Solar) Add tiles lead with type — Inverter, Battery, Module, etc. — brand and size on the second line
 - Subtitles wrap inside the tile so you can tell models apart without guessing
 
+### Equipment snap guides (`0.1.9`)
+- Equipment drag snaps to other equipment (edges / centers / spaced seats), same idea as panels
+- Magenta dotted alignment guides while dragging; Alt = free drag
+
 ---
 
 ## How to verify for submission

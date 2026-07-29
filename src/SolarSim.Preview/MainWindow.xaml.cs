@@ -4032,10 +4032,18 @@ public partial class MainWindow : Window
             var proposedY = primaryOrigin.y + dyMm;
 
             var isEquipment = _project.Graph.Equipment.ContainsKey(_draggingPanelId.Value);
-            if (!isEquipment)
+            var allowSnap = !Keyboard.IsKeyDown(Key.LeftAlt) && !Keyboard.IsKeyDown(Key.RightAlt);
+            if (isEquipment)
+            {
+                if (allowSnap
+                    && _project.Graph.TryGetEquipment(_draggingPanelId.Value, out var primaryEq))
+                {
+                    (proposedX, proposedY) = ApplyEquipmentSnap(primaryEq.Id, proposedX, proposedY);
+                }
+            }
+            else
             {
                 var primary = _project.Graph.GetPanel(_draggingPanelId.Value);
-                var allowSnap = !Keyboard.IsKeyDown(Key.LeftAlt) && !Keyboard.IsKeyDown(Key.RightAlt);
                 (proposedX, proposedY) = ResolvePanelDragPosition(
                     primary, primaryOrigin.x, primaryOrigin.y, proposedX, proposedY, allowSnap);
             }
@@ -4060,10 +4068,10 @@ public partial class MainWindow : Window
             }
 
             RefreshAll();
-            if (!isEquipment)
-                UpdatePanelAlignmentGuides(_draggingPanelId.Value, _dragOrigins.Keys.ToHashSet());
+            if (isEquipment)
+                UpdateEquipmentAlignmentGuides(_draggingPanelId.Value, _dragOrigins.Keys.ToHashSet());
             else
-                ClearAlignmentGuides();
+                UpdatePanelAlignmentGuides(_draggingPanelId.Value, _dragOrigins.Keys.ToHashSet());
         }
     }
 
@@ -4580,6 +4588,66 @@ public partial class MainWindow : Window
         return (bestX, bestY);
     }
 
+    /// <summary>Same edge / center / neighbor seating as panels, for equipment↔equipment.</summary>
+    private (double x, double y) ApplyEquipmentSnap(Guid movingId, double xMm, double yMm)
+    {
+        if (!_project.Graph.TryGetEquipment(movingId, out var moving))
+            return (xMm, yMm);
+        var (mw, mh) = GetEquipmentLogicalSizeMm(moving);
+        const double gapMm = 40;
+
+        double bestX = xMm;
+        double bestY = yMm;
+        var bestDx = SnapThresholdMm;
+        var bestDy = SnapThresholdMm;
+
+        foreach (var other in _project.Graph.Equipment.Values)
+        {
+            if (other.Id == movingId) continue;
+            var (ow, oh) = GetEquipmentLogicalSizeMm(other);
+            var ox = other.PositionXMm;
+            var oy = other.PositionYMm;
+
+            var xCandidates = new[]
+            {
+                ox + ow + gapMm,
+                ox - mw - gapMm,
+                ox,
+                ox + ow - mw,
+                ox + (ow - mw) / 2,
+            };
+            foreach (var cx in xCandidates)
+            {
+                var dx = Math.Abs(cx - xMm);
+                if (dx < bestDx)
+                {
+                    bestDx = dx;
+                    bestX = cx;
+                }
+            }
+
+            var yCandidates = new[]
+            {
+                oy + oh + gapMm,
+                oy - mh - gapMm,
+                oy,
+                oy + oh - mh,
+                oy + (oh - mh) / 2,
+            };
+            foreach (var cy in yCandidates)
+            {
+                var dy = Math.Abs(cy - yMm);
+                if (dy < bestDy)
+                {
+                    bestDy = dy;
+                    bestY = cy;
+                }
+            }
+        }
+
+        return (bestX, bestY);
+    }
+
     /// <summary>
     /// Canva-style smart guides: thin magenta dotted lines when edges/centers line up while dragging.
     /// </summary>
@@ -4594,6 +4662,49 @@ public partial class MainWindow : Window
         var mt = moving.PositionYMm;
         var mr = ml + movingSize.width;
         var mb = mt + movingSize.height;
+
+        var others = new List<(double ol, double ot, double oright, double ob)>();
+        foreach (var other in _project.Graph.Panels.Values)
+        {
+            if (ignoreIds.Contains(other.Id)) continue;
+            var otherDef = _project.RequireDefinition(other.DefinitionId);
+            var otherSize = GetLogicalSizeMm(otherDef, other.RotationDegrees);
+            var ol = other.PositionXMm;
+            var ot = other.PositionYMm;
+            others.Add((ol, ot, ol + otherSize.width, ot + otherSize.height));
+        }
+
+        BuildAlignmentGuides(ml, mt, mr, mb, others);
+    }
+
+    private void UpdateEquipmentAlignmentGuides(Guid movingId, HashSet<Guid> ignoreIds)
+    {
+        ClearAlignmentGuides();
+        if (!_project.Graph.TryGetEquipment(movingId, out var moving)) return;
+
+        var (mw, mh) = GetEquipmentLogicalSizeMm(moving);
+        var ml = moving.PositionXMm;
+        var mt = moving.PositionYMm;
+        var mr = ml + mw;
+        var mb = mt + mh;
+
+        var others = new List<(double ol, double ot, double oright, double ob)>();
+        foreach (var other in _project.Graph.Equipment.Values)
+        {
+            if (ignoreIds.Contains(other.Id)) continue;
+            var (ow, oh) = GetEquipmentLogicalSizeMm(other);
+            var ol = other.PositionXMm;
+            var ot = other.PositionYMm;
+            others.Add((ol, ot, ol + ow, ot + oh));
+        }
+
+        BuildAlignmentGuides(ml, mt, mr, mb, others);
+    }
+
+    private void BuildAlignmentGuides(
+        double ml, double mt, double mr, double mb,
+        List<(double ol, double ot, double oright, double ob)> others)
+    {
         var mcx = (ml + mr) * 0.5;
         var mcy = (mt + mb) * 0.5;
 
@@ -4637,15 +4748,8 @@ public partial class MainWindow : Window
                 hGuides[key] = (y, x0, x1);
         }
 
-        foreach (var other in _project.Graph.Panels.Values)
+        foreach (var (ol, ot, oright, ob) in others)
         {
-            if (ignoreIds.Contains(other.Id)) continue;
-            var otherDef = _project.RequireDefinition(other.DefinitionId);
-            var otherSize = GetLogicalSizeMm(otherDef, other.RotationDegrees);
-            var ol = other.PositionXMm;
-            var ot = other.PositionYMm;
-            var oright = ol + otherSize.width;
-            var ob = ot + otherSize.height;
             var ocx = (ol + oright) * 0.5;
             var ocy = (ot + ob) * 0.5;
 
@@ -4717,6 +4821,15 @@ public partial class MainWindow : Window
     {
         var rot = ((rotation % 180) + 180) % 180;
         return rot == 90 ? (def.HeightMm, def.WidthMm) : (def.WidthMm, def.HeightMm);
+    }
+
+    /// <summary>Axis-aligned size for snap/guides (swap near 90° rotation).</summary>
+    private static (double width, double height) GetEquipmentLogicalSizeMm(ElectricalEquipmentInstance eq)
+    {
+        var rot = Math.Abs(eq.RotationDegrees) % 180.0;
+        return rot is > 45 and < 135
+            ? (eq.HeightMm, eq.WidthMm)
+            : (eq.WidthMm, eq.HeightMm);
     }
 
     private Guid? FindPanelAt(Point canvasPoint)
