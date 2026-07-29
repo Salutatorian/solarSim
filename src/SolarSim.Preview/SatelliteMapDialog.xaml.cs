@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
@@ -99,11 +100,29 @@ public partial class SatelliteMapDialog : Window
         catch (Exception ex)
         {
             StatusText.Text = "WebView2 failed to start.";
-            MessageBox.Show(this,
-                "WebView2 is required for the satellite map.\n\n" + ex.Message,
-                "Trace roof",
-                MessageBoxButton.OK,
+            var go = MessageBox.Show(this,
+                "Microsoft Edge WebView2 Runtime is required for Trace roof on map.\n\n" +
+                "Install the Evergreen Runtime, then restart solarSim.\n\n" +
+                "Open the download page now?\n\n" +
+                $"Details: {ex.Message}",
+                "WebView2 required",
+                MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
+            if (go == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "https://developer.microsoft.com/microsoft-edge/webview2/",
+                        UseShellExecute = true,
+                    });
+                }
+                catch
+                {
+                    // ignore browser launch failures
+                }
+            }
         }
     }
 

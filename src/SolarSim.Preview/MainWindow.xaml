@@ -31,7 +31,12 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                     <TextBlock Text="solarSim" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold"
-                               FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                               FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="AppVersionLabel" Text="0.1.1" Foreground="{DynamicResource MutedBrush}"
+                               FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="design aid" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                               VerticalAlignment="Center" Margin="0,0,14,0" Opacity="0.85"
+                               ToolTip="Not stamped electrical, structural, or bankable-yield approval."/>
                     <Button Content="File" Style="{StaticResource GhostButton}" Click="OverflowMenu_Click"
                             x:Name="FileMenuButton" Padding="8,4" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <TextBlock Text="|" Foreground="{DynamicResource BorderBrush}" Margin="6,0" VerticalAlignment="Center"/>
@@ -76,6 +81,8 @@
                                 <MenuItem Header="Demo Roof (12×8 m)" Click="DemoRoof_Click"/>
                                 <MenuItem Header="Demo L-Roof" Click="DemoLRoof_Click"/>
                                 <MenuItem Header="Clear Roof" Click="ClearRoof_Click"/>
+                                <Separator/>
+                                <MenuItem Header="About solarSim…" Click="About_Click"/>
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
@@ -277,7 +284,7 @@
                         <TextBlock x:Name="EmptyStateTitle" Text="Start with your roof"
                                    FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="EmptyStateBody" Text="Draw it manually or import one"
+                        <TextBlock x:Name="EmptyStateBody" Text="Draw or trace a roof · design aid only — not stamped approval"
                                    FontSize="14" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" Margin="0,8,0,22"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Button Content="Draw roof" Style="{StaticResource PrimaryButton}" Width="118" Height="34"

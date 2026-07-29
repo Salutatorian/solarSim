@@ -116,4 +116,53 @@ public class RoofGeometryTests
         Assert.Equal(0, panel.PositionXMm);
         Assert.Equal(0, panel.PositionYMm);
     }
+
+    [Fact]
+    public void OrthogonalizeEdges_makes_wobbly_trace_axis_aligned()
+    {
+        var wobbly = new List<Point2Mm>
+        {
+            new(0, 0),
+            new(10000, 80),
+            new(10040, 8000),
+            new(20, 7950),
+        };
+
+        var straight = RoofGeometry.OrthogonalizeEdges(wobbly);
+        Assert.Equal(4, straight.Count);
+        for (var i = 0; i < straight.Count; i++)
+        {
+            var a = straight[i];
+            var b = straight[(i + 1) % straight.Count];
+            var dx = Math.Abs(a.X - b.X);
+            var dy = Math.Abs(a.Y - b.Y);
+            Assert.True(dx < 0.01 || dy < 0.01, $"Edge {i} not axis-aligned ({dx},{dy})");
+        }
+    }
+
+    [Fact]
+    public void SnapEditVertex_locks_to_orthogonal_corner()
+    {
+        var verts = new List<Point2Mm>
+        {
+            new(0, 0),
+            new(10000, 0),
+            new(10000, 8000),
+            new(0, 8000),
+        };
+
+        // Dragging top-right toward a diagonal should snap onto H/V from neighbors.
+        var raw = new Point2Mm(10120, 140);
+        var snapped = RoofGeometry.SnapEditVertex(
+            index: 1,
+            raw: raw,
+            vertices: verts,
+            axisToleranceMm: 200,
+            freeAngle: false,
+            out _,
+            out _);
+
+        Assert.Equal(10000, snapped.X, 3);
+        Assert.Equal(0, snapped.Y, 3);
+    }
 }

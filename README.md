@@ -40,21 +40,26 @@ Launch-solarSim.bat
 
 ### Download a Windows build (Releases)
 
-When a version is tagged (`v0.1.0`, …), GitHub Actions publishes a zip:
+Public beta builds ship on every `v*` tag:
 
-1. Open [Releases](https://github.com/Salutatorian/solarSim/releases)
+1. Open [Releases](https://github.com/Salutatorian/solarSim/releases) (latest: **v0.1.1**)
 2. Download `solarSim-<version>-win-x64.zip`
 3. Unzip and run `solarSim.exe`
+4. Optional: ⋯ → **About solarSim…** for disclaimer + WebView2 note
 
 **Requirements:** Windows 10/11 x64 · [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (for **Trace roof on map**)
+
+**Public beta notes**
+- Design / simulation aid only — not stamped electrical, structural, or bankable-yield approval
+- Map tracer needs internet + WebView2; offline → use **Draw roof**
+- Imported roofs lock after straighten so marquee selects panels (Unlock to edit geometry)
+- Smoke checklist before tagging: [SMOKE.md](SMOKE.md) · release process: [RELEASE.md](RELEASE.md)
 
 Local package without tagging:
 
 ```powershell
 .\Tools\Publish-Windows.ps1
 ```
-
-See [RELEASE.md](RELEASE.md) for the full release checklist.
 
 **Unity shell (Phase 0.9 Panel Lab):**
 
@@ -174,7 +179,7 @@ Full phase-by-phase history: **[CHANGELOG.md](CHANGELOG.md)** (keep updated for 
 - **Trace roof on map…** / empty-state **Trace on map**: WebView2 + Leaflet; **Google satellite** by default (sharper), Esri fallback toggle — no Google billing for this path
 - Search (OpenStreetMap) or paste lat,lon → zoom → click corners → **drag handles**, Undo/Ctrl+Z, live edge lengths (m)
 - **New section** for L/T multi-wing roofs (imports as multiple roof layers)
-- After import: edges auto-straightened; drag roof to move; ↻ rotate (snaps near 90°); corner drag snaps H/V (Alt = free)
+- After import: edges auto-straightened + **locked**; Unlock to edit; Alt+drag moves roof when unlocked; ↻ rotate (90° magnet); corner drag snaps H/V (Alt = free)
 - Canvas **Measure** tool (↔): live edge lengths like Draw roof
 - Optional Google Solar API remains under ⋯ for power users
 
@@ -193,13 +198,14 @@ Full phase-by-phase history: **[CHANGELOG.md](CHANGELOG.md)** (keep updated for 
 - Tabs: **Roof** · **Interior** · **Combined** (modules + gear + home-run wiring)
 - Dark CAD HUD default; top-bar **Light** / **Dark** toggle
 
-**Next:** Ship Windows Releases (publish zip + tag) · later Cesium / Unity parity
+**Next:** Cesium / Unity roof parity · iterate public beta feedback
 
 ### Roadmap (remaining)
 
 | Phase | Focus |
 |-------|--------|
-| R2–R3 | Windows `.exe` zip via `Publish-Windows.ps1` + GitHub Release workflow (`v*` tags) |
+| R2–R3 | ✅ Windows `.exe` zip + GitHub Release workflow (`v0.1.0+`) |
+| R1 / R4 | ✅ Stability polish + public beta cut (`v0.1.1`: About, WebView2 prompt, SMOKE.md) |
 | Later | Cesium for Unity 3D site · Unity roof/equipment parity |
 
 ## Domain notes

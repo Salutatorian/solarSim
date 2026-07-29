@@ -174,6 +174,8 @@ public partial class MainWindow : Window
         _project.CalculationsUpdated += () => Dispatcher.BeginInvoke(RefreshStatusAndInspector, DispatcherPriority.Background);
         Loaded += (_, _) =>
         {
+            if (AppVersionLabel is not null)
+                AppVersionLabel.Text = GetAppVersion();
             if (ShowAttachmentsCheck is not null)
                 ShowAttachmentsCheck.IsChecked = _showAttachments;
             RebuildRackingVisuals();
@@ -1562,12 +1564,44 @@ public partial class MainWindow : Window
         AddInspectorNote("Edit site and racking fields below. These stay hidden while a canvas object is selected.");
     }
 
-        private void OverflowMenu_Click(object sender, RoutedEventArgs e)
+    private void OverflowMenu_Click(object sender, RoutedEventArgs e)
     {
         if (OverflowMenuButton.ContextMenu is null) return;
         var target = sender as UIElement ?? OverflowMenuButton;
         OverflowMenuButton.ContextMenu.PlacementTarget = target;
         OverflowMenuButton.ContextMenu.IsOpen = true;
+    }
+
+    private void About_Click(object sender, RoutedEventArgs e)
+    {
+        var version = GetAppVersion();
+        MessageBox.Show(this,
+            $"solarSim {version}\n\n" +
+            "Visual solar design lab for Windows.\n\n" +
+            "Design / simulation aid only — not stamped electrical, " +
+            "structural, or bankable-yield approval.\n\n" +
+            "Map tracer needs Microsoft Edge WebView2 Runtime.\n" +
+            "https://developer.microsoft.com/microsoft-edge/webview2/\n\n" +
+            "Releases: https://github.com/Salutatorian/solarSim/releases",
+            "About solarSim",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    private static string GetAppVersion()
+    {
+        var asm = typeof(MainWindow).Assembly;
+        var info = asm.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(info))
+        {
+            var plus = info.IndexOf('+');
+            return plus > 0 ? info[..plus] : info;
+        }
+
+        var v = asm.GetName().Version;
+        return v is null ? "0.1.1" : $"{v.Major}.{v.Minor}.{v.Build}";
     }
 
     private void SetWorkspacePlan(WorkspacePlan plan)

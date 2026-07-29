@@ -161,6 +161,13 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - `.github/workflows/release.yml` — on `v*` tag: test → publish → GitHub Release asset
 - App version `0.1.0` in `SolarSim.Preview.csproj`; see `RELEASE.md`
 
+### R1 / R4 — Public beta polish (`0.1.1`)
+- Title bar version + **design aid**; empty-state disclaimer; ⋯ → **About solarSim…**
+- WebView2 missing → prompt with download page
+- Imported roofs straighten + lock; Unlock / Alt+drag for geometry edits
+- `SMOKE.md` checklist; known issues in `RELEASE.md`
+- App version `0.1.1`
+
 ---
 
 ## How to verify for submission
@@ -180,5 +187,5 @@ Launch entry points: `Launch-solarSim.bat` (WPF), `Launch-Unity.bat` (Unity lab)
 | Field | Value |
 |-------|--------|
 | Changelog created | 2026-07-29 |
-| Last phase recorded | 2.4 Satellite house picker (WPF) |
+| Last phase recorded | R1/R4 public beta polish (`0.1.1`) |
 | Maintainer note | Keep this file updated when shipping a new numbered phase |

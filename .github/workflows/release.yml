@@ -68,7 +68,7 @@ jobs:
           body: |
             ## solarSim ${{ steps.ver.outputs.version }}
 
-            Windows x64 build of the WPF design lab.
+            Public beta — Windows x64 WPF design lab.
 
             ### Run
             1. Download `solarSim-${{ steps.ver.outputs.version }}-win-x64.zip`
@@ -77,7 +77,9 @@ jobs:
 
             ### Notes
             - Design / simulation aid only — not stamped electrical, structural, or bankable-yield approval.
-            - See `CHANGELOG.md` / `README.md` for feature history.
+            - Map needs internet + WebView2; offline → Draw roof.
+            - Imported roofs lock after straighten (Unlock to edit geometry).
+            - See `SMOKE.md`, `RELEASE.md`, `CHANGELOG.md`.
           files: artifacts/publish/solarSim-${{ steps.ver.outputs.version }}-win-x64.zip
           draft: false
           generate_release_notes: true
