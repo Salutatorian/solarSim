@@ -8,6 +8,10 @@ public static class VoltageDropCalculator
     // Approximate DC resistance at 25°C for copper, ohms per 1000 ft (NEC-style tables simplified).
     private static readonly Dictionary<WireGaugeAwg, double> CopperOhmsPer1000Ft = new()
     {
+        [WireGaugeAwg.Awg4_0] = 0.0490,
+        [WireGaugeAwg.Awg3_0] = 0.0618,
+        [WireGaugeAwg.Awg2_0] = 0.0779,
+        [WireGaugeAwg.Awg1_0] = 0.0983,
         [WireGaugeAwg.Awg6] = 0.491,
         [WireGaugeAwg.Awg8] = 0.778,
         [WireGaugeAwg.Awg10] = 1.24,

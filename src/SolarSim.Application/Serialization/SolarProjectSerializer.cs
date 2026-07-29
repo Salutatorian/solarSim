@@ -82,6 +82,8 @@ public sealed class EquipmentDto
     public double PositionYMm { get; set; }
     public double RotationDegrees { get; set; }
     public int StringInputCount { get; set; }
+    public int RatedAmps { get; set; }
+    public string CatalogSeries { get; set; } = "";
     public List<PortDto> Ports { get; set; } = new();
     public InverterSpecsDto? InverterSpecs { get; set; }
 }
@@ -614,6 +616,8 @@ public static class SolarProjectSerializer
         PositionYMm = e.PositionYMm,
         RotationDegrees = e.RotationDegrees,
         StringInputCount = e.StringInputCount,
+        RatedAmps = e.RatedAmps,
+        CatalogSeries = e.CatalogSeries,
         Ports = e.Ports.Select(ToDto).ToList(),
         InverterSpecs = e.InverterSpecs is null
             ? null
@@ -660,26 +664,27 @@ public static class SolarProjectSerializer
         }
 
         var mpptCount = inverterSpecs?.MpptCount ?? Math.Max(dto.StringInputCount, 1);
+        var hybridFace = IsHybridInverterFace(dto);
         var width = kind switch
         {
-            EquipmentKind.CombinerBox => 900,
-            EquipmentKind.PvDisconnect => 700,
-            EquipmentKind.StringInverter => 1100,
+            EquipmentKind.CombinerBox => 1000,
+            EquipmentKind.PvDisconnect => 580,
+            EquipmentKind.StringInverter => hybridFace ? 720 : 1100,
             EquipmentKind.AcDisconnect => 700,
             EquipmentKind.AcLoadCenter => 900,
-            EquipmentKind.Battery => 900,
-            EquipmentKind.BatteryDisconnect => 700,
+            EquipmentKind.Battery => 720,
+            EquipmentKind.BatteryDisconnect => 720,
             _ => 420,
         };
         var height = kind switch
         {
-            EquipmentKind.CombinerBox => 700 + Math.Max(dto.StringInputCount, 1) * 40,
-            EquipmentKind.PvDisconnect => 500,
-            EquipmentKind.StringInverter => 520 + mpptCount * 70,
+            EquipmentKind.CombinerBox => 980,
+            EquipmentKind.PvDisconnect => 1360,
+            EquipmentKind.StringInverter => hybridFace ? 1280 : 520 + mpptCount * 70,
             EquipmentKind.AcDisconnect => 520,
             EquipmentKind.AcLoadCenter => 700,
-            EquipmentKind.Battery => 600,
-            EquipmentKind.BatteryDisconnect => 500,
+            EquipmentKind.Battery => 1380,
+            EquipmentKind.BatteryDisconnect => 1600,
             _ => 280,
         };
 
@@ -694,7 +699,17 @@ public static class SolarProjectSerializer
             dto.StringInputCount,
             ports,
             inverterSpecs,
-            dto.RotationDegrees);
+            dto.RotationDegrees,
+            dto.RatedAmps,
+            dto.CatalogSeries);
+    }
+
+    private static bool IsHybridInverterFace(EquipmentDto dto)
+    {
+        if (dto.InverterSpecs?.DefinitionId == InverterDefinition.Anenji12kWDefinitionId)
+            return true;
+        var labels = dto.Ports.Select(p => p.Label).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return labels.Contains("BAT+") && labels.Contains("AC IN L");
     }
 
     private static ElectricalPort FromDto(

@@ -15,11 +15,13 @@ public class Phase04InverterMpptTests
         Assert.Equal(EquipmentKind.StringInverter, inv.Kind);
         Assert.NotNull(inv.InverterSpecs);
         Assert.Equal(2, inv.InverterSpecs!.MpptCount);
-        Assert.Equal(4, inv.Ports.Count);
+        Assert.Equal(6, inv.Ports.Count);
         Assert.Contains(inv.Ports, p => p.Label == "MPPT1+");
         Assert.Contains(inv.Ports, p => p.Label == "MPPT1-");
         Assert.Contains(inv.Ports, p => p.Label == "MPPT2+");
         Assert.Contains(inv.Ports, p => p.Label == "MPPT2-");
+        Assert.Contains(inv.Ports, p => p.Label == "BAT+");
+        Assert.Contains(inv.Ports, p => p.Label == "BAT-");
     }
 
     [Fact]
@@ -124,7 +126,22 @@ public class Phase04InverterMpptTests
         Assert.Equal(EquipmentKind.StringInverter, loadedInv.Kind);
         Assert.NotNull(loadedInv.InverterSpecs);
         Assert.Equal(3, loadedInv.InverterSpecs!.MpptCount);
-        Assert.Equal(6, loadedInv.Ports.Count);
+        Assert.Equal(8, loadedInv.Ports.Count);
         Assert.Equal(inv.Ports[0].Id, loadedInv.Ports[0].Id);
+    }
+
+    [Fact]
+    public void Anenji_hybrid_has_ac_battery_and_mppt_ports()
+    {
+        var project = new SolarProject();
+        var inv = project.AddStringInverter(0, 0, InverterDefinition.CreateAnenji12kW2Mppt());
+        Assert.Equal(2, inv.InverterSpecs!.MpptCount);
+        Assert.Contains(inv.Ports, p => p.Label == "MPPT1+");
+        Assert.Contains(inv.Ports, p => p.Label == "MPPT2-");
+        Assert.Contains(inv.Ports, p => p.Label == "AC IN L");
+        Assert.Contains(inv.Ports, p => p.Label == "AC OUT N");
+        Assert.Contains(inv.Ports, p => p.Label == "BAT+");
+        Assert.Contains(inv.Ports, p => p.Label == "BAT-");
+        Assert.Equal(10, inv.Ports.Count);
     }
 }

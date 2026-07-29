@@ -586,6 +586,182 @@ public partial class MainWindow : Window
         });
     }
 
+    private void AddInspectorBatteryDisconnectPickers(ElectricalEquipmentInstance eq)
+    {
+        if (InspectorRows is null) return;
+
+        void AddCombo(string label, IEnumerable<(string Text, object Tag)> items, object current, Action<object> onPick)
+        {
+            var grid = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.Children.Add(new TextBlock
+            {
+                Text = label,
+                Style = (Style)FindResource("InspectorRowLabel"),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            var combo = new ComboBox
+            {
+                FontSize = 12,
+                MinHeight = 26,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            foreach (var (text, tag) in items)
+            {
+                var item = new ComboBoxItem { Content = text, Tag = tag };
+                combo.Items.Add(item);
+                if (Equals(tag, current))
+                    combo.SelectedItem = item;
+            }
+            if (combo.SelectedItem is null && combo.Items.Count > 0)
+                combo.SelectedIndex = 0;
+            combo.SelectionChanged += (_, _) =>
+            {
+                if (combo.SelectedItem is not ComboBoxItem { Tag: { } tag }) return;
+                onPick(tag);
+            };
+            Grid.SetColumn(combo, 1);
+            grid.Children.Add(combo);
+            InspectorRows.Children.Add(grid);
+        }
+
+        var amps = eq.RatedAmps > 0 ? eq.RatedAmps : 250;
+        var series = string.IsNullOrWhiteSpace(eq.CatalogSeries) ? "DHM1B" : eq.CatalogSeries;
+
+        AddCombo(
+            "Amps",
+            BatteryDisconnectGuide.AmpRatings.Select(a => ($"{a} A", (object)a)),
+            amps,
+            tag =>
+            {
+                var a = (int)tag;
+                if (eq.RatedAmps == a) return;
+                eq.RatedAmps = a;
+                eq.Name = $"Battery Disconnect {a}A";
+                UpdateInspector();
+                RefreshAll();
+            });
+
+        AddCombo(
+            "Series",
+            BatteryDisconnectGuide.SeriesNames.Select(s => (s, (object)s)),
+            series,
+            tag =>
+            {
+                var s = (string)tag;
+                if (string.Equals(eq.CatalogSeries, s, StringComparison.Ordinal)) return;
+                eq.CatalogSeries = s;
+                UpdateInspector();
+            });
+
+        AddInspectorRow("Rec. wire", BatteryDisconnectGuide.RecommendedMaxWire(series, amps));
+        AddInspectorNote("Wire size is recommended only — you can use any gauge on the cable.");
+    }
+
+    private void AddInspectorGaugePicker(ElectricalConnection conn)
+    {
+        if (InspectorRows is null) return;
+
+        var batteryCable = IsBatteryCableConnection(conn);
+        var gauges = batteryCable
+            ? WireGaugeFormat.BatteryCableGauges
+            : WireGaugeFormat.PvStringGauges;
+
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.Children.Add(new TextBlock
+        {
+            Text = batteryCable ? "Cable" : "Gauge",
+            Style = (Style)FindResource("InspectorRowLabel"),
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+
+        var combo = new ComboBox
+        {
+            FontSize = 12,
+            MinHeight = 26,
+            VerticalContentAlignment = VerticalAlignment.Center,
+        };
+        foreach (var g in gauges)
+        {
+            var item = new ComboBoxItem
+            {
+                Content = batteryCable
+                    ? $"{WireGaugeFormat.ToDisplay(g)} AWG"
+                    : WireGaugeFormat.ToDisplay(g),
+                Tag = g,
+            };
+            combo.Items.Add(item);
+            if (g == conn.Wire.Gauge)
+                combo.SelectedItem = item;
+        }
+
+        if (combo.SelectedItem is null && combo.Items.Count > 0)
+            combo.SelectedIndex = Math.Min(1, combo.Items.Count - 1); // prefer 2/0 for battery
+
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedItem is not ComboBoxItem { Tag: WireGaugeAwg gauge }) return;
+            if (conn.Wire.Gauge == gauge) return;
+            conn.Wire.Gauge = gauge;
+            if (batteryCable)
+                conn.Wire.WireType = "Battery cable";
+            UpdateInspector();
+            RefreshAll();
+        };
+
+        Grid.SetColumn(combo, 1);
+        grid.Children.Add(combo);
+        InspectorRows.Children.Add(grid);
+        if (batteryCable)
+        {
+            var tip = TryGetBatteryDisconnectWireTip(conn);
+            AddInspectorNote(tip ?? "Battery cables: 1/0–4/0 available — pick what fits; recommendations are optional.");
+        }
+    }
+
+    private string? TryGetBatteryDisconnectWireTip(ElectricalConnection conn)
+    {
+        ElectricalEquipmentInstance? disc = null;
+        if (_project.Graph.TryGetPort(conn.StartPortId, out var a)
+            && _project.Graph.TryGetEquipment(a.OwnerComponentId, out var ea)
+            && ea.Kind == EquipmentKind.BatteryDisconnect)
+            disc = ea;
+        if (disc is null
+            && _project.Graph.TryGetPort(conn.EndPortId, out var b)
+            && _project.Graph.TryGetEquipment(b.OwnerComponentId, out var eb)
+            && eb.Kind == EquipmentKind.BatteryDisconnect)
+            disc = eb;
+        if (disc is null) return null;
+
+        var series = string.IsNullOrWhiteSpace(disc.CatalogSeries) ? "DHM1B" : disc.CatalogSeries;
+        var amps = disc.RatedAmps > 0 ? disc.RatedAmps : 250;
+        var rec = BatteryDisconnectGuide.RecommendedMaxWire(series, amps);
+        return $"Recommended for {series} @ {amps}A: {rec} (not forced — choose any size you need).";
+    }
+
+    private bool IsBatteryCableConnection(ElectricalConnection conn)
+    {
+        if (!_project.Graph.TryGetPort(conn.StartPortId, out var a)
+            || !_project.Graph.TryGetPort(conn.EndPortId, out var b))
+            return false;
+        if (!_project.Graph.TryGetComponent(a.OwnerComponentId, out var oa)
+            || !_project.Graph.TryGetComponent(b.OwnerComponentId, out var ob))
+            return false;
+        static bool IsBat(IElectricalComponent c) =>
+            c is ElectricalEquipmentInstance { Kind: EquipmentKind.Battery };
+        static bool IsInv(IElectricalComponent c) =>
+            c is ElectricalEquipmentInstance { Kind: EquipmentKind.StringInverter };
+        static bool IsDisc(IElectricalComponent c) =>
+            c is ElectricalEquipmentInstance { Kind: EquipmentKind.BatteryDisconnect };
+        return (IsBat(oa) && (IsInv(ob) || IsDisc(ob)))
+            || (IsBat(ob) && (IsInv(oa) || IsDisc(oa)))
+            || (IsDisc(oa) && IsInv(ob))
+            || (IsDisc(ob) && IsInv(oa));
+    }
+
     private void ShowInspectorDump(string heading, string body)
     {
         ClearInspectorRows();
@@ -679,8 +855,9 @@ public partial class MainWindow : Window
             var drop = _project.CalculateWireVoltageDrop(conn.Id);
             InspectorHeading.Text = "Wire";
             if (InspectorSubheading is not null)
-                InspectorSubheading.Text = $"{(int)conn.Wire.Gauge} AWG  ·  {conn.Wire.Material}";
+                InspectorSubheading.Text = $"{WireGaugeFormat.ToDisplay(conn.Wire.Gauge)}  ·  {conn.Wire.Material}";
             AddInspectorSection("Route");
+            AddInspectorGaugePicker(conn);
             AddInspectorRow("One-way", _project.Units.FormatLength(conn.Wire.OneWayLengthMm));
             AddInspectorRow("Circuit", _project.Units.FormatLength(conn.Wire.OneWayLengthMm * 2));
             AddInspectorRow("Bends", $"{conn.Wire.Waypoints.Count}");
@@ -706,6 +883,25 @@ public partial class MainWindow : Window
                 InspectorSubheading.Text = eq.Name;
             AddInspectorSection("Overview");
             AddInspectorRow("Ports", $"{eq.Ports.Count}");
+            if (eq.Kind == EquipmentKind.PvDisconnect)
+            {
+                AddInspectorSection("Rating check");
+                AddInspectorNote(
+                    "Isolators vary — often ~1000 V DC. Current ratings include " +
+                    "10 / 16 / 20 / 25 / 30 / 32 / 40 / 50 / 60 A. " +
+                    "Check your panels’ Voc (cold) and Isc before picking a model.");
+                AddInspectorRow("Top", "IN+ / IN− (MC4)");
+                AddInspectorRow("Bottom", "OUT+ / OUT− (MC4)");
+                AddInspectorNote("Design aid only — not stamped electrical approval.");
+            }
+            if (eq.Kind == EquipmentKind.BatteryDisconnect)
+            {
+                AddInspectorSection("Rating check");
+                AddInspectorNote(BatteryDisconnectGuide.RatingWarning);
+                AddInspectorBatteryDisconnectPickers(eq);
+                AddInspectorRow("Top", "IN− / IN+");
+                AddInspectorRow("Bottom", "OUT− / OUT+");
+            }
             if (eq.Kind == EquipmentKind.StringInverter && eq.InverterSpecs is not null)
             {
                 var report = _project.GetMpptReports().FirstOrDefault(r => r.InverterId == eq.Id);
@@ -2410,13 +2606,14 @@ public partial class MainWindow : Window
         yield return new("g550", "Generic", "550 W module", "▦", "Solar", () => AddGeneric550_Click(this, new RoutedEventArgs()));
         yield return new("custom", "Custom", "Custom panel…", "▦", "Solar", () => AddCustom_Click(this, new RoutedEventArgs()));
         yield return new("combiner", "Combiner", "6-string", "▤", "Electrical", () => AddCombiner_Click(this, new RoutedEventArgs()));
-        yield return new("disconnect", "Disconnect", "DC / PV", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()));
+        yield return new("disconnect", "DC isolator", "Check Amp rating!", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()));
         yield return new("ypos", "MC4 Y", "Positive", "Y+", "Electrical", () => AddBranchYPos_Click(this, new RoutedEventArgs()));
         yield return new("yneg", "MC4 Y", "Negative", "Y−", "Electrical", () => AddBranchYNeg_Click(this, new RoutedEventArgs()));
         yield return new("inv5", "Inverter", "5 kW", "◇", "Electrical", () => AddInverter5k_Click(this, new RoutedEventArgs()));
         yield return new("inv76", "Inverter", "7.6 kW", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
-        yield return new("battery", "Battery", "Storage", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()));
-        yield return new("batdisc", "Batt disc.", "Battery disconnect", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()));
+        yield return new("inv12", "ANENJI", "12 kW hybrid", "◇", "Electrical", () => AddInverterAnenji12k_Click(this, new RoutedEventArgs()));
+        yield return new("battery", "ANENJI", "16 kWh battery", "▣", "Electrical", () => AddBattery_Click(this, new RoutedEventArgs()));
+        yield return new("batdisc", "Batt disc.", "Check Amp + wire size", "⏻", "Electrical", () => AddBatteryDisconnect_Click(this, new RoutedEventArgs()));
         yield return new("acdisc", "AC disc.", "AC disconnect", "⏻", "Electrical", () => AddAcDisconnect_Click(this, new RoutedEventArgs()));
         yield return new("aclc", "Load center", "AC load center", "☰", "Electrical", () => AddAcLoadCenter_Click(this, new RoutedEventArgs()));
         yield return new("vent", "Roof vent", "Obstacle", "◇", "Structural", () => AddObstacleMode_Click(this, new RoutedEventArgs()));
@@ -4446,7 +4643,18 @@ public partial class MainWindow : Window
 
     private void AddDisconnect_Click(object sender, RoutedEventArgs e)
     {
-        var (x, y) = NextEquipmentPlaceMm();
+        MessageBox.Show(
+            this,
+            "PV array DC isolators are not one-size-fits-all.\n\n" +
+            "Common ratings are around 1000 V DC with current options such as " +
+            "10 A, 16 A, 20 A, 25 A, 30 A, 32 A, 40 A, 50 A, or 60 A.\n\n" +
+            "Match the isolator to your string Voc (cold) and Isc — and to the " +
+            "inverter/combiner path. This app is a design aid only, not code approval.",
+            "Check your DC isolator rating",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+
+        var (x, y) = NextEquipmentPlaceMm(700);
         PlaceAndSelectEquipment(_project.AddPvDisconnect(x, y));
     }
 
@@ -4472,6 +4680,12 @@ public partial class MainWindow : Window
     {
         var (x, y) = NextEquipmentPlaceMm(1200);
         PlaceAndSelectEquipment(_project.AddStringInverter(x, y, InverterDefinition.CreateGeneric7_6kW3Mppt()));
+    }
+
+    private void AddInverterAnenji12k_Click(object sender, RoutedEventArgs e)
+    {
+        var (x, y) = NextEquipmentPlaceMm(900);
+        PlaceAndSelectEquipment(_project.AddStringInverter(x, y, InverterDefinition.CreateAnenji12kW2Mppt()));
     }
 
     private void RebuildEquipmentVisuals()
@@ -4515,20 +4729,38 @@ public partial class MainWindow : Window
         };
         var isInverter = equipment.Kind == EquipmentKind.StringInverter;
         var isStorage = equipment.Kind is EquipmentKind.Battery or EquipmentKind.BatteryDisconnect;
+        var isCombiner = equipment.Kind == EquipmentKind.CombinerBox;
+        var isAnenji = IsAnenjiHybridFace(equipment);
+        var isBatteryFace = equipment.Kind == EquipmentKind.Battery;
+        var isPvIsolatorFace = equipment.Kind == EquipmentKind.PvDisconnect;
+        var isBattDiscFace = equipment.Kind == EquipmentKind.BatteryDisconnect;
+        var photoFace = isCombiner || isAnenji || isBatteryFace || isPvIsolatorFace || isBattDiscFace;
         var body = new Border
         {
-            Background = isInverter
-                ? new SolidColorBrush(Color.FromRgb(0xE8, 0xEE, 0xF5))
-                : isStorage
-                    ? new SolidColorBrush(Color.FromRgb(0xE8, 0xF5, 0xEE))
-                    : new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF1)),
-            BorderBrush = isInverter
-                ? new SolidColorBrush(Color.FromRgb(0x37, 0x47, 0x4F))
-                : isStorage
-                    ? new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x4F))
-                    : new SolidColorBrush(Color.FromRgb(0x54, 0x6E, 0x7A)),
-            BorderThickness = new Thickness(2),
-            CornerRadius = new CornerRadius(4),
+            Background = isCombiner
+                ? CreateCombinerFaceBrush()
+                : isAnenji
+                    ? CreateAnenjiFaceBrush()
+                    : isBatteryFace
+                        ? CreateBatteryFaceBrush()
+                        : isPvIsolatorFace
+                            ? CreateDisconnectFaceBrush()
+                            : isBattDiscFace
+                                ? CreateBatteryDisconnectFaceBrush()
+                                : isInverter
+                                    ? new SolidColorBrush(Color.FromRgb(0xE8, 0xEE, 0xF5))
+                                    : isStorage && !isBattDiscFace
+                                        ? new SolidColorBrush(Color.FromRgb(0xE8, 0xF5, 0xEE))
+                                        : new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF1)),
+            BorderBrush = photoFace
+                ? new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3C))
+                : isInverter
+                    ? new SolidColorBrush(Color.FromRgb(0x37, 0x47, 0x4F))
+                    : isStorage
+                        ? new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x4F))
+                        : new SolidColorBrush(Color.FromRgb(0x54, 0x6E, 0x7A)),
+            BorderThickness = new Thickness(photoFace ? 1.5 : 2),
+            CornerRadius = new CornerRadius(photoFace ? 10 : 4),
             Cursor = Cursors.SizeAll,
         };
         var title = new TextBlock
@@ -4536,7 +4768,13 @@ public partial class MainWindow : Window
             Text = equipment.Name,
             FontSize = 11,
             FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x37, 0x47, 0x4F)),
+            Foreground = photoFace
+                ? Brushes.White
+                : new SolidColorBrush(Color.FromRgb(0x37, 0x47, 0x4F)),
+            Background = photoFace
+                ? new SolidColorBrush(Color.FromArgb(160, 20, 20, 24))
+                : Brushes.Transparent,
+            Padding = photoFace ? new Thickness(6, 3, 6, 3) : new Thickness(0),
             Margin = new Thickness(8, 6, 8, 0),
             IsHitTestVisible = false,
         };
@@ -4639,12 +4877,22 @@ public partial class MainWindow : Window
         Panel.SetZIndex(visual.Root, 20);
 
         var selected = _selectedEquipmentIds.Contains(equipment.Id);
+        var isCombiner = equipment.Kind == EquipmentKind.CombinerBox;
+        var isAnenji = IsAnenjiHybridFace(equipment);
+        var isBatteryFace = equipment.Kind == EquipmentKind.Battery;
+        var isPvIsolatorFace = equipment.Kind == EquipmentKind.PvDisconnect;
+        var isBattDiscFace = equipment.Kind == EquipmentKind.BatteryDisconnect;
+        var photoFace = isCombiner || isAnenji || isBatteryFace || isPvIsolatorFace || isBattDiscFace;
         visual.Body.BorderBrush = selected
             ? (Brush)FindResource("AccentBrush")
-            : new SolidColorBrush(Color.FromRgb(0x54, 0x6E, 0x7A));
-        visual.Body.BorderThickness = new Thickness(selected ? 3 : 2);
+            : photoFace
+                ? new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3C))
+                : new SolidColorBrush(Color.FromRgb(0x54, 0x6E, 0x7A));
+        visual.Body.BorderThickness = new Thickness(selected ? 3 : photoFace ? 1.5 : 2);
 
-        var portSize = Math.Clamp(10 * _zoom, 5, 12);
+        var portSize = photoFace
+            ? Math.Clamp(8 * _zoom, 4, 9)
+            : Math.Clamp(10 * _zoom, 5, 12);
         var half = portSize / 2.0;
 
         static bool IsOutputPort(ElectricalPort port) =>
@@ -4655,11 +4903,33 @@ public partial class MainWindow : Window
                 or PortType.BranchOut
             || port.Label.StartsWith("OUT", StringComparison.OrdinalIgnoreCase);
 
-        var inputs = equipment.Ports.Where(p => !IsOutputPort(p)).ToList();
-        var outputs = equipment.Ports.Where(IsOutputPort).ToList();
-
-        LayoutEquipmentPortColumn(visual, inputs, leftSide: true, w, h, portSize, half);
-        LayoutEquipmentPortColumn(visual, outputs, leftSide: false, w, h, portSize, half);
+        if (isCombiner)
+        {
+            LayoutCombinerBottomPorts(visual, equipment, w, h, portSize, half);
+        }
+        else if (isAnenji)
+        {
+            LayoutAnenjiBottomPorts(visual, equipment, w, h, portSize, half);
+        }
+        else if (isBatteryFace)
+        {
+            LayoutBatteryBottomPorts(visual, equipment, w, h, portSize, half);
+        }
+        else if (isPvIsolatorFace)
+        {
+            LayoutDisconnectPorts(visual, equipment, w, h, portSize, half);
+        }
+        else if (isBattDiscFace)
+        {
+            LayoutBatteryDisconnectPorts(visual, equipment, w, h, portSize, half);
+        }
+        else
+        {
+            var inputs = equipment.Ports.Where(p => !IsOutputPort(p)).ToList();
+            var outputs = equipment.Ports.Where(IsOutputPort).ToList();
+            LayoutEquipmentPortColumn(visual, inputs, leftSide: true, w, h, portSize, half);
+            LayoutEquipmentPortColumn(visual, outputs, leftSide: false, w, h, portSize, half);
+        }
 
         visual.RotateTransform.Angle = equipment.RotationDegrees;
 
@@ -4741,6 +5011,290 @@ public partial class MainWindow : Window
         if (double.IsNaN(left)) left = 0;
         if (double.IsNaN(top)) top = 0;
         return new Point(left + visual.Body.Width / 2, top + visual.Body.Height / 2);
+    }
+
+    /// <summary>
+    /// Measured X centers (fraction of image width) for the 6 MC4 string glands
+    /// and 2 main DC glands on Assets/combiner-6string.png.
+    /// </summary>
+    private static readonly double[] Combiner6StringX = [0.128, 0.226, 0.326, 0.420, 0.521, 0.618];
+    private static readonly double[] Combiner6OutX = [0.733, 0.823];
+
+    private static ImageBrush CreateCombinerFaceBrush()
+    {
+        var bmp = new System.Windows.Media.Imaging.BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri("pack://application:,,,/Assets/combiner-6string.png", UriKind.Absolute);
+        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+        return new ImageBrush(bmp)
+        {
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
+        };
+    }
+
+    private static ImageBrush CreateAnenjiFaceBrush()
+    {
+        var bmp = new System.Windows.Media.Imaging.BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri("pack://application:,,,/Assets/inverter-anenji-12kw.png", UriKind.Absolute);
+        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+        return new ImageBrush(bmp)
+        {
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
+        };
+    }
+
+    private static ImageBrush CreateBatteryFaceBrush()
+    {
+        var bmp = new System.Windows.Media.Imaging.BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri("pack://application:,,,/Assets/battery-anenji-16kwh.png", UriKind.Absolute);
+        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+        return new ImageBrush(bmp)
+        {
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
+        };
+    }
+
+    private static ImageBrush CreateDisconnectFaceBrush()
+    {
+        var bmp = new System.Windows.Media.Imaging.BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri("pack://application:,,,/Assets/disconnect-pv-isolator.png", UriKind.Absolute);
+        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+        return new ImageBrush(bmp)
+        {
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
+        };
+    }
+
+    private static ImageBrush CreateBatteryDisconnectFaceBrush()
+    {
+        var bmp = new System.Windows.Media.Imaging.BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri("pack://application:,,,/Assets/battery-disconnect-dhm1b.png", UriKind.Absolute);
+        bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+        return new ImageBrush(bmp)
+        {
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
+        };
+    }
+
+    private static bool IsAnenjiHybridFace(ElectricalEquipmentInstance equipment)
+    {
+        if (equipment.Kind != EquipmentKind.StringInverter) return false;
+        if (equipment.InverterSpecs?.DefinitionId == InverterDefinition.Anenji12kWDefinitionId)
+            return true;
+        return equipment.Ports.Any(p => p.Label.Equals("BAT+", StringComparison.OrdinalIgnoreCase))
+            && equipment.Ports.Any(p => p.Label.Equals("AC IN L", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void LayoutAnenjiBottomPorts(
+        EquipmentVisual visual,
+        ElectricalEquipmentInstance equipment,
+        double bodyW,
+        double bodyH,
+        double portSize,
+        double half)
+    {
+        // Bottom edge layout matching typical hybrid gland row:
+        // left AC IN / AC OUT · mid-right BAT± · far-right PV1 / PV2 (MPPT1 / MPPT2).
+        var y = bodyH - half * 0.35;
+        var pairGap = Math.Min(portSize * 0.9, bodyW * 0.025);
+
+        void Place(string label, double centerX)
+        {
+            var port = equipment.Ports.FirstOrDefault(p =>
+                p.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
+            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            ellipse.ToolTip = label.StartsWith("MPPT1", StringComparison.OrdinalIgnoreCase) ? $"PV1 ({label})"
+                : label.StartsWith("MPPT2", StringComparison.OrdinalIgnoreCase) ? $"PV2 ({label})"
+                : label;
+            Canvas.SetLeft(ellipse, centerX - half);
+            Canvas.SetTop(ellipse, y);
+        }
+
+        void PlacePair(string plusLabel, string minusLabel, double centerX)
+        {
+            Place(plusLabel, centerX - pairGap);
+            Place(minusLabel, centerX + pairGap);
+        }
+
+        PlacePair("AC IN L", "AC IN N", 0.12 * bodyW);
+        PlacePair("AC OUT L", "AC OUT N", 0.28 * bodyW);
+        PlacePair("BAT+", "BAT-", 0.55 * bodyW);
+        PlacePair("MPPT1+", "MPPT1-", 0.78 * bodyW);
+        PlacePair("MPPT2+", "MPPT2-", 0.92 * bodyW);
+    }
+
+    private static void LayoutBatteryBottomPorts(
+        EquipmentVisual visual,
+        ElectricalEquipmentInstance equipment,
+        double bodyW,
+        double bodyH,
+        double portSize,
+        double half)
+    {
+        var y = bodyH - half * 0.35;
+        var pairGap = Math.Min(portSize * 1.1, bodyW * 0.04);
+
+        void Place(string label, double centerX)
+        {
+            var port = equipment.Ports.FirstOrDefault(p =>
+                p.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
+            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            ellipse.ToolTip = label;
+            Canvas.SetLeft(ellipse, centerX - half);
+            Canvas.SetTop(ellipse, y);
+        }
+
+        Place("BAT+", 0.42 * bodyW - pairGap);
+        Place("BAT-", 0.42 * bodyW + pairGap);
+    }
+
+    /// <summary>
+    /// MC4 glands on Assets/disconnect-pv-isolator.png — top IN±, bottom OUT±.
+    /// </summary>
+    private static void LayoutDisconnectPorts(
+        EquipmentVisual visual,
+        ElectricalEquipmentInstance equipment,
+        double bodyW,
+        double bodyH,
+        double portSize,
+        double half)
+    {
+        const double leftX = 0.277;
+        const double rightX = 0.69;
+
+        void Place(string label, double xFrac, double y)
+        {
+            var port = equipment.Ports.FirstOrDefault(p =>
+                p.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
+            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            ellipse.ToolTip = label;
+            Canvas.SetLeft(ellipse, xFrac * bodyW - half);
+            Canvas.SetTop(ellipse, y);
+        }
+
+        var yTop = -half * 0.15;
+        var yBot = bodyH - half * 0.35;
+        Place("IN+", leftX, yTop);
+        Place("IN-", rightX, yTop);
+        Place("OUT+", leftX, yBot);
+        Place("OUT-", rightX, yBot);
+    }
+
+    /// <summary>
+    /// Top/bottom lug pairs on Assets/battery-disconnect-dhm1b.png (− left, + right).
+    /// </summary>
+    private static void LayoutBatteryDisconnectPorts(
+        EquipmentVisual visual,
+        ElectricalEquipmentInstance equipment,
+        double bodyW,
+        double bodyH,
+        double portSize,
+        double half)
+    {
+        const double leftX = 0.26;
+        const double rightX = 0.74;
+
+        void Place(string label, double xFrac, double y)
+        {
+            var port = equipment.Ports.FirstOrDefault(p =>
+                p.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
+            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            ellipse.ToolTip = label;
+            Canvas.SetLeft(ellipse, xFrac * bodyW - half);
+            Canvas.SetTop(ellipse, y);
+        }
+
+        var yTop = half * 0.15;
+        var yBot = bodyH - half * 0.5;
+        Place("IN-", leftX, yTop);
+        Place("IN+", rightX, yTop);
+        Place("OUT-", leftX, yBot);
+        Place("OUT+", rightX, yBot);
+    }
+
+    private static void LayoutCombinerBottomPorts(
+        EquipmentVisual visual,
+        ElectricalEquipmentInstance equipment,
+        double bodyW,
+        double bodyH,
+        double portSize,
+        double half)
+    {
+        var positives = equipment.Ports
+            .Where(p => p.PortType == PortType.StringInputPositive)
+            .OrderBy(p => p.Label, StringComparer.Ordinal)
+            .ToList();
+        var negatives = equipment.Ports
+            .Where(p => p.PortType == PortType.StringInputNegative)
+            .OrderBy(p => p.Label, StringComparer.Ordinal)
+            .ToList();
+        var outPos = equipment.Ports.FirstOrDefault(p =>
+            p.PortType == PortType.OutputPositive || p.Label.Equals("OUT+", StringComparison.OrdinalIgnoreCase));
+        var outNeg = equipment.Ports.FirstOrDefault(p =>
+            p.PortType == PortType.OutputNegative || p.Label.Equals("OUT-", StringComparison.OrdinalIgnoreCase));
+
+        var stringCount = positives.Count;
+        var stringXs = stringCount == Combiner6StringX.Length
+            ? Combiner6StringX
+            : Enumerable.Range(0, stringCount)
+                .Select(i => 0.12 + (stringCount == 1 ? 0 : i * (0.50 / (stringCount - 1))))
+                .ToArray();
+        var outXs = Combiner6OutX;
+
+        // Sit on the bottom lip so ports land on the photo’s protruding glands.
+        var y = bodyH - half * 0.35;
+        var pairGap = Math.Min(portSize * 0.95, bodyW * 0.028);
+
+        void Place(ElectricalPort? port, double centerX)
+        {
+            if (port is null || !visual.PortEllipses.TryGetValue(port.Id, out var ellipse)) return;
+            ellipse.Width = portSize;
+            ellipse.Height = portSize;
+            Canvas.SetLeft(ellipse, centerX - half);
+            Canvas.SetTop(ellipse, y);
+        }
+
+        for (var i = 0; i < stringCount; i++)
+        {
+            var cx = stringXs[i] * bodyW;
+            Place(i < positives.Count ? positives[i] : null, cx - pairGap);
+            Place(i < negatives.Count ? negatives[i] : null, cx + pairGap);
+        }
+
+        Place(outPos, outXs[0] * bodyW);
+        Place(outNeg, outXs[1] * bodyW);
     }
 
     private static void LayoutEquipmentPortColumn(
@@ -5440,7 +5994,16 @@ public partial class MainWindow : Window
 
     private void AddBatteryDisconnect_Click(object sender, RoutedEventArgs e)
     {
-        var (x, y) = NextEquipmentPlaceMm();
+        MessageBox.Show(
+            this,
+            BatteryDisconnectGuide.RatingWarning + "\n\n" +
+            "Example (DHM1B): 100A ≤6 AWG · 250A ≤1/0 · 400A ≤2/0 · 600A ≤250 MCM.\n" +
+            "Other series (DHM1X / DHM3Z) differ — pick series + amps in the inspector.",
+            "Check your battery disconnect rating",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+
+        var (x, y) = NextEquipmentPlaceMm(800);
         PlaceAndSelectEquipment(_project.AddBatteryDisconnect(x, y));
     }
 

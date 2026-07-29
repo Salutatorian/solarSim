@@ -29,6 +29,10 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
     public double RotationDegrees { get; private set; }
     public int StringInputCount { get; }
     public InverterElectricalSpecs? InverterSpecs { get; }
+    /// <summary>Optional equipment amp rating (e.g. battery disconnect). 0 = unspecified.</summary>
+    public int RatedAmps { get; set; }
+    /// <summary>Optional catalog series key (e.g. DHM1B). Empty = default.</summary>
+    public string CatalogSeries { get; set; } = "";
 
     public IReadOnlyList<ElectricalPort> Ports => _ports;
 
@@ -43,7 +47,9 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         int stringInputCount,
         List<ElectricalPort> ports,
         InverterElectricalSpecs? inverterSpecs = null,
-        double rotationDegrees = 0)
+        double rotationDegrees = 0,
+        int ratedAmps = 0,
+        string? catalogSeries = null)
     {
         Id = id;
         Kind = kind;
@@ -56,6 +62,8 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         _ports = ports;
         InverterSpecs = inverterSpecs;
         RotationDegrees = NormalizeRotation(rotationDegrees);
+        RatedAmps = ratedAmps;
+        CatalogSeries = catalogSeries ?? "";
     }
 
     public void SetPosition(double xMm, double yMm)
@@ -92,7 +100,9 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         int stringInputCount,
         List<ElectricalPort> ports,
         InverterElectricalSpecs? inverterSpecs = null,
-        double rotationDegrees = 0)
+        double rotationDegrees = 0,
+        int ratedAmps = 0,
+        string? catalogSeries = null)
     {
         if (ports.Count == 0)
             throw new ArgumentException("Equipment must have ports.", nameof(ports));
@@ -100,7 +110,8 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
             throw new ArgumentException("Port owner must match equipment id.");
 
         return new ElectricalEquipmentInstance(
-            id, kind, name, xMm, yMm, widthMm, heightMm, stringInputCount, ports, inverterSpecs, rotationDegrees);
+            id, kind, name, xMm, yMm, widthMm, heightMm, stringInputCount, ports, inverterSpecs,
+            rotationDegrees, ratedAmps, catalogSeries);
     }
 
     public static ElectricalEquipmentInstance CreateCombiner(
@@ -135,8 +146,8 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
             name ?? $"{stringInputs}-String Combiner",
             xMm,
             yMm,
-            widthMm: 900,
-            heightMm: 700 + stringInputs * 40,
+            widthMm: 1000,
+            heightMm: 980,
             stringInputs,
             ports);
     }
@@ -158,11 +169,11 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         return new ElectricalEquipmentInstance(
             id,
             EquipmentKind.PvDisconnect,
-            name ?? "PV Disconnect",
+            name ?? "PV Array DC Isolator",
             xMm,
             yMm,
-            widthMm: 700,
-            heightMm: 500,
+            widthMm: 580,
+            heightMm: 1360,
             stringInputCount: 0,
             ports);
     }
@@ -217,14 +228,33 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
                 label: $"MPPT{i}-"));
         }
 
+        if (definition.HasHybridTerminals)
+        {
+            ports.Add(new ElectricalPort(
+                Guid.NewGuid(), id, PortType.AcLine, Polarity.Positive, label: "AC IN L"));
+            ports.Add(new ElectricalPort(
+                Guid.NewGuid(), id, PortType.AcNeutral, Polarity.Negative, label: "AC IN N"));
+            ports.Add(new ElectricalPort(
+                Guid.NewGuid(), id, PortType.AcLine, Polarity.Positive, label: "AC OUT L"));
+            ports.Add(new ElectricalPort(
+                Guid.NewGuid(), id, PortType.AcNeutral, Polarity.Negative, label: "AC OUT N"));
+        }
+
+        // Battery DC terminals on every string inverter (hybrid or future storage-ready).
+        ports.Add(new ElectricalPort(
+            Guid.NewGuid(), id, PortType.OutputPositive, Polarity.Positive, label: "BAT+"));
+        ports.Add(new ElectricalPort(
+            Guid.NewGuid(), id, PortType.OutputNegative, Polarity.Negative, label: "BAT-"));
+
+        var portraitHybrid = definition.HasHybridTerminals;
         return new ElectricalEquipmentInstance(
             id,
             EquipmentKind.StringInverter,
             name ?? definition.DisplayName,
             xMm,
             yMm,
-            widthMm: 1100,
-            heightMm: 520 + specs.MpptCount * 70,
+            widthMm: portraitHybrid ? 720 : 1100,
+            heightMm: portraitHybrid ? 1280 : 520 + specs.MpptCount * 70,
             stringInputCount: specs.MpptCount,
             ports,
             specs);
@@ -299,11 +329,11 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         return new ElectricalEquipmentInstance(
             id,
             EquipmentKind.Battery,
-            name ?? "Battery",
+            name ?? "ANENJI 16kWh",
             xMm,
             yMm,
-            widthMm: 900,
-            heightMm: 600,
+            widthMm: 720,
+            heightMm: 1380,
             stringInputCount: 0,
             ports);
     }
@@ -312,8 +342,15 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         Guid id,
         double xMm,
         double yMm,
-        string? name = null)
+        string? name = null,
+        int ratedAmps = 250,
+        string catalogSeries = "DHM1B")
     {
+        if (!BatteryDisconnectGuide.AmpRatings.Contains(ratedAmps))
+            ratedAmps = 250;
+        if (string.IsNullOrWhiteSpace(catalogSeries))
+            catalogSeries = "DHM1B";
+
         var ports = new List<ElectricalPort>
         {
             new(Guid.NewGuid(), id, PortType.DisconnectInPositive, Polarity.Positive, label: "IN+"),
@@ -325,12 +362,14 @@ public sealed class ElectricalEquipmentInstance : IElectricalComponent
         return new ElectricalEquipmentInstance(
             id,
             EquipmentKind.BatteryDisconnect,
-            name ?? "Battery Disconnect",
+            name ?? $"Battery Disconnect {ratedAmps}A",
             xMm,
             yMm,
-            widthMm: 700,
-            heightMm: 500,
+            widthMm: 720,
+            heightMm: 1600,
             stringInputCount: 0,
-            ports);
+            ports,
+            ratedAmps: ratedAmps,
+            catalogSeries: catalogSeries);
     }
 }

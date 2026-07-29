@@ -1,3 +1,5 @@
+using SolarSim.Domain.Equipment;
+
 namespace SolarSim.Domain.Electrical;
 
 public sealed class ValidationIssue
@@ -163,9 +165,63 @@ public static class ConnectionValidator
                 start.OwnerComponentId, end.OwnerComponentId);
         }
 
-        _ = startOwner;
-        _ = endOwner;
+        ValidateBatteryInverterOnly(result, start, end, startOwner, endOwner);
         return result;
+    }
+
+    /// <summary>
+    /// Storage batteries wire to inverter BAT± or a battery disconnect (design-aid topology).
+    /// </summary>
+    private static void ValidateBatteryInverterOnly(
+        ConnectionValidationResult result,
+        ElectricalPort start,
+        ElectricalPort end,
+        IElectricalComponent startOwner,
+        IElectricalComponent endOwner)
+    {
+        var startBat = startOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.Battery };
+        var endBat = endOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.Battery };
+        if (!startBat && !endBat) return;
+
+        var batteryPort = startBat ? start : end;
+        var otherOwner = startBat ? endOwner : startOwner;
+        var otherPort = startBat ? end : start;
+
+        if (otherOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.StringInverter })
+        {
+            if (!otherPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase)
+                || !batteryPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
+            {
+                result.AddError(
+                    "BATTERY_TERMINAL",
+                    "Battery terminal",
+                    "Use BAT+ / BAT− on both the battery and the inverter.",
+                    start.OwnerComponentId, end.OwnerComponentId);
+            }
+
+            return;
+        }
+
+        if (otherOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.BatteryDisconnect })
+        {
+            if (!otherPort.Label.StartsWith("IN", StringComparison.OrdinalIgnoreCase)
+                || !batteryPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
+            {
+                result.AddError(
+                    "BATTERY_DISCONNECT_IN",
+                    "Battery disconnect",
+                    "Wire the battery to the disconnect IN+ / IN− terminals (top).",
+                    start.OwnerComponentId, end.OwnerComponentId);
+            }
+
+            return;
+        }
+
+        result.AddError(
+            "BATTERY_PATH",
+            "Battery wiring",
+            "Battery cables connect to an inverter BAT± or a battery disconnect IN±.",
+            start.OwnerComponentId, end.OwnerComponentId);
     }
 
     // Back-compat alias used by older call sites/tests.

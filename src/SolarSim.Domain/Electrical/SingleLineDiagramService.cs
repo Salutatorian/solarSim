@@ -70,7 +70,7 @@ public static class SingleLineDiagramService
         lines.Add("");
         lines.Add("Typical path:");
         lines.Add("  Modules → String → [Combiner] → [PV Disc.] → Inverter MPPT");
-        lines.Add("  Battery → [Batt. Disc.] → hybrid / charge path (design aid)");
+        lines.Add("  Battery BAT± → Inverter BAT± (1/0–4/0 cable, design aid)");
         lines.Add("  Inverter AC → [AC Disc.] → Load Center / service");
         lines.Add("");
         lines.Add("Not for permit approval — verify with a licensed electrician.");

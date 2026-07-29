@@ -110,7 +110,7 @@ public static class BomScheduleService
             items.Add(new BomLineItem
             {
                 Category = "Wire",
-                Description = $"{(int)group.Key.Gauge} AWG {group.Key.Material} {group.Key.Type} ({group.Key.Color})",
+                Description = $"{WireGaugeFormat.ToDisplay(group.Key.Gauge)} {group.Key.Material} {group.Key.Type} ({group.Key.Color})",
                 Quantity = runs,
                 Unit = "run",
                 TotalLengthMm = length,

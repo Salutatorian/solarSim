@@ -192,13 +192,35 @@ public sealed class ElectricalGraph : IElectricalGraphService
         if (!validation.IsValid)
             return validation;
 
-        var conn = new ElectricalConnection(Guid.NewGuid(), startPortId, endPortId, wire?.Clone());
+        var wireProps = wire?.Clone() ?? new PVWire();
+        if (IsBatteryDcLink(startOwner, endOwner))
+        {
+            if (wire is null || !WireGaugeFormat.BatteryCableGauges.Contains(wireProps.Gauge))
+                wireProps.Gauge = WireGaugeAwg.Awg2_0;
+            wireProps.WireType = "Battery cable";
+        }
+
+        var conn = new ElectricalConnection(Guid.NewGuid(), startPortId, endPortId, wireProps);
         start.AssignConnection(conn.Id);
         end.AssignConnection(conn.Id);
         _connections[conn.Id] = conn;
         connection = conn;
         RebuildStrings();
         return validation;
+    }
+
+    private static bool IsBatteryDcLink(IElectricalComponent a, IElectricalComponent b)
+    {
+        static bool IsBat(IElectricalComponent c) =>
+            c is ElectricalEquipmentInstance { Kind: EquipmentKind.Battery };
+        static bool IsInv(IElectricalComponent c) =>
+            c is ElectricalEquipmentInstance { Kind: EquipmentKind.StringInverter };
+        static bool IsDisc(IElectricalComponent c) =>
+            c is ElectricalEquipmentInstance { Kind: EquipmentKind.BatteryDisconnect };
+        return (IsBat(a) && (IsInv(b) || IsDisc(b)))
+            || (IsBat(b) && (IsInv(a) || IsDisc(a)))
+            || (IsDisc(a) && IsInv(b))
+            || (IsDisc(b) && IsInv(a));
     }
 
     public bool Disconnect(Guid connectionId)

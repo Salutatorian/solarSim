@@ -662,7 +662,7 @@ public static class SolarProjectSerializer
         var mpptCount = inverterSpecs?.MpptCount ?? Math.Max(dto.StringInputCount, 1);
         var width = kind switch
         {
-            EquipmentKind.CombinerBox => 900,
+            EquipmentKind.CombinerBox => 1000,
             EquipmentKind.PvDisconnect => 700,
             EquipmentKind.StringInverter => 1100,
             EquipmentKind.AcDisconnect => 700,
@@ -673,7 +673,7 @@ public static class SolarProjectSerializer
         };
         var height = kind switch
         {
-            EquipmentKind.CombinerBox => 700 + Math.Max(dto.StringInputCount, 1) * 40,
+            EquipmentKind.CombinerBox => 980,
             EquipmentKind.PvDisconnect => 500,
             EquipmentKind.StringInverter => 520 + mpptCount * 70,
             EquipmentKind.AcDisconnect => 520,

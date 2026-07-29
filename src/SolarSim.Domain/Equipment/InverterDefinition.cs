@@ -16,6 +16,7 @@ public sealed class InverterDefinition
     public double MaxCurrentPerMpptAmps { get; }
     public double MaxDcPowerPerMpptWatts { get; }
     public bool IsCustom { get; }
+    public bool HasHybridTerminals { get; }
 
     public InverterDefinition(
         Guid id,
@@ -28,7 +29,8 @@ public sealed class InverterDefinition
         double maxDcVolts,
         double maxCurrentPerMpptAmps,
         double maxDcPowerPerMpptWatts,
-        bool isCustom = false)
+        bool isCustom = false,
+        bool hasHybridTerminals = false)
     {
         if (mpptCount < 1 || mpptCount > 8)
             throw new ArgumentOutOfRangeException(nameof(mpptCount));
@@ -48,6 +50,7 @@ public sealed class InverterDefinition
         MaxCurrentPerMpptAmps = maxCurrentPerMpptAmps;
         MaxDcPowerPerMpptWatts = maxDcPowerPerMpptWatts;
         IsCustom = isCustom;
+        HasHybridTerminals = hasHybridTerminals;
     }
 
     public string DisplayName => $"{Manufacturer} {Model}";
@@ -76,10 +79,27 @@ public sealed class InverterDefinition
         maxCurrentPerMpptAmps: 13.0,
         maxDcPowerPerMpptWatts: 4500);
 
+    public static readonly Guid Anenji12kWDefinitionId = Guid.Parse("a1111111-0004-4000-8000-000000000003");
+
+    /// <summary>ANENJI 12 kW hybrid face — 2 PV inputs, AC in/out, battery ± (design-aid limits).</summary>
+    public static InverterDefinition CreateAnenji12kW2Mppt() => new(
+        id: Anenji12kWDefinitionId,
+        manufacturer: "ANENJI",
+        model: "12kW Hybrid",
+        acRatedWatts: 12000,
+        mpptCount: 2,
+        minMpptVolts: 90,
+        maxMpptVolts: 500,
+        maxDcVolts: 500,
+        maxCurrentPerMpptAmps: 22.0,
+        maxDcPowerPerMpptWatts: 7500,
+        hasHybridTerminals: true);
+
     public static IReadOnlyList<InverterDefinition> BuiltInLibrary { get; } =
     [
         CreateGeneric5kW2Mppt(),
         CreateGeneric7_6kW3Mppt(),
+        CreateAnenji12kW2Mppt(),
     ];
 }
 

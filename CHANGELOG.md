@@ -186,9 +186,11 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Home Save location text vertically centered (no clipped placeholder)
 - Panel drag no longer hard-stops at the yellow setback — free move on the map
 
-### Feedback links (`0.1.4`)
+### Feedback + equipment faces (`0.1.4`)
 - Settings → GitHub repo, Releases, License, Report a bug, Suggest an idea
 - GitHub issue templates for bugs (how found / steps / cause) and suggestions
+- Photoreal equipment: 6-string combiner, ANENJI 12 kW hybrid, ANENJI 16 kWh battery, PV DC isolator, battery disconnect
+- Port layouts match the photos (MC4 / lugs / BAT±); battery cables 1/0–4/0; disconnect Amp ratings with recommended (not forced) wire sizes
 
 ---
 
