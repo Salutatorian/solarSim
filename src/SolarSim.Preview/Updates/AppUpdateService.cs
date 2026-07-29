@@ -38,7 +38,11 @@ internal sealed class AppUpdateService
     public bool UserDismissedToast { get; set; }
     public bool ApplyOnExit { get; set; } = true;
 
+    /// <summary>When true, finishing a download (or an already-staged zip) fires <see cref="ApplyRequested"/>.</summary>
+    public bool AutoApplyWhenReady { get; private set; }
+
     public event Action? StateChanged;
+    public event Action? ApplyRequested;
 
     private static HttpClient CreateClient()
     {
@@ -230,6 +234,7 @@ internal sealed class AppUpdateService
                 DownloadProgressIndeterminate = false;
             }
             Raise();
+            MaybeFireApplyRequested();
         }
         catch (OperationCanceledException)
         {
@@ -242,9 +247,61 @@ internal sealed class AppUpdateService
             {
                 IsDownloading = false;
                 DownloadError = ex.Message;
+                AutoApplyWhenReady = false;
             }
             Raise();
         }
+    }
+
+    /// <summary>
+    /// User clicked Update (Settings or toast): download if needed, then apply automatically at 100%.
+    /// </summary>
+    public void RequestUserUpdate()
+    {
+        lock (_gate)
+        {
+            if (Available is null) return;
+            UserDismissedToast = false;
+            AutoApplyWhenReady = true;
+        }
+
+        if (DownloadComplete && HasStagedUpdate())
+        {
+            MaybeFireApplyRequested();
+            return;
+        }
+
+        if (!IsDownloading)
+            _ = StartDownloadAsync();
+        else
+            Raise();
+    }
+
+    public void DismissUpdateUi()
+    {
+        lock (_gate)
+        {
+            UserDismissedToast = true;
+            AutoApplyWhenReady = false;
+        }
+
+        if (IsDownloading)
+            CancelDownload();
+        else
+            Raise();
+    }
+
+    private void MaybeFireApplyRequested()
+    {
+        bool fire;
+        lock (_gate)
+        {
+            fire = AutoApplyWhenReady && DownloadComplete && HasStagedUpdate();
+            if (fire) AutoApplyWhenReady = false;
+        }
+
+        if (fire)
+            ApplyRequested?.Invoke();
     }
 
     public void CancelDownload()

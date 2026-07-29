@@ -73,13 +73,13 @@
                 <StackPanel Orientation="Horizontal">
                     <Button x:Name="CheckUpdateButton" Content="Check for updates" Style="{StaticResource ModernButtonBase}"
                             Padding="12,7" Click="CheckUpdate_Click" Margin="0,0,8,0"/>
-                    <Button x:Name="DownloadUpdateButton" Content="Download" Style="{StaticResource PrimaryButton}"
+                    <Button x:Name="DownloadUpdateButton" Content="Update" Style="{StaticResource PrimaryButton}"
                             Padding="12,7" Click="DownloadUpdate_Click" Margin="0,0,8,0" Visibility="Collapsed"/>
-                    <Button x:Name="CancelDownloadButton" Content="Cancel download" Style="{StaticResource GhostButton}"
+                    <Button x:Name="CancelDownloadButton" Content="Cancel" Style="{StaticResource GhostButton}"
                             Padding="10,7" Click="CancelDownload_Click" Visibility="Collapsed"/>
                 </StackPanel>
 
-                <CheckBox x:Name="ApplyOnExitCheck" Content="Apply downloaded update when I close the app"
+                <CheckBox x:Name="ApplyOnExitCheck" Content="Also apply a downloaded update when I close the app"
                           IsChecked="True" Margin="0,14,0,0" Foreground="{DynamicResource TextBrush}"/>
             </StackPanel>
         </ScrollViewer>

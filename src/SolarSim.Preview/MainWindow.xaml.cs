@@ -161,6 +161,7 @@ public partial class MainWindow : Window
     private bool _autoSaveEnabled = true;
     private string? _lastAutoSaveError;
     private bool _applyUpdateOnCloseRequested;
+    private SettingsDialog? _openSettingsDialog;
     private DispatcherTimer? _updateCheckTimer;
 
     public MainWindow()
@@ -218,7 +219,12 @@ public partial class MainWindow : Window
 
         ShowWhatsNewIfPresent();
         AppUpdateService.Instance.StateChanged += OnUpdateServiceStateChanged;
-        Closed += (_, _) => AppUpdateService.Instance.StateChanged -= OnUpdateServiceStateChanged;
+        AppUpdateService.Instance.ApplyRequested += OnUpdateApplyRequested;
+        Closed += (_, _) =>
+        {
+            AppUpdateService.Instance.StateChanged -= OnUpdateServiceStateChanged;
+            AppUpdateService.Instance.ApplyRequested -= OnUpdateApplyRequested;
+        };
         await StartUpdateScanningAsync();
     }
 
@@ -239,17 +245,11 @@ public partial class MainWindow : Window
         {
             await AppUpdateService.Instance.CheckForUpdatesAsync(GetAppVersion());
             RefreshUpdateUi();
-            var avail = AppUpdateService.Instance.Available;
-            if (avail is not null && !AppUpdateService.Instance.DownloadComplete
-                && !AppUpdateService.Instance.IsDownloading)
-            {
-                // Background download while user keeps working
-                _ = AppUpdateService.Instance.StartDownloadAsync();
-            }
+            // Do not auto-download — wait for Update on the toast or in Settings.
         }
         catch
         {
-            // offline is fine
+            // Offline / rate-limit — ignore; timer will retry.
         }
 
         _updateCheckTimer ??= new DispatcherTimer { Interval = TimeSpan.FromHours(4) };
@@ -264,10 +264,6 @@ public partial class MainWindow : Window
         {
             await AppUpdateService.Instance.CheckForUpdatesAsync(GetAppVersion());
             RefreshUpdateUi();
-            if (AppUpdateService.Instance.Available is not null
-                && !AppUpdateService.Instance.DownloadComplete
-                && !AppUpdateService.Instance.IsDownloading)
-                _ = AppUpdateService.Instance.StartDownloadAsync();
         }
         catch
         {
@@ -278,6 +274,15 @@ public partial class MainWindow : Window
     private void OnUpdateServiceStateChanged() =>
         Dispatcher.BeginInvoke(RefreshUpdateUi);
 
+    private void OnUpdateApplyRequested() =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            _openSettingsDialog?.Close();
+            _openSettingsDialog = null;
+            _applyUpdateOnCloseRequested = true;
+            Close();
+        });
+
     private void RefreshUpdateUi()
     {
         var svc = AppUpdateService.Instance;
@@ -285,35 +290,66 @@ public partial class MainWindow : Window
         if (SettingsUpdateBadge is not null)
             SettingsUpdateBadge.Visibility = hasUpdate ? Visibility.Visible : Visibility.Collapsed;
 
-        var showToast = svc.DownloadComplete && hasUpdate && !svc.UserDismissedToast;
-        if (UpdateToast is not null)
+        var showToast = hasUpdate && !svc.UserDismissedToast;
+        if (UpdateToast is null) return;
+
+        UpdateToast.Visibility = showToast ? Visibility.Visible : Visibility.Collapsed;
+        if (!showToast || svc.Available is null) return;
+
+        var ver = svc.Available.Version;
+        if (svc.IsDownloading)
         {
-            UpdateToast.Visibility = showToast ? Visibility.Visible : Visibility.Collapsed;
-            if (showToast && svc.Available is not null)
-            {
-                UpdateToastTitle.Text = $"Update {svc.Available.Version} ready";
-                UpdateToastBody.Text = "Downloaded on this PC. Apply now, or keep working — it installs when you close (unless you turn that off in Settings).";
-            }
+            var pct = (int)Math.Round(svc.DownloadProgress01 * 100);
+            UpdateToastTitle.Text = $"Downloading {ver}";
+            UpdateToastBody.Text = svc.DownloadProgressIndeterminate
+                ? $"Downloading… {pct}%"
+                : $"{pct}% — installs automatically when finished.";
+            UpdateToastCancelButton.Content = "Cancel";
+            UpdateToastApplyButton.Content = "Update";
+            UpdateToastApplyButton.IsEnabled = false;
+        }
+        else if (svc.DownloadComplete)
+        {
+            UpdateToastTitle.Text = $"Update {ver} ready";
+            UpdateToastBody.Text = "Downloaded. Click Update to install and restart now.";
+            UpdateToastCancelButton.Content = "Cancel";
+            UpdateToastApplyButton.Content = "Update";
+            UpdateToastApplyButton.IsEnabled = true;
+        }
+        else
+        {
+            UpdateToastTitle.Text = $"Update {ver} available";
+            UpdateToastBody.Text = "Click Update to download and install. Cancel dismisses this notice.";
+            UpdateToastCancelButton.Content = "Cancel";
+            UpdateToastApplyButton.Content = "Update";
+            UpdateToastApplyButton.IsEnabled = true;
         }
     }
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new SettingsDialog(GetAppVersion(), RefreshUpdateUi) { Owner = this };
+        _openSettingsDialog = dlg;
+        dlg.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_openSettingsDialog, dlg))
+                _openSettingsDialog = null;
+        };
         dlg.ShowDialog();
+        _openSettingsDialog = null;
         RefreshUpdateUi();
     }
 
     private void UpdateToastLater_Click(object sender, RoutedEventArgs e)
     {
-        AppUpdateService.Instance.UserDismissedToast = true;
+        AppUpdateService.Instance.DismissUpdateUi();
         RefreshUpdateUi();
     }
 
     private void UpdateToastApply_Click(object sender, RoutedEventArgs e)
     {
-        _applyUpdateOnCloseRequested = true;
-        Close();
+        AppUpdateService.Instance.RequestUserUpdate();
+        RefreshUpdateUi();
     }
 
     private void LoadProjectFromPath(string path)

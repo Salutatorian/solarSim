@@ -202,6 +202,11 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - ANENJI 12.8V 300Ah (~3.84 kWh) prismatic battery — BAT− left / BAT+ right on the top edge
 - ANENJI 10 kW wall + 5.1 kWh rack (stackable) batteries; large packs (16 kWh / 10 kW / rack) expose dual BAT1± and BAT2±; golf-cart 12.8V stays single ±
 
+### Update UX (`0.1.6`)
+- Settings and bottom-right mini toast both show Update / Cancel when a release is available
+- Clicking Update downloads (if needed) and auto-installs at 100% — no need to leave Settings for the toast
+- Cancel dismisses the notice (and stops an in-progress download)
+
 ---
 
 ## How to verify for submission

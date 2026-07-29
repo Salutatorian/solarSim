@@ -54,27 +54,46 @@ public partial class SettingsDialog : Window
                 : $"Update check: {svc.DownloadError}";
             UpdateNotesPreview.Text = "";
             DownloadUpdateButton.Visibility = Visibility.Collapsed;
+            CancelDownloadButton.Visibility = Visibility.Collapsed;
         }
-        else
+        else if (svc.IsDownloading)
         {
-            UpdateStatusText.Text = svc.DownloadComplete
-                ? $"Update {avail.Version} ready — apply from the toast or when you close."
-                : $"Update {avail.Version} available.";
+            UpdateStatusText.Text = $"Downloading update {avail.Version}… installs automatically at 100%.";
             UpdateNotesPreview.Text = string.IsNullOrWhiteSpace(avail.Notes)
                 ? "(No release notes)"
                 : avail.Notes;
-            DownloadUpdateButton.Visibility = svc.DownloadComplete || svc.IsDownloading
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            DownloadUpdateButton.Visibility = Visibility.Collapsed;
+            CancelDownloadButton.Visibility = Visibility.Visible;
+        }
+        else if (svc.DownloadComplete)
+        {
+            UpdateStatusText.Text = $"Update {avail.Version} ready — click Update to install and restart.";
+            UpdateNotesPreview.Text = string.IsNullOrWhiteSpace(avail.Notes)
+                ? "(No release notes)"
+                : avail.Notes;
+            DownloadUpdateButton.Visibility = Visibility.Visible;
+            DownloadUpdateButton.Content = "Update";
+            CancelDownloadButton.Visibility = Visibility.Visible;
+            CancelDownloadButton.Content = "Cancel";
+        }
+        else
+        {
+            UpdateStatusText.Text = $"Update {avail.Version} available — click Update to download and install.";
+            UpdateNotesPreview.Text = string.IsNullOrWhiteSpace(avail.Notes)
+                ? "(No release notes)"
+                : avail.Notes;
+            DownloadUpdateButton.Visibility = Visibility.Visible;
+            DownloadUpdateButton.Content = "Update";
+            CancelDownloadButton.Visibility = Visibility.Visible;
+            CancelDownloadButton.Content = "Cancel";
         }
 
-        CancelDownloadButton.Visibility = svc.IsDownloading ? Visibility.Visible : Visibility.Collapsed;
         CheckUpdateButton.IsEnabled = !svc.IsDownloading;
 
         var pct = (int)Math.Round(svc.DownloadProgress01 * 100);
         if (svc.IsDownloading)
             UpdatePercentText.Text = svc.DownloadProgressIndeterminate ? $"{pct}%…" : $"{pct}%";
-        else if (svc.DownloadComplete)
+        else if (svc.DownloadComplete && avail is not null)
             UpdatePercentText.Text = "100%";
         else
             UpdatePercentText.Text = "";
@@ -90,15 +109,16 @@ public partial class SettingsDialog : Window
         RefreshUi();
     }
 
-    private async void DownloadUpdate_Click(object sender, RoutedEventArgs e)
+    private void DownloadUpdate_Click(object sender, RoutedEventArgs e)
     {
-        await AppUpdateService.Instance.StartDownloadAsync();
+        // Download (if needed) then auto-apply at 100% — no need to leave Settings for the toast.
+        AppUpdateService.Instance.RequestUserUpdate();
         RefreshUi();
     }
 
     private void CancelDownload_Click(object sender, RoutedEventArgs e)
     {
-        AppUpdateService.Instance.CancelDownload();
+        AppUpdateService.Instance.DismissUpdateUi();
         RefreshUi();
     }
 
