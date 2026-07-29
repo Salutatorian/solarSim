@@ -186,6 +186,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Home Save location text vertically centered (no clipped placeholder)
 - Panel drag no longer hard-stops at the yellow setback — free move on the map
 
+### Feedback links (`0.1.4`)
+- Settings → GitHub repo, Releases, License, Report a bug, Suggest an idea
+- GitHub issue templates for bugs (how found / steps / cause) and suggestions
+
 ---
 
 ## How to verify for submission

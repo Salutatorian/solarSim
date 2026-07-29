@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Controls;
 using SolarSim.Preview.Updates;
 
 namespace SolarSim.Preview;
@@ -102,6 +101,24 @@ public partial class SettingsDialog : Window
         AppUpdateService.Instance.CancelDownload();
         RefreshUi();
     }
+
+    private void OpenRepo_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.Repo, this);
+
+    private void OpenReleases_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.Releases, this);
+
+    private void OpenLicense_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.License, this);
+
+    private void OpenBug_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.BugIssue, this);
+
+    private void OpenSuggestion_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.SuggestionIssue, this);
+
+    private void OpenIssues_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.Issues, this);
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Settings"
         Icon="pack://application:,,,/Assets/solarsim-logo.ico"
-        Width="460" Height="520"
+        Width="480" Height="620"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{DynamicResource BgBrush}"
@@ -26,9 +26,32 @@
                 </StackPanel>
                 <TextBlock Text="All project files stay on this computer. Updates only contact official GitHub Releases."
                            TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
-                           FontSize="12.5" Margin="0,0,0,20"/>
+                           FontSize="12.5" Margin="0,0,0,16"/>
 
-                <TextBlock Text="Privacy" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                <TextBlock Text="Community &amp; legal" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                <TextBlock Text="Open official pages in your browser. Use Issues for bugs and suggestions (templates guide you)."
+                           TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                           Margin="0,0,0,10"/>
+                <WrapPanel Margin="0,0,0,4">
+                    <Button Content="GitHub repo" Style="{StaticResource ModernButtonBase}" Padding="12,7"
+                            Margin="0,0,8,8" Click="OpenRepo_Click"/>
+                    <Button Content="Releases" Style="{StaticResource ModernButtonBase}" Padding="12,7"
+                            Margin="0,0,8,8" Click="OpenReleases_Click"/>
+                    <Button Content="License" Style="{StaticResource ModernButtonBase}" Padding="12,7"
+                            Margin="0,0,8,8" Click="OpenLicense_Click"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,0,0,8">
+                    <Button Content="Report a bug…" Style="{StaticResource PrimaryButton}" Padding="12,7"
+                            Margin="0,0,8,8" Click="OpenBug_Click"
+                            ToolTip="Opens a guided bug form on GitHub"/>
+                    <Button Content="Suggest an idea…" Style="{StaticResource ModernButtonBase}" Padding="12,7"
+                            Margin="0,0,8,8" Click="OpenSuggestion_Click"
+                            ToolTip="Opens a guided suggestion form on GitHub"/>
+                    <Button Content="All issues" Style="{StaticResource GhostButton}" Padding="10,7"
+                            Margin="0,0,8,8" Click="OpenIssues_Click"/>
+                </WrapPanel>
+
+                <TextBlock Text="Privacy" Style="{StaticResource SectionLabel}" Margin="0,8,0,8"/>
                 <TextBlock Text="• No cloud sync&#10;• Autosave writes only to your chosen .solarproj path&#10;• Recent list is local (%LocalAppData%\solarSim)"
                            Foreground="{DynamicResource TextBrush}" FontSize="12.5" LineHeight="20"/>
 
@@ -36,7 +59,7 @@
                 <TextBlock x:Name="UpdateStatusText" Text="Checking…" Foreground="{DynamicResource TextBrush}"
                            FontSize="12.5" TextWrapping="Wrap"/>
                 <TextBlock x:Name="UpdateNotesPreview" Margin="0,8,0,10" FontSize="12"
-                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" MaxHeight="120"
+                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" MaxHeight="100"
                            TextTrimming="CharacterEllipsis"/>
 
                 <Grid x:Name="UpdateProgressTrack" Margin="0,4,0,8" Height="14">

@@ -1,0 +1,82 @@
+name: Bug report
+description: Something broke or behaved wrong — help us reproduce it.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve solarSim. Fill this out as clearly as you can.
+        Projects stay on your PC — **do not** paste API keys or private paths you want kept secret.
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Shown in the title bar (e.g. 0.1.3) or Settings → About.
+      placeholder: "0.1.3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Windows version
+      options:
+        - Windows 11
+        - Windows 10
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What went wrong?
+      description: Describe the bad behavior in one short paragraph.
+      placeholder: e.g. Pasting 4 panels then Ctrl+Z removed them one at a time instead of all at once.
+    validations:
+      required: true
+
+  - type: textarea
+    id: how-found
+    attributes:
+      label: How did you find the problem?
+      description: What were you trying to do when it showed up?
+      placeholder: e.g. I traced a roof on the map, unlocked it, then tried to rotate with the ↻ handle.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps someone else can follow.
+      placeholder: |
+        1. Open project…
+        2. Click…
+        3. See…
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+      placeholder: e.g. Undo should remove the whole paste in one step.
+    validations:
+      required: true
+
+  - type: textarea
+    id: cause
+    attributes:
+      label: What do you think caused it? (optional)
+      description: Any guess — recent action, after an update, only with a locked roof, etc.
+      placeholder: e.g. Started after updating from 0.1.2 to 0.1.3. Only happens with multi-select paste.
+
+  - type: textarea
+    id: extras
+    attributes:
+      label: Extra details (optional)
+      description: Screenshots, error text from MessageBox, or notes from %LocalAppData%\solarSim\last-error.log (scrub personal paths).
+      placeholder: Attach images below if useful.

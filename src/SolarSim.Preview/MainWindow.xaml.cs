@@ -5184,45 +5184,9 @@ public partial class MainWindow : Window
         return button;
     }
 
-    private static void OpenExternalUrl(string url)
-    {
-        if (!IsAllowedExternalUrl(url))
-        {
-            MessageBox.Show(
-                "Blocked an unexpected link for safety.\n\nsolarSim only opens known official HTTPS pages.",
-                "solarSim",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-            return;
-        }
+    private static void OpenExternalUrl(string url) => ExternalLinks.Open(url);
 
-        try
-        {
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"Could not open browser:\n{ex.Message}\n\nOpen this URL manually:\n{url}",
-                "solarSim",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-        }
-    }
-
-    private static bool IsAllowedExternalUrl(string url)
-    {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
-        if (uri.Scheme != Uri.UriSchemeHttps) return false;
-        var host = uri.Host.ToLowerInvariant();
-        return host is "github.com"
-            or "www.github.com"
-            or "developer.microsoft.com"
-            or "console.cloud.google.com"
-            or "developers.google.com"
-            or "maps.googleapis.com"
-            or "solar.googleapis.com";
-    }
+    private static bool IsAllowedExternalUrl(string url) => ExternalLinks.IsAllowed(url);
 
     private async void ImportGoogleSolar_Click(object sender, RoutedEventArgs e)
     {

@@ -1,0 +1,69 @@
+name: Suggestion
+description: Ideas for features, UX polish, or workflows that would help.
+title: "[Suggestion] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share an idea for solarSim. Be specific about the workflow you want —
+        that helps more than a one-word request.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Roof / map / tracing
+        - Panels / placement / snap
+        - Wiring / strings / equipment
+        - Home / save / projects
+        - Updates / Settings
+        - Reports / BOM / yield
+        - Look & feel / branding
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve for you?
+      description: What is awkward or missing today?
+      placeholder: e.g. I keep losing track of which modules belong to which string on large roofs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your suggestion
+      description: Describe the feature or change you want.
+      placeholder: e.g. Let me name strings and show that name on the canvas when the string is selected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: how-it-should-feel
+    attributes:
+      label: How should it feel when it works? (optional)
+      description: Ideal click path or before/after.
+      placeholder: e.g. Select string in the list → name appears beside modules → rename in inspector.
+
+  - type: dropdown
+    id: importance
+    attributes:
+      label: How important is this to you?
+      options:
+        - Nice to have
+        - Would use often
+        - Blocking my workflow
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version (optional)
+      description: If this relates to something already in a build.
+      placeholder: "0.1.3"
