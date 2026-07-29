@@ -156,6 +156,11 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 | Unity roof/equipment parity | WPF is currently ahead |
 | Full TMY / bankable pvlib | Optional bridge is clearsky-only |
 
+### R2 / R3 — Windows Release packaging
+- `Tools/Publish-Windows.ps1` — self-contained `win-x64` folder + zip under `artifacts/publish/`
+- `.github/workflows/release.yml` — on `v*` tag: test → publish → GitHub Release asset
+- App version `0.1.0` in `SolarSim.Preview.csproj`; see `RELEASE.md`
+
 ---
 
 ## How to verify for submission

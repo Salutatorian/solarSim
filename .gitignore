@@ -40,3 +40,6 @@ Desktop.ini
 TestResults/
 *.trx
 *.coverage
+
+# Publish output
+artifacts/

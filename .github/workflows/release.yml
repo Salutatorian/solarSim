@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.1.0). Leave empty to use csproj Version."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  publish-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          $version = $null
+          if ("${{ github.ref_type }}" -eq "tag" -and "${{ github.ref_name }}" -match '^v(.+)$') {
+            $version = $Matches[1]
+          }
+          $input = "${{ github.event.inputs.version }}".Trim()
+          if (-not $version -and $input) {
+            $version = $input.TrimStart('v')
+          }
+          if (-not $version) {
+            [xml]$proj = Get-Content "src/SolarSim.Preview/SolarSim.Preview.csproj"
+            $version = @($proj.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+          }
+          if (-not $version) { throw "Could not resolve version." }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Publishing version $version"
+
+      - name: Test
+        run: dotnet test --configuration Release --nologo
+
+      - name: Publish Windows x64
+        shell: pwsh
+        run: |
+          ./Tools/Publish-Windows.ps1 -Version "${{ steps.ver.outputs.version }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: solarSim-${{ steps.ver.outputs.version }}-win-x64
+          path: artifacts/publish/solarSim-${{ steps.ver.outputs.version }}-win-x64.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: solarSim ${{ steps.ver.outputs.version }}
+          body: |
+            ## solarSim ${{ steps.ver.outputs.version }}
+
+            Windows x64 build of the WPF design lab.
+
+            ### Run
+            1. Download `solarSim-${{ steps.ver.outputs.version }}-win-x64.zip`
+            2. Unzip and run `solarSim.exe`
+            3. Install [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) if map tracer fails to load
+
+            ### Notes
+            - Design / simulation aid only — not stamped electrical, structural, or bankable-yield approval.
+            - See `CHANGELOG.md` / `README.md` for feature history.
+          files: artifacts/publish/solarSim-${{ steps.ver.outputs.version }}-win-x64.zip
+          draft: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

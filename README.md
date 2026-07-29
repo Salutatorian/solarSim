@@ -38,6 +38,24 @@ solarSim/
 Launch-solarSim.bat
 ```
 
+### Download a Windows build (Releases)
+
+When a version is tagged (`v0.1.0`, …), GitHub Actions publishes a zip:
+
+1. Open [Releases](https://github.com/Salutatorian/solarSim/releases)
+2. Download `solarSim-<version>-win-x64.zip`
+3. Unzip and run `solarSim.exe`
+
+**Requirements:** Windows 10/11 x64 · [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (for **Trace roof on map**)
+
+Local package without tagging:
+
+```powershell
+.\Tools\Publish-Windows.ps1
+```
+
+See [RELEASE.md](RELEASE.md) for the full release checklist.
+
 **Unity shell (Phase 0.9 Panel Lab):**
 
 ```
@@ -175,12 +193,13 @@ Full phase-by-phase history: **[CHANGELOG.md](CHANGELOG.md)** (keep updated for 
 - Tabs: **Roof** · **Interior** · **Combined** (modules + gear + home-run wiring)
 - Dark CAD HUD default; top-bar **Light** / **Dark** toggle
 
-**Next:** Later roadmap (Cesium for Unity 3D · Unity feature parity)
+**Next:** Ship Windows Releases (publish zip + tag) · later Cesium / Unity parity
 
 ### Roadmap (remaining)
 
 | Phase | Focus |
 |-------|--------|
+| R2–R3 | Windows `.exe` zip via `Publish-Windows.ps1` + GitHub Release workflow (`v*` tags) |
 | Later | Cesium for Unity 3D site · Unity roof/equipment parity |
 
 ## Domain notes
