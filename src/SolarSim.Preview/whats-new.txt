@@ -1,11 +1,10 @@
-solarSim 0.1.18
-Released: 2026-07-30 07:45
+solarSim 0.1.19
+Released: 2026-07-30 07:50
 
-Panel wiring on zoom
-• Fixed stretched / floating string wires when zooming out
-• Router no longer treats the whole array as one giant obstacle box
-• Zoom clears stale midpoints so every wire re-anchors to its ports
+Add placement
+• New panels and equipment spawn in the center of your current view
+• No more jumping to world origin / random far-away coordinates
 
 Earlier
+• 0.1.18 — panel string wires on zoom
 • 0.1.17 — equipment wire zoom fix, free rotate, port labels
-• 0.1.16 — photo catalog first

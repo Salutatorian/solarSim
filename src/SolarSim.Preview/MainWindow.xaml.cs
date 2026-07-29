@@ -3354,21 +3354,36 @@ public partial class MainWindow : Window
 
     private void AddPanel(Guid definitionId)
     {
-        var count = _project.Graph.Panels.Count;
         var def = _project.RequireDefinition(definitionId);
-        // World origin (0,0); stagger along +X so stacked adds don't fully overlap.
-        var x = count * (def.WidthMm + PanelGapXMm);
-        var panel = _project.AddPanelFromDefinition(definitionId, x, 0);
-        FocusWorldMm(panel.PositionXMm + def.WidthMm / 2, panel.PositionYMm + def.HeightMm / 2);
+        var (cx, cy) = ViewportCenterWorldMm();
+        // Slight stagger so repeated Add clicks don't stack on the exact same spot.
+        var n = _project.Graph.Panels.Count;
+        var x = cx - def.WidthMm / 2 + (n % 6) * (def.WidthMm * 0.12);
+        var y = cy - def.HeightMm / 2 + (n % 6) * (def.HeightMm * 0.08);
+        var panel = _project.AddPanelFromDefinition(definitionId, x, y);
         // Keep Panels/Add side panel open so you can place several modules in a row.
         SetSelection(panels: new[] { panel.Id });
     }
 
-    /// <summary>Default spawn for equipment: world origin, staggered along +X.</summary>
+    /// <summary>Spawn equipment in the current viewport (not at world 0,0).</summary>
     private (double xMm, double yMm) NextEquipmentPlaceMm(double widthMm = 800)
     {
-        var count = _project.Graph.Equipment.Count;
-        return (count * (widthMm + 400), 0);
+        var (cx, cy) = ViewportCenterWorldMm();
+        var n = _project.Graph.Equipment.Count;
+        var x = cx - widthMm / 2 + (n % 6) * (widthMm * 0.08);
+        var y = cy - 400 + (n % 6) * 80;
+        return (x, y);
+    }
+
+    /// <summary>World-mm point under the center of the design canvas viewport.</summary>
+    private (double xMm, double yMm) ViewportCenterWorldMm()
+    {
+        var host = DesignCanvas.Parent as FrameworkElement;
+        var vw = host?.ActualWidth > 40 ? host.ActualWidth : Math.Max(DesignCanvas.ActualWidth, 800);
+        var vh = host?.ActualHeight > 40 ? host.ActualHeight : Math.Max(DesignCanvas.ActualHeight, 600);
+        if (double.IsNaN(vw) || vw < 40) vw = 800;
+        if (double.IsNaN(vh) || vh < 40) vh = 600;
+        return CanvasToWorld(new Point(vw / 2, vh / 2));
     }
 
     /// <summary>Pan so a world point sits near the center of the canvas viewport.</summary>
@@ -3384,7 +3399,7 @@ public partial class MainWindow : Window
 
     private void PlaceAndSelectEquipment(ElectricalEquipmentInstance eq)
     {
-        FocusWorldMm(eq.PositionXMm + eq.WidthMm / 2, eq.PositionYMm + eq.HeightMm / 2);
+        // Already spawned in-view — don't yank the camera to world origin.
         _selectedPanelIds.Clear();
         _selectedConnectionIds.Clear();
         _selectedEquipmentIds.Clear();

@@ -259,6 +259,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Neighbor panel cables stay local when zoomed out (no mega-box detour / floating mid-runs)
 - Zoom rebuilds routes from live ports
 
+### Spawn in viewport (`0.1.19`)
+- Adding panels or equipment places them in the center of the current screen view (not at world 0,0)
+
 ---
 
 ## How to verify for submission
