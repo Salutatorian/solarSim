@@ -71,7 +71,10 @@ public partial class SettingsDialog : Window
             CancelDownloadButton.Content = "Cancel";
             UpdateProgressTrack.Visibility = Visibility.Visible;
             var pct = (int)Math.Round(svc.DownloadProgress01 * 100);
-            UpdatePercentText.Text = svc.DownloadProgressIndeterminate ? $"{pct}%…" : $"{pct}%";
+            // Fixed-width label so "9%" → "10%" doesn't shift the layout.
+            UpdatePercentText.Text = svc.DownloadProgressIndeterminate
+                ? $"{pct,3}%…"
+                : $"{pct,3}%";
         }
         else if (svc.DownloadComplete)
         {

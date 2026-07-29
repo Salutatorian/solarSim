@@ -68,7 +68,8 @@
                             Background="#2563EB" CornerRadius="7" Width="0"/>
                 </Grid>
                 <TextBlock x:Name="UpdatePercentText" Text="" Foreground="{DynamicResource MutedBrush}"
-                           FontSize="12" Margin="0,0,0,12"/>
+                           FontSize="12" Margin="0,0,0,12" MinWidth="48"
+                           FontFamily="Consolas, Courier New, monospace"/>
 
                 <StackPanel Orientation="Horizontal">
                     <Button x:Name="CheckUpdateButton" Content="Check for updates" Style="{StaticResource ModernButtonBase}"

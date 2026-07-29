@@ -1,11 +1,11 @@
-solarSim 0.1.11
-Released: 2026-07-30 06:27
+solarSim 0.1.12
+Released: 2026-07-30 06:33
 
-What's new timing
-• After an update, Home still opens first — What's new appears once you open or create a project
-• Changelog shows real updates/fixes (not GitHub download instructions)
+Update toast
+• No live percentage in the mini toast (that was causing the vibrate/jitter)
+• Toast stays a fixed size with static Update / Cancel (or Installing…) text
+• Progress % only in Settings, with a stable fixed-width label
 
 Earlier
-• 0.1.10 — Update toast is reminder-only; Update auto-installs at 100%
-• 0.1.9 — Equipment snap + magenta guides
-• 0.1.8 — Add catalog type labels
+• 0.1.11 — What's new after Home when you open a project
+• 0.1.10 — Update auto-installs at 100%

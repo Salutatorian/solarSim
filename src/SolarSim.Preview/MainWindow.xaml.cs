@@ -326,33 +326,41 @@ public partial class MainWindow : Window
         if (!showToast || svc.Available is null) return;
 
         var ver = svc.Available.Version;
-        // Mini toast = reminder only (Update / Cancel). Progress lives in Settings.
+        // Mini toast = static reminder only (no live %). Progress lives in Settings.
+        // Keep copy identical while downloading so the toast never reflows / vibrates.
+        string title;
+        string body;
+        Visibility applyVis;
         if (svc.IsDownloading || svc.AutoApplyWhenReady)
         {
-            UpdateToastTitle.Text = $"Installing {ver}";
-            UpdateToastBody.Text = "Downloading and installing — progress is in Settings.";
-            UpdateToastCancelButton.Content = "Cancel";
-            UpdateToastCancelButton.Visibility = Visibility.Visible;
-            UpdateToastApplyButton.Visibility = Visibility.Collapsed;
+            title = $"Installing {ver}";
+            body = "Downloading and installing — progress is in Settings.";
+            applyVis = Visibility.Collapsed;
         }
         else if (svc.DownloadComplete)
         {
-            UpdateToastTitle.Text = $"Update {ver} available";
-            UpdateToastBody.Text = "Click Update to install and restart. Cancel dismisses this notice.";
-            UpdateToastCancelButton.Content = "Cancel";
-            UpdateToastCancelButton.Visibility = Visibility.Visible;
-            UpdateToastApplyButton.Content = "Update";
-            UpdateToastApplyButton.Visibility = Visibility.Visible;
-            UpdateToastApplyButton.IsEnabled = true;
+            title = $"Update {ver} available";
+            body = "Click Update to install and restart. Cancel dismisses this notice.";
+            applyVis = Visibility.Visible;
         }
         else
         {
-            UpdateToastTitle.Text = $"Update {ver} available";
-            UpdateToastBody.Text = "Click Update to download and install. Cancel dismisses this notice.";
-            UpdateToastCancelButton.Content = "Cancel";
-            UpdateToastCancelButton.Visibility = Visibility.Visible;
+            title = $"Update {ver} available";
+            body = "Click Update to download and install. Cancel dismisses this notice.";
+            applyVis = Visibility.Visible;
+        }
+
+        if (UpdateToastTitle.Text != title)
+            UpdateToastTitle.Text = title;
+        if (UpdateToastBody.Text != body)
+            UpdateToastBody.Text = body;
+        UpdateToastCancelButton.Content = "Cancel";
+        UpdateToastCancelButton.Visibility = Visibility.Visible;
+        if (UpdateToastApplyButton.Visibility != applyVis)
+            UpdateToastApplyButton.Visibility = applyVis;
+        if (applyVis == Visibility.Visible)
+        {
             UpdateToastApplyButton.Content = "Update";
-            UpdateToastApplyButton.Visibility = Visibility.Visible;
             UpdateToastApplyButton.IsEnabled = true;
         }
     }

@@ -230,6 +230,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - What's new dialog waits until you leave Home and open/create a project (shows over the editor)
 - Uses the shipped changelog (not GitHub zip/install boilerplate)
 
+### Toast jitter fix (`0.1.12`)
+- Mini toast no longer shows a live download % (that caused layout vibrate)
+- Progress stays in Settings with a fixed-width percent label; download UI updates are throttled
+
 ---
 
 ## How to verify for submission

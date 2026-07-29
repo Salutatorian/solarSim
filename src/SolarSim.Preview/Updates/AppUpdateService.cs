@@ -194,6 +194,8 @@ internal sealed class AppUpdateService
                 var buffer = new byte[81920];
                 long readTotal = 0;
                 int read;
+                var lastRaisedPct = -1;
+                var lastRaiseAt = DateTime.UtcNow;
                 while ((read = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)
                            .ConfigureAwait(false)) > 0)
                 {
@@ -210,7 +212,16 @@ internal sealed class AppUpdateService
                         DownloadProgress01 = Math.Min(0.92, readTotal / (readTotal + 2_500_000.0));
                         DownloadProgressIndeterminate = true;
                     }
-                    Raise();
+
+                    // Throttle UI refresh — constant % text updates make the toast/settings “vibrate”.
+                    var pct = (int)Math.Round(DownloadProgress01 * 100);
+                    var now = DateTime.UtcNow;
+                    if (pct != lastRaisedPct && (pct - lastRaisedPct >= 2 || (now - lastRaiseAt).TotalMilliseconds >= 200))
+                    {
+                        lastRaisedPct = pct;
+                        lastRaiseAt = now;
+                        Raise();
+                    }
                 }
             }
 

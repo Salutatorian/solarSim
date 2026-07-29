@@ -36,7 +36,7 @@
                            VerticalAlignment="Center"/>
                     <TextBlock Text="solarSim" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold"
                                FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="AppVersionLabel" Text="0.1.11" Foreground="{DynamicResource MutedBrush}"
+                    <TextBlock x:Name="AppVersionLabel" Text="0.1.12" Foreground="{DynamicResource MutedBrush}"
                                FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBlock Text="design aid" Foreground="{DynamicResource MutedBrush}" FontSize="11"
                                VerticalAlignment="Center" Margin="0,0,14,0" Opacity="0.85"
@@ -419,7 +419,7 @@
                 Margin="0,0,18,58" Padding="14,12"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                CornerRadius="10" MaxWidth="320"
+                CornerRadius="10" Width="300"
                 shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
