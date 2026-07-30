@@ -31,7 +31,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     }
 
     if (Size >= 2) {
-        const solar_site_climate_preset_t *by_id = solar_site_climate_preset_by_id("sydney");
+        const solar_site_climate_preset_t *by_id = solar_site_conditions_climate_preset_by_id("sydney");
         if (by_id) {
             solar_site_conditions_apply_preset_to_design(&conditions, by_id);
         }

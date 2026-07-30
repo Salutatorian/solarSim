@@ -42,7 +42,7 @@ static const char *MONTH_NAMES[12] = {
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
 
-static const solar_site_climate_preset_t CLIMATE_PRESETS[] = {
+static const solar_site_conditions_preset_t CLIMATE_PRESETS[] = {
     {
         "sydney", "Sydney, AU",
         -33.87, 151.21, true, true,
@@ -172,7 +172,7 @@ bool solar_site_conditions_apply_preset(
     if (!site || !preset_id) return false;
     for (size_t i = 0; i < PRESET_COUNT; ++i) {
         if (equal_case_insensitive(CLIMATE_PRESETS[i].id, preset_id)) {
-            const solar_site_climate_preset_t *p = &CLIMATE_PRESETS[i];
+            const solar_site_conditions_preset_t *p = &CLIMATE_PRESETS[i];
             std::strncpy(site->location_name, p->display_name, sizeof(site->location_name) - 1);
             site->location_name[sizeof(site->location_name) - 1] = '\0';
             site->has_latitude = p->has_latitude;
@@ -402,7 +402,7 @@ size_t solar_site_conditions_preset_count(void) {
     return PRESET_COUNT;
 }
 
-const solar_site_climate_preset_t *solar_site_conditions_preset_get(size_t index) {
+const solar_site_conditions_preset_t *solar_site_conditions_preset_get(size_t index) {
     if (index >= PRESET_COUNT) return NULL;
     return &CLIMATE_PRESETS[index];
 }

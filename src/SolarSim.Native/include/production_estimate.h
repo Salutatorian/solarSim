@@ -68,7 +68,7 @@ typedef struct {
     double hot_cell_celsius;
     double peak_sun_hours_per_day;
     double system_derate_factor;
-} solar_site_climate_preset_t;
+} solar_site_conditions_preset_t;
 
 void solar_site_conditions_init(solar_site_conditions_t *site);
 
@@ -118,7 +118,7 @@ void solar_detailed_production_estimate_to_string(
 size_t solar_site_conditions_preset_count(void);
 
 /* Get a built-in climate preset by index (read-only). Returns null if out of range. */
-const solar_site_climate_preset_t *solar_site_conditions_preset_get(size_t index);
+const solar_site_conditions_preset_t *solar_site_conditions_preset_get(size_t index);
 
 #ifdef __cplusplus
 }

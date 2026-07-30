@@ -23,6 +23,7 @@ extern "C" {
 #define PROJECT_MAX_SITE_NAME 128
 #define PROJECT_MAX_LOCATION 128
 #define PROJECT_MAX_CLIMATE 64
+#define SOLAR_MAX_NAME_LEN 128
 
 typedef struct {
     char magic[4];

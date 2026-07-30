@@ -237,6 +237,28 @@ void solar_project_state_get_detailed_production_estimate(
     solar_detailed_production_estimate(total, state ? &state->site : NULL, out);
 }
 
+double solar_project_state_get_total_dc_watts(
+    const solar_project_state_t *state) {
+    if (!state) return 0.0;
+    return total_dc_watts_from_graph(&state->graph, &state->definitions);
+}
+
+size_t solar_project_state_get_panel_count(
+    const solar_project_state_t *state) {
+    if (!state) return 0;
+    size_t count = 0;
+    for (size_t i = 0; i < state->graph.component_count; ++i) {
+        if (state->graph.components[i].kind == SOLAR_COMPONENT_PANEL) ++count;
+    }
+    return count;
+}
+
+size_t solar_project_state_get_equipment_count(
+    const solar_project_state_t *state) {
+    if (!state) return 0;
+    return state->equipment.size();
+}
+
 void solar_project_state_compute_racking_layout(
     solar_project_state_t *state) {
     if (!state) return;

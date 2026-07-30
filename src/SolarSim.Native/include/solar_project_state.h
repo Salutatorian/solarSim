@@ -145,6 +145,18 @@ void solar_project_state_get_detailed_production_estimate(
     const solar_project_state_t *state,
     solar_detailed_production_estimate_t *out);
 
+/* Sum the STC Pmax of all placed panel instances. */
+double solar_project_state_get_total_dc_watts(
+    const solar_project_state_t *state);
+
+/* Count the number of placed panel instances. */
+size_t solar_project_state_get_panel_count(
+    const solar_project_state_t *state);
+
+/* Count the number of equipment instances. */
+size_t solar_project_state_get_equipment_count(
+    const solar_project_state_t *state);
+
 void solar_project_state_compute_racking_layout(
     solar_project_state_t *state);
 

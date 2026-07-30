@@ -162,7 +162,7 @@ bool solar_site_conditions_apply_preset_to_design(
     return true;
 }
 
-const solar_site_climate_preset_t *solar_site_climate_preset_by_id(const char *id) {
+const solar_site_climate_preset_t *solar_site_conditions_climate_preset_by_id(const char *id) {
     if (!id) return NULL;
     for (size_t i = 0; i < SOLAR_SITE_PRESET_COUNT; i++) {
         if (str_equals_ignore_case(s_presets[i].id, id)) {

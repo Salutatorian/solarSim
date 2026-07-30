@@ -65,7 +65,7 @@ bool solar_site_conditions_apply_preset_to_design(
     const solar_site_climate_preset_t *preset);
 
 /* Preset library. */
-const solar_site_climate_preset_t *solar_site_climate_preset_by_id(const char *id);
+const solar_site_climate_preset_t *solar_site_conditions_climate_preset_by_id(const char *id);
 const solar_site_climate_preset_t *solar_site_climate_preset_at(size_t index);
 size_t solar_site_climate_preset_count(void);
 
