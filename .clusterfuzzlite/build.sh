@@ -20,16 +20,12 @@ mkdir -p "${WORK}/native_build"
 INC="${SRC}/src/SolarSim.Native/include"
 
 # Compile all native library source files into object files.
-NATIVE_SRCS=(
-    "${SRC}/src/SolarSim.Native/src/solar_module_catalog.cpp"
-    "${SRC}/src/SolarSim.Native/src/solar_panel.cpp"
-    "${SRC}/src/SolarSim.Native/src/electrical_graph.cpp"
-    "${SRC}/src/SolarSim.Native/src/string_calculation.cpp"
-    "${SRC}/src/SolarSim.Native/src/roof_geometry.cpp"
-    "${SRC}/src/SolarSim.Native/src/wire_route.cpp"
-    "${SRC}/src/SolarSim.Native/src/project_file.cpp"
-    "${SRC}/src/SolarSim.Native/src/units.cpp"
-)
+NATIVE_SRCS=()
+for src in "${SRC}/src/SolarSim.Native/src/"*.cpp; do
+    if [ -f "${src}" ]; then
+        NATIVE_SRCS+=("${src}")
+    fi
+done
 
 NATIVE_OBJS=()
 for src in "${NATIVE_SRCS[@]}"; do
@@ -38,27 +34,25 @@ for src in "${NATIVE_SRCS[@]}"; do
     NATIVE_OBJS+=("${obj}")
 done
 
-# Build each fuzzer harness.
-build_fuzzer() {
-    local name="$1"
+# Build every fuzzer harness discovered in fuzz/.
+for fuzzer_src in "${SRC}/fuzz/"*_fuzzer.cpp; do
+    if [ ! -f "${fuzzer_src}" ]; then
+        continue
+    fi
+    name=$(basename "${fuzzer_src}" .cpp)
     "${CXX}" ${CXXFLAGS} -I"${INC}" \
-        -c "${SRC}/fuzz/${name}.cpp" \
+        -c "${fuzzer_src}" \
         -o "${WORK}/native_build/${name}.o"
     "${CXX}" ${CXXFLAGS} ${LIB_FUZZING_ENGINE} \
         "${NATIVE_OBJS[@]}" \
         "${WORK}/native_build/${name}.o" \
         -o "${OUT}/${name}"
 
-    local corpus_dir="${SRC}/fuzz/corpus/${name}"
+    corpus_dir="${SRC}/fuzz/corpus/${name}"
     if [ -d "${corpus_dir}" ] && command -v zip >/dev/null 2>&1; then
         zip -j -r "${OUT}/${name}_seed_corpus.zip" "${corpus_dir}"
     fi
-}
-
-build_fuzzer "solar_module_catalog_fuzzer"
-build_fuzzer "project_file_fuzzer"
-build_fuzzer "roof_geometry_fuzzer"
-build_fuzzer "wire_route_fuzzer"
+done
 
 echo "Build complete."
 ls -la "${OUT}"

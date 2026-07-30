@@ -1,0 +1,1 @@
+{"schemaVersion": 10, "name": "Project 3", "site": {"locationName": "Sydney", "latitude": -33.0, "longitude": 151.0, "minAmbientCelsius": -5.0, "hotCellCelsius": 65.0, "peakSunHours": 4.5, "systemDerate": 0.86, "arrayTiltDegrees": 22.0, "arrayAzimuthDegrees": 180.0}}

@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 10,
+  "projectId": "00000000000000000000000000000003",
+  "name": "Full Seed",
+  "lengthUnit": "Meters",
+  "definitions": [
+    {
+      "id": "00000000000000000000000000000010",
+      "manufacturer": "Seed",
+      "model": "Seed 550 W",
+      "pmaxWatts": 550.0,
+      "vmpVolts": 41.5,
+      "impAmps": 13.25,
+      "vocVolts": 49.8,
+      "iscAmps": 13.85,
+      "widthMm": 1134.0,
+      "heightMm": 2278.0,
+      "depthMm": 35.0,
+      "connectorFamily": "MC4-compatible",
+      "positiveLeadLengthMm": 1200.0,
+      "negativeLeadLengthMm": 1200.0,
+      "isCustom": true
+    }
+  ],
+  "panels": [
+    {
+      "id": "00000000000000000000000000000050",
+      "definitionId": "00000000000000000000000000000010",
+      "positionXMm": 500.0,
+      "positionYMm": 500.0,
+      "rotationDegrees": 0,
+      "positivePort": {
+        "id": "00000000000000000000000000000051",
+        "portType": "PVPositive",
+        "polarity": "Positive"
+      },
+      "negativePort": {
+        "id": "00000000000000000000000000000052",
+        "portType": "PVNegative",
+        "polarity": "Negative"
+      }
+    },
+    {
+      "id": "00000000000000000000000000000060",
+      "definitionId": "00000000000000000000000000000010",
+      "positionXMm": 1750.0,
+      "positionYMm": 500.0,
+      "rotationDegrees": 0,
+      "positivePort": {
+        "id": "00000000000000000000000000000061",
+        "portType": "PVPositive",
+        "polarity": "Positive"
+      },
+      "negativePort": {
+        "id": "00000000000000000000000000000062",
+        "portType": "PVNegative",
+        "polarity": "Negative"
+      }
+    }
+  ],
+  "connections": [],
+  "equipment": [
+    {
+      "id": "00000000000000000000000000000070",
+      "kind": "StringInverter",
+      "name": "Inverter 1",
+      "positionXMm": 5000.0,
+      "positionYMm": 9000.0,
+      "widthMm": 1000.0,
+      "heightMm": 500.0,
+      "rotationDegrees": 0,
+      "stringInputCount": 2,
+      "ratedAmps": 25,
+      "catalogSeries": "SEED-5K",
+      "ports": []
+    }
+  ],
+  "roofs": [
+    {
+      "name": "Main Roof",
+      "setbackMm": 457.2,
+      "vertices": [
+        {"x": 0.0, "y": 0.0},
+        {"x": 12000.0, "y": 0.0},
+        {"x": 12000.0, "y": 8000.0},
+        {"x": 0.0, "y": 8000.0}
+      ]
+    }
+  ],
+  "activeRoofId": "00000000000000000000000000000000",
+  "site": {
+    "locationName": "Phoenix, AZ",
+    "latitudeDegrees": 33.45,
+    "longitudeDegrees": -112.07,
+    "minAmbientCelsius": -5.0,
+    "hotCellCelsius": 85.0,
+    "peakSunHoursPerDay": 6.5,
+    "systemDerateFactor": 0.82,
+    "arrayTiltDegrees": 30.0,
+    "arrayAzimuthDegrees": 180.0
+  },
+  "canvas": {
+    "showGrid": true,
+    "snapToGrid": false,
+    "panelSnapping": true,
+    "electricalTerminalSnapping": true,
+    "panelSpacingMm": 20.0,
+    "gridSizeMm": 100.0,
+    "zoom": 1.0
+  },
+  "racking": {
+    "rafterSpacingMm": 610.0,
+    "railOverhangMm": 200.0,
+    "attachmentEdgeOffsetMm": 150.0
+  }
+}

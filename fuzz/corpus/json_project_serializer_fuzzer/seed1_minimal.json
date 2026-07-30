@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 10,
+  "projectId": "00000000000000000000000000000001",
+  "name": "Minimal Seed",
+  "lengthUnit": "Meters",
+  "definitions": [],
+  "panels": [],
+  "connections": [],
+  "equipment": [],
+  "roofs": [],
+  "activeRoofId": "00000000000000000000000000000000",
+  "site": {
+    "locationName": "Temperate",
+    "peakSunHoursPerDay": 4.5,
+    "systemDerateFactor": 0.85
+  },
+  "canvas": {
+    "showGrid": true,
+    "panelSpacingMm": 20
+  },
+  "racking": {}
+}

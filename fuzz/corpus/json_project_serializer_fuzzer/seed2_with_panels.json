@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 10,
+  "projectId": "00000000000000000000000000000002",
+  "name": "Two Panels Seed",
+  "lengthUnit": "Meters",
+  "definitions": [
+    {
+      "id": "00000000000000000000000000000010",
+      "manufacturer": "Seed",
+      "model": "Seed 400 W",
+      "pmaxWatts": 400.0,
+      "vmpVolts": 31.25,
+      "impAmps": 12.8,
+      "vocVolts": 37.1,
+      "iscAmps": 13.5,
+      "widthMm": 1134.0,
+      "heightMm": 1722.0,
+      "depthMm": 35.0,
+      "connectorFamily": "MC4-compatible",
+      "positiveLeadLengthMm": 1000.0,
+      "negativeLeadLengthMm": 1000.0,
+      "isCustom": true
+    }
+  ],
+  "panels": [
+    {
+      "id": "00000000000000000000000000000020",
+      "definitionId": "00000000000000000000000000000010",
+      "positionXMm": 1000.0,
+      "positionYMm": 1000.0,
+      "rotationDegrees": 0,
+      "visualMode": "Simple",
+      "positivePort": {
+        "id": "00000000000000000000000000000021",
+        "portType": "PVPositive",
+        "polarity": "Positive",
+        "connectorFamily": "MC4-compatible",
+        "connectorInterface": "Male"
+      },
+      "negativePort": {
+        "id": "00000000000000000000000000000022",
+        "portType": "PVNegative",
+        "polarity": "Negative",
+        "connectorFamily": "MC4-compatible",
+        "connectorInterface": "Female"
+      }
+    },
+    {
+      "id": "00000000000000000000000000000030",
+      "definitionId": "00000000000000000000000000000010",
+      "positionXMm": 2500.0,
+      "positionYMm": 1000.0,
+      "rotationDegrees": 0,
+      "visualMode": "Simple",
+      "positivePort": {
+        "id": "00000000000000000000000000000031",
+        "portType": "PVPositive",
+        "polarity": "Positive",
+        "connectorFamily": "MC4-compatible",
+        "connectorInterface": "Male"
+      },
+      "negativePort": {
+        "id": "00000000000000000000000000000032",
+        "portType": "PVNegative",
+        "polarity": "Negative",
+        "connectorFamily": "MC4-compatible",
+        "connectorInterface": "Female"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "00000000000000000000000000000040",
+      "startPortId": "00000000000000000000000000000022",
+      "endPortId": "00000000000000000000000000000031",
+      "wire": {
+        "gaugeAwg": 10,
+        "wireType": "PV Wire",
+        "material": "Copper",
+        "color": "Black",
+        "oneWayLengthMm": 1500.0
+      }
+    }
+  ],
+  "equipment": [],
+  "roofs": [],
+  "activeRoofId": "00000000000000000000000000000000",
+  "site": {
+    "locationName": "Seed Site",
+    "latitudeDegrees": -33.87,
+    "longitudeDegrees": 151.21,
+    "minAmbientCelsius": 2.0,
+    "hotCellCelsius": 70.0,
+    "peakSunHoursPerDay": 4.5,
+    "systemDerateFactor": 0.85,
+    "arrayTiltDegrees": 25.0,
+    "arrayAzimuthDegrees": 180.0
+  },
+  "canvas": {
+    "showGrid": true,
+    "gridSizeMm": 100.0
+  },
+  "racking": {}
+}

@@ -1,7 +1,30 @@
 name: solarSim
 language: c++
 fuzz_targets:
-  - solar_module_catalog_fuzzer
+  - bom_schedule_fuzzer
+  - connection_validator_fuzzer
+  - design_report_fuzzer
+  - electrical_graph_fuzzer
+  - equipment_fuzzer
+  - json_project_serializer_fuzzer
+  - mc4_connector_fuzzer
+  - mppt_compatibility_fuzzer
+  - panel_port_layout_fuzzer
+  - production_estimate_fuzzer
   - project_file_fuzzer
+  - project_validator_fuzzer
+  - racking_layout_fuzzer
   - roof_geometry_fuzzer
+  - roof_surface_fuzzer
+  - shading_analysis_fuzzer
+  - site_conditions_fuzzer
+  - solar_math_fuzzer
+  - solar_module_catalog_fuzzer
+  - solar_project_state_fuzzer
+  - string_calculation_fuzzer
+  - string_sizing_fuzzer
+  - temperature_derating_fuzzer
+  - voltage_drop_fuzzer
+  - wire_gauge_format_fuzzer
   - wire_route_fuzzer
+  - yield_simulator_fuzzer
