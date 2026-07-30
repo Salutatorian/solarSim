@@ -1,0 +1,4 @@
+name: solarSim
+language: c++
+fuzz_targets:
+  - solar_module_catalog_fuzzer
