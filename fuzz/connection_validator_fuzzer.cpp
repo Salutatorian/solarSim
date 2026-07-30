@@ -24,8 +24,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     solar_guid_t id1, id2;
     solar_panel_guid_from_u64_pair(&id1, 0, 1);
     solar_panel_guid_from_u64_pair(&id2, 0, 2);
-    solar_equipment_instance_init(&start_owner, &id1, SOLAR_EQUIPMENT_STRING_INVERTER, "Inv1");
-    solar_equipment_instance_init(&end_owner, &id2, SOLAR_EQUIPMENT_BATTERY, "Bat1");
+    solar_mppt_equipment_instance_init(&start_owner, &id1, SOLAR_EQUIPMENT_STRING_INVERTER, "Inv1");
+    solar_mppt_equipment_instance_init(&end_owner, &id2, SOLAR_EQUIPMENT_BATTERY, "Bat1");
 
     solar_connection_validation_result_t result;
     solar_connection_validator_validate(&start_port.base, &end_port.base, &start_owner, &end_owner, &result);

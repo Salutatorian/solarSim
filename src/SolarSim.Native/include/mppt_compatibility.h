@@ -115,7 +115,7 @@ typedef struct {
 } solar_inverter_mppt_report_t;
 
 /* Equipment helpers. */
-void solar_equipment_instance_init(solar_equipment_instance_t *eq, const solar_guid_t *id, solar_equipment_kind_t kind, const char *name);
+void solar_mppt_equipment_instance_init(solar_equipment_instance_t *eq, const solar_guid_t *id, solar_equipment_kind_t kind, const char *name);
 bool solar_equipment_add_port(solar_equipment_instance_t *eq, const solar_equipment_port_t *port);
 solar_equipment_port_t *solar_equipment_find_port_by_label(solar_equipment_instance_t *eq, const char *label);
 solar_equipment_port_t *solar_equipment_find_port_by_type_and_label(solar_equipment_instance_t *eq, int port_type, const char *label);
@@ -124,7 +124,7 @@ bool solar_equipment_is_battery_disconnect(const solar_equipment_instance_t *eq)
 bool solar_equipment_is_battery(const solar_equipment_instance_t *eq);
 
 /* Factory helpers for common inverters. */
-void solar_equipment_create_string_inverter(solar_equipment_instance_t *eq, const solar_guid_t *id, const solar_inverter_electrical_specs_t *specs, const char *name);
+void solar_mppt_equipment_create_string_inverter(solar_equipment_instance_t *eq, const solar_guid_t *id, const solar_inverter_electrical_specs_t *specs, const char *name);
 
 /* Evaluate a single inverter's MPPT inputs against the graph and string results. */
 void solar_mppt_compatibility_evaluate_inverter(

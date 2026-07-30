@@ -19,21 +19,21 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     if (Size < 1) return 0;
 
     solar_site_design_conditions_t conditions;
-    solar_site_conditions_init(&conditions);
+    solar_site_design_conditions_init(&conditions);
 
     size_t preset_count = solar_site_climate_preset_count();
     size_t preset_index = Data[0] % (preset_count + 1);
     if (preset_index < preset_count) {
         const solar_site_climate_preset_t *preset = solar_site_climate_preset_at(preset_index);
         if (preset) {
-            solar_site_conditions_apply_preset(&conditions, preset);
+            solar_site_conditions_apply_preset_to_design(&conditions, preset);
         }
     }
 
     if (Size >= 2) {
         const solar_site_climate_preset_t *by_id = solar_site_climate_preset_by_id("sydney");
         if (by_id) {
-            solar_site_conditions_apply_preset(&conditions, by_id);
+            solar_site_conditions_apply_preset_to_design(&conditions, by_id);
         }
     }
 

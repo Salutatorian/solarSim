@@ -54,13 +54,13 @@ typedef struct {
 } solar_site_design_conditions_t;
 
 /* Lifecycle and mutation. */
-void solar_site_conditions_init(solar_site_design_conditions_t *conditions);
-void solar_site_conditions_clone(
+void solar_site_design_conditions_init(solar_site_design_conditions_t *conditions);
+void solar_site_design_conditions_clone(
     const solar_site_design_conditions_t *source,
     solar_site_design_conditions_t *dest);
 
 /* Apply a climate preset, deriving tilt/azimuth from latitude when available. */
-bool solar_site_conditions_apply_preset(
+bool solar_site_conditions_apply_preset_to_design(
     solar_site_design_conditions_t *conditions,
     const solar_site_climate_preset_t *preset);
 

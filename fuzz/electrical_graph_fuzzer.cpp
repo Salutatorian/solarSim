@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "electrical_graph.h"
+#include "string_calculation.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     if (size < 16) return 0;
@@ -21,13 +22,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         solar_electrical_graph_add_panel(&graph, &panel);
     }
 
-    if (graph.string_count > 0) {
-        for (size_t s = 0; s < graph.string_count && s < 4; s++) {
-            solar_string_result_t result;
-            solar_electrical_graph_evaluate_string(&graph, &graph.strings[s], &result);
-        }
-    }
+    solar_electrical_graph_rebuild_strings(&graph);
 
-    solar_electrical_graph_discover_strings(&graph);
+    solar_definition_catalog_t catalog;
+    solar_definition_catalog_init(&catalog);
+    solar_definition_catalog_add(&catalog, &def);
+
+    solar_project_result_t result;
+    solar_calculate_project(&graph, &catalog, &result);
     return 0;
 }

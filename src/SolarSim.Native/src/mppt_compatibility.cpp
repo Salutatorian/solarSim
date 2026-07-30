@@ -42,7 +42,7 @@ static void add_issue(solar_mppt_issue_t *list, size_t *count, size_t max_count,
     (*count)++;
 }
 
-void solar_equipment_instance_init(solar_equipment_instance_t *eq, const solar_guid_t *id, solar_equipment_kind_t kind, const char *name) {
+void solar_mppt_equipment_instance_init(solar_equipment_instance_t *eq, const solar_guid_t *id, solar_equipment_kind_t kind, const char *name) {
     if (!eq || !id) return;
     std::memset(eq, 0, sizeof(*eq));
     eq->id = *id;
@@ -98,9 +98,9 @@ bool solar_equipment_is_battery(const solar_equipment_instance_t *eq) {
     return eq && eq->kind == SOLAR_EQUIPMENT_BATTERY;
 }
 
-void solar_equipment_create_string_inverter(solar_equipment_instance_t *eq, const solar_guid_t *id, const solar_inverter_electrical_specs_t *specs, const char *name) {
+void solar_mppt_equipment_create_string_inverter(solar_equipment_instance_t *eq, const solar_guid_t *id, const solar_inverter_electrical_specs_t *specs, const char *name) {
     if (!eq || !id) return;
-    solar_equipment_instance_init(eq, id, SOLAR_EQUIPMENT_STRING_INVERTER, name);
+    solar_mppt_equipment_instance_init(eq, id, SOLAR_EQUIPMENT_STRING_INVERTER, name);
     if (specs) {
         eq->inverter_specs = *specs;
         eq->has_inverter_specs = true;

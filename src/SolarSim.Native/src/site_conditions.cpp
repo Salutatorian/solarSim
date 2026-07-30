@@ -108,7 +108,7 @@ double solar_site_default_peak_sun_hours_per_day(void) { return 4.5; }
 
 double solar_site_default_system_derate_factor(void) { return 0.85; }
 
-void solar_site_conditions_init(solar_site_design_conditions_t *conditions) {
+void solar_site_design_conditions_init(solar_site_design_conditions_t *conditions) {
     if (!conditions) return;
     std::memset(conditions, 0, sizeof(*conditions));
     copy_string(conditions->location_name, SOLAR_SITE_LOCATION_NAME_LEN, "Unspecified");
@@ -122,18 +122,18 @@ void solar_site_conditions_init(solar_site_design_conditions_t *conditions) {
     conditions->array_azimuth_degrees = 180.0;
 }
 
-void solar_site_conditions_clone(
+void solar_site_design_conditions_clone(
     const solar_site_design_conditions_t *source,
     solar_site_design_conditions_t *dest) {
     if (!dest) return;
     if (!source) {
-        solar_site_conditions_init(dest);
+        solar_site_design_conditions_init(dest);
         return;
     }
     std::memcpy(dest, source, sizeof(*dest));
 }
 
-bool solar_site_conditions_apply_preset(
+bool solar_site_conditions_apply_preset_to_design(
     solar_site_design_conditions_t *conditions,
     const solar_site_climate_preset_t *preset) {
     if (!conditions || !preset) return false;

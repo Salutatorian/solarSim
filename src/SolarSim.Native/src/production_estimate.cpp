@@ -124,6 +124,18 @@ static double temperature_factor(double hot_cell_celsius) {
     return clamp_double(1.0 - loss, 0.85, 1.0);
 }
 
+static double production_per_month(
+    double kw,
+    double peak_sun_hours,
+    double derate,
+    int days_in_month,
+    double tilt_factor,
+    double azimuth_factor,
+    double temperature_factor) {
+    return kw * peak_sun_hours * days_in_month * derate *
+           tilt_factor * azimuth_factor * temperature_factor;
+}
+
 static bool equal_case_insensitive(const char *a, const char *b) {
     if (!a || !b) return a == b;
     while (*a && *b) {
@@ -241,7 +253,8 @@ void solar_detailed_production_estimate(
     for (int m = 0; m < 12; ++m) {
         double season = seasonal_factor(m, has_lat, lat);
         double month_psh = base_psh * season;
-        double kwh = kw * month_psh * DAYS_IN_MONTH[m] * derate * t_factor * a_factor * temp_factor;
+        double kwh = production_per_month(
+            kw, month_psh, derate, DAYS_IN_MONTH[m], t_factor, a_factor, temp_factor);
         annual += kwh;
         out->months[m].month = m + 1;
         out->months[m].month_name = MONTH_NAMES[m];

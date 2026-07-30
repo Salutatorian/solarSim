@@ -42,7 +42,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     solar_guid_t inv_id;
     solar_panel_guid_from_u64_pair(&inv_id, 0, 0x100);
     solar_equipment_instance_t inverter;
-    solar_equipment_create_string_inverter(&inverter, &inv_id, &inverter_specs, "Fuzzer Inverter");
+    solar_mppt_equipment_create_string_inverter(&inverter, &inv_id, &inverter_specs, "Fuzzer Inverter");
 
     solar_project_result_t project;
     solar_calculate_project(&graph, &catalog, &project);
