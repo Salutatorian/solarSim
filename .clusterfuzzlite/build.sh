@@ -17,29 +17,48 @@ WORK="${WORK:-${SRC}/work}"
 mkdir -p "${OUT}"
 mkdir -p "${WORK}/native_build"
 
-# Native library: solar module catalog parser.
-"${CXX}" ${CXXFLAGS} -I"${SRC}/src/SolarSim.Native/include" \
-    -c "${SRC}/src/SolarSim.Native/src/solar_module_catalog.cpp" \
-    -o "${WORK}/native_build/solar_module_catalog.o"
+INC="${SRC}/src/SolarSim.Native/include"
 
-# Fuzzer harness.
-"${CXX}" ${CXXFLAGS} -I"${SRC}/src/SolarSim.Native/include" \
-    -c "${SRC}/fuzz/solar_module_catalog_fuzzer.cpp" \
-    -o "${WORK}/native_build/solar_module_catalog_fuzzer.o"
+# Compile all native library source files into object files.
+NATIVE_SRCS=(
+    "${SRC}/src/SolarSim.Native/src/solar_module_catalog.cpp"
+    "${SRC}/src/SolarSim.Native/src/solar_panel.cpp"
+    "${SRC}/src/SolarSim.Native/src/electrical_graph.cpp"
+    "${SRC}/src/SolarSim.Native/src/string_calculation.cpp"
+    "${SRC}/src/SolarSim.Native/src/roof_geometry.cpp"
+    "${SRC}/src/SolarSim.Native/src/wire_route.cpp"
+    "${SRC}/src/SolarSim.Native/src/project_file.cpp"
+    "${SRC}/src/SolarSim.Native/src/units.cpp"
+)
 
-# Link fuzzer into $OUT.
-"${CXX}" ${CXXFLAGS} ${LIB_FUZZING_ENGINE} \
-    "${WORK}/native_build/solar_module_catalog.o" \
-    "${WORK}/native_build/solar_module_catalog_fuzzer.o" \
-    -o "${OUT}/solar_module_catalog_fuzzer"
+NATIVE_OBJS=()
+for src in "${NATIVE_SRCS[@]}"; do
+    obj="${WORK}/native_build/$(basename "${src}" .cpp).o"
+    "${CXX}" ${CXXFLAGS} -I"${INC}" -c "${src}" -o "${obj}"
+    NATIVE_OBJS+=("${obj}")
+done
 
-# Package seeds as an OSS-Fuzz-style seed corpus zip. The runner also
-# auto-discovers corpus/ directories, but this guarantees seeds are used.
-CORPUS_DIR="${SRC}/fuzz/corpus/solar_module_catalog_fuzzer"
-if [ -d "${CORPUS_DIR}" ] && command -v zip >/dev/null 2>&1; then
-    zip -j -r "${OUT}/solar_module_catalog_fuzzer_seed_corpus.zip" \
-        "${CORPUS_DIR}"
-fi
+# Build each fuzzer harness.
+build_fuzzer() {
+    local name="$1"
+    "${CXX}" ${CXXFLAGS} -I"${INC}" \
+        -c "${SRC}/fuzz/${name}.cpp" \
+        -o "${WORK}/native_build/${name}.o"
+    "${CXX}" ${CXXFLAGS} ${LIB_FUZZING_ENGINE} \
+        "${NATIVE_OBJS[@]}" \
+        "${WORK}/native_build/${name}.o" \
+        -o "${OUT}/${name}"
 
-echo "Build complete: ${OUT}/solar_module_catalog_fuzzer"
+    local corpus_dir="${SRC}/fuzz/corpus/${name}"
+    if [ -d "${corpus_dir}" ] && command -v zip >/dev/null 2>&1; then
+        zip -j -r "${OUT}/${name}_seed_corpus.zip" "${corpus_dir}"
+    fi
+}
+
+build_fuzzer "solar_module_catalog_fuzzer"
+build_fuzzer "project_file_fuzzer"
+build_fuzzer "roof_geometry_fuzzer"
+build_fuzzer "wire_route_fuzzer"
+
+echo "Build complete."
 ls -la "${OUT}"

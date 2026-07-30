@@ -2,3 +2,6 @@ name: solarSim
 language: c++
 fuzz_targets:
   - solar_module_catalog_fuzzer
+  - project_file_fuzzer
+  - roof_geometry_fuzzer
+  - wire_route_fuzzer
