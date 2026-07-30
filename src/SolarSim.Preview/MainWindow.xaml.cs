@@ -3126,49 +3126,47 @@ public partial class MainWindow : Window
 
     private Button CreateAddTile(AddCatalogItem item)
     {
-        var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        const double tileW = 108;
+        const double tileH = 118;
+        const double textMax = tileW - 12;
+
+        // Fixed thumb slot so photo tiles and glyph tiles share one footprint.
+        UIElement thumbContent;
         if (!string.IsNullOrWhiteSpace(item.ImageAsset))
         {
             try
             {
-                var bmp = LoadEquipmentFaceBitmap(item.ImageAsset!);
-                stack.Children.Add(new Image
+                thumbContent = new Image
                 {
-                    Source = bmp,
+                    Source = LoadEquipmentFaceBitmap(item.ImageAsset!),
                     Width = 52,
                     Height = 40,
                     Stretch = Stretch.Uniform,
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 0, 0, 4),
-                });
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
             }
             catch
             {
-                stack.Children.Add(new TextBlock
-                {
-                    Text = item.Glyph,
-                    FontSize = 18,
-                    Foreground = (Brush)FindResource("AccentBrush"),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 2, 0, 4),
-                });
+                thumbContent = CreateAddTileGlyph(item.Glyph);
             }
         }
         else
         {
-            stack.Children.Add(new TextBlock
-            {
-                Text = item.Glyph,
-                FontSize = 18,
-                Foreground = (Brush)FindResource("AccentBrush"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 2, 0, 4),
-            });
+            thumbContent = CreateAddTileGlyph(item.Glyph);
         }
 
-        var tileW = !string.IsNullOrWhiteSpace(item.ImageAsset) ? 108.0 : 96.0;
-        var textMax = tileW - 12;
+        var thumb = new Border
+        {
+            Width = 56,
+            Height = 44,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Child = thumbContent,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
 
+        var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        stack.Children.Add(thumb);
         stack.Children.Add(new TextBlock
         {
             Text = item.Title,
@@ -3178,7 +3176,10 @@ public partial class MainWindow : Window
             HorizontalAlignment = HorizontalAlignment.Center,
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
             MaxWidth = textMax,
+            Height = 16,
+            Margin = new Thickness(0, 0, 0, 2),
         });
         stack.Children.Add(new TextBlock
         {
@@ -3188,7 +3189,9 @@ public partial class MainWindow : Window
             HorizontalAlignment = HorizontalAlignment.Center,
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
             MaxWidth = textMax,
+            Height = 26,
             LineHeight = 12,
         });
 
@@ -3198,9 +3201,12 @@ public partial class MainWindow : Window
             Content = stack,
             Tag = item.Key,
             Width = tileW,
-            Height = double.NaN,
-            MinHeight = !string.IsNullOrWhiteSpace(item.ImageAsset) ? 108 : 86,
-            Padding = new Thickness(6, 6, 6, 7),
+            Height = tileH,
+            MinWidth = tileW,
+            MinHeight = tileH,
+            MaxWidth = tileW,
+            MaxHeight = tileH,
+            Padding = new Thickness(6, 6, 6, 6),
             ToolTip = $"{item.Title} — {item.Subtitle}",
         };
         btn.Click += (_, _) =>
@@ -3210,6 +3216,16 @@ public partial class MainWindow : Window
         };
         return btn;
     }
+
+    private TextBlock CreateAddTileGlyph(string glyph) =>
+        new()
+        {
+            Text = glyph,
+            FontSize = 18,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
 
     private void AddSearch_TextChanged(object sender, TextChangedEventArgs e) => RefreshAddPalette();
 

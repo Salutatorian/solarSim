@@ -302,6 +302,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Auto-route prefers the short gap corridor between facing ports (battery↔disconnect) instead of looping around the outside of both boxes
 - Still avoids crossing other component bodies; outer gutters remain as fallback
 
+### Uniform Add catalog tiles (`0.1.29`)
+- Electrical / Add palette tiles share one fixed 108×118 size (photo and glyph cards alike)
+
 ---
 
 ## How to verify for submission

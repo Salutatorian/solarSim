@@ -1,11 +1,10 @@
-solarSim 0.1.28
+solarSim 0.1.29
 Released: 2026-07-30
 
-Wiring
-• Moving battery / disconnect no longer draws giant outer loops
-• Routes take the short gap between facing ports, then around only if needed
-• Still avoids running through other equipment bodies
+Add palette
+• Every catalog tile is the same size (108×118) — no more short MC4 / tall AC cards
+• Shared thumb slot so photos and Y+/icon tiles line up in the grid
 
 Earlier
+• 0.1.28 — short clean equipment wires
 • 0.1.27 — Properties scrollbar gutter
-• 0.1.26 — battery BAT snap + sticky zoom wires
