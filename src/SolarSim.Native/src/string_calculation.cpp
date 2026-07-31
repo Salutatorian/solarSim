@@ -74,12 +74,12 @@ double solar_hot_vmp_volts(double vmp_at_stc, double temp_coeff_vmp_pct_per_c, d
 }
 
 static bool is_mixed_module_string(
-    const solar_panel_definition_t *defs,
+    const solar_panel_definition_t * const *defs,
     size_t count) {
     if (count <= 1) return false;
-    const double first_imp = defs[0].imp_amps;
+    const double first_imp = defs[0]->imp_amps;
     for (size_t i = 1; i < count; i++) {
-        if (std::fabs(defs[i].imp_amps - first_imp) > 0.05) {
+        if (std::fabs(defs[i]->imp_amps - first_imp) > 0.05) {
             return true;
         }
     }
