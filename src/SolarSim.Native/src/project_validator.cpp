@@ -7,6 +7,7 @@
 #include "electrical_graph.h"
 #include "roof_geometry.h"
 #include "string_calculation.h"
+#include "temperature_derating.h"
 
 void project_validator_add_issue(
     project_validator_result_t *result,
@@ -32,17 +33,17 @@ bool project_validator_check_site_temperatures(
     const solar_project_state_t *state,
     project_validator_result_t *out_result) {
     if (!state || !out_result) return false;
-    if (state->site.min_ambient_c < -60.0 || state->site.min_ambient_c > 60.0) {
+    if (state->site.min_ambient_celsius < -60.0 || state->site.min_ambient_celsius > 60.0) {
         project_validator_add_issue(out_result, PROJECT_VALIDATOR_ERROR,
             "SITE_TEMP_RANGE", "Site min ambient temperature is outside a realistic range.");
         return false;
     }
-    if (state->site.hot_cell_c < -20.0 || state->site.hot_cell_c > 120.0) {
+    if (state->site.hot_cell_celsius < -20.0 || state->site.hot_cell_celsius > 120.0) {
         project_validator_add_issue(out_result, PROJECT_VALIDATOR_ERROR,
             "SITE_TEMP_RANGE", "Site hot cell temperature is outside a realistic range.");
         return false;
     }
-    if (state->site.hot_cell_c <= state->site.min_ambient_c) {
+    if (state->site.hot_cell_celsius <= state->site.min_ambient_celsius) {
         project_validator_add_issue(out_result, PROJECT_VALIDATOR_WARNING,
             "SITE_TEMP_ORDER", "Hot cell temperature should be greater than min ambient temperature.");
     }
@@ -68,10 +69,10 @@ bool project_validator_check_inverter_dc_voltage(
             if (!comp || comp->kind != SOLAR_COMPONENT_PANEL) continue;
             const solar_panel_definition_t *def = solar_definition_catalog_find(&state->definitions, &comp->data.panel.definition_id);
             if (!def) continue;
-            cold_voc += solar_cold_voc_volts(def->voc_volts, def->temp_coeff_voc_pct_per_c,
-                state->site.min_ambient_c - 25.0);
-            hot_vmp += solar_hot_vmp_volts(def->vmp_volts, def->temp_coeff_vmp_pct_per_c,
-                state->site.hot_cell_c - 25.0);
+            cold_voc += solar_cold_voc_volts(def->voc_volts, solar_resolve_voc_temp_coeff_pct_per_c(def),
+                state->site.min_ambient_celsius - 25.0);
+            hot_vmp += solar_hot_vmp_volts(def->vmp_volts, solar_resolve_voc_temp_coeff_pct_per_c(def),
+                state->site.hot_cell_celsius - 25.0);
         }
         if (cold_voc > DEFAULT_MAX_DC_VOLTS) {
             project_validator_add_issue(out_result, PROJECT_VALIDATOR_ERROR,
