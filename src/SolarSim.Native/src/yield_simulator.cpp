@@ -1,6 +1,7 @@
 #include "yield_simulator.h"
 
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 
 #ifndef M_PI

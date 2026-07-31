@@ -1,9 +1,10 @@
 #include "production_estimate.h"
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
 #include <cctype>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 #include <string>
 
 #ifndef M_PI
