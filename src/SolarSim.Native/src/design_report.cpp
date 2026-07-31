@@ -209,7 +209,7 @@ static void build_bom_text(
     }
 
     for (const auto &eq : state->equipment) {
-        std::snprintf(buf, sizeof(buf), "%-6zu %-6s %-12s %s (%s)\n",
+        std::snprintf(buf, sizeof(buf), "%-6d %-6s %-12s %s (%s)\n",
                         1, "ea", "Equipment", eq.name, eq.catalog_series);
         bom += buf;
     }
@@ -406,7 +406,7 @@ static void build_svg(const design_report_t *report, std::string &svg) {
     if (svg_h < 220.0) svg_h = 220.0;
     if (svg_h > 900.0) svg_h = 900.0;
 
-    char buf[128];
+    char buf[256];
     svg += "<svg xmlns=\"http://www.w3.org/2000/svg\" ";
     std::snprintf(buf, sizeof(buf), "width=\"%.0f\" height=\"%.0f\" ", svg_w, svg_h);
     svg += buf;

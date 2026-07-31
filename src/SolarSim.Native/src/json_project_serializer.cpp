@@ -473,6 +473,13 @@ static void make_guid(solar_guid_t *guid) {
     guid->id_low = g_next_guid_low++;
 }
 
+static bool parse_hex_nibble(char c, uint8_t *out) {
+    if (c >= '0' && c <= '9') { *out = static_cast<uint8_t>(c - '0'); return true; }
+    if (c >= 'a' && c <= 'f') { *out = static_cast<uint8_t>(c - 'a' + 10); return true; }
+    if (c >= 'A' && c <= 'F') { *out = static_cast<uint8_t>(c - 'A' + 10); return true; }
+    return false;
+}
+
 static bool parse_guid(const char *str, solar_guid_t *out) {
     if (!str || !out) return false;
     uint8_t bytes[16] = {0};
@@ -481,8 +488,8 @@ static bool parse_guid(const char *str, solar_guid_t *out) {
     while (str[i] != '\0' && byte_count < 16) {
         if (str[i] == '-') { ++i; continue; }
         uint8_t hi, lo;
-        if (!parser::parse_hex_nibble(str[i], &hi)) goto hash_guid;
-        if (str[i + 1] == '\0' || !parser::parse_hex_nibble(str[i + 1], &lo)) goto hash_guid;
+        if (!parse_hex_nibble(str[i], &hi)) goto hash_guid;
+        if (str[i + 1] == '\0' || !parse_hex_nibble(str[i + 1], &lo)) goto hash_guid;
         bytes[byte_count++] = static_cast<uint8_t>((hi << 4) | lo);
         i += 2;
     }
@@ -1323,8 +1330,6 @@ static void serialize_project(const solar_project_state_t *state, writer &w) {
     serialize_racking(&state->racking, w);
     w.end_object();
 }
-
-} // namespace
 
 extern "C" {
 
