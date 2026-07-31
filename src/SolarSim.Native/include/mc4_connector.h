@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 #include "solar_panel.h"
+#include "wire_route.h"
 
 #ifdef __cplusplus
 extern "C" {
