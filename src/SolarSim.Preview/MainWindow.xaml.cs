@@ -389,16 +389,24 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
+        // Modeless — ShowDialog() disables the main window (no minimize / taskbar).
+        if (_openSettingsDialog is { IsLoaded: true } open)
+        {
+            if (open.WindowState == WindowState.Minimized)
+                open.WindowState = WindowState.Normal;
+            open.Activate();
+            return;
+        }
+
         var dlg = new SettingsDialog(GetAppVersion(), RefreshUpdateUi) { Owner = this };
         _openSettingsDialog = dlg;
         dlg.Closed += (_, _) =>
         {
             if (ReferenceEquals(_openSettingsDialog, dlg))
                 _openSettingsDialog = null;
+            RefreshUpdateUi();
         };
-        dlg.ShowDialog();
-        _openSettingsDialog = null;
-        RefreshUpdateUi();
+        dlg.Show();
     }
 
     private void UpdateToastLater_Click(object sender, RoutedEventArgs e)

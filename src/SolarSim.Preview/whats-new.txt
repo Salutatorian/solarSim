@@ -1,13 +1,10 @@
-solarSim 0.1.32
+solarSim 0.1.33
 Released: 2026-08-03
 
-Open / save safety
-• Fixed: opening a project no longer keeps the previous site, racking, or camera
-• Saves write via a temp file then replace (less chance of a truncated .solarproj)
-• Warns if some wires from the file could not be restored
-• Update check uses the Releases page first (avoids GitHub API rate-limit 403s)
-• Update zip extract rejects path-traversal entries
+Settings
+• Settings no longer locks the main window — minimize, taskbar, and canvas stay usable
+• Opening Settings again focuses the existing window
 
 Earlier
+• 0.1.32 — open copies site/racking/canvas; update check avoids API rate limits
 • 0.1.31 — panel string wires after open
-• 0.1.30 — removed System tab

@@ -321,6 +321,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Update check prefers `github.com/.../releases/latest` redirect so Settings spam does not hit the API 60/hour rate limit
 - Surface a warning when some wires fail to restore on open
 
+### Modeless Settings (`0.1.33`)
+- Settings opens with `Show()` instead of `ShowDialog()` so the main window stays usable (minimize, taskbar, canvas)
+
 ---
 
 ## How to verify for submission
