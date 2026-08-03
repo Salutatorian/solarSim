@@ -92,7 +92,6 @@ public partial class MainWindow : Window
     {
         Roof,
         Interior,  // UI label: Equipment
-        Combined,  // UI label: System
     }
 
     private enum UiTool
@@ -894,9 +893,7 @@ public partial class MainWindow : Window
 
         if (SiteTempsPanel is not null)
         {
-            // System tab focuses on topology; site stays in Project Settings / other plans.
-            var showSite = !hasSelection
-                           && _workspacePlan != WorkspacePlan.Combined;
+            var showSite = !hasSelection;
             SiteTempsPanel.Visibility = showSite ? Visibility.Visible : Visibility.Collapsed;
         }
         if (RackingPanel is not null)
@@ -904,8 +901,6 @@ public partial class MainWindow : Window
             var showRacking = !hasSelection
                 ? _uiTool == UiTool.Roof || _workspacePlan == WorkspacePlan.Roof
                 : _selectedPanelIds.Count > 0 || _uiTool == UiTool.Roof;
-            if (_workspacePlan == WorkspacePlan.Combined && !hasSelection)
-                showRacking = false;
             RackingPanel.Visibility = showRacking ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -1043,44 +1038,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_workspacePlan == WorkspacePlan.Combined)
-        {
-            InspectorHeading.Text = "System";
-            if (InspectorSubheading is not null)
-                InspectorSubheading.Text = FriendlyProjectName();
-            var sysCalc = _project.GetCalculationSnapshot();
-            AddInspectorSection("Array");
-            AddInspectorRow("Modules", $"{sysCalc.TotalPanels}");
-            AddInspectorRow("DC power", FormatPower(sysCalc.TotalPmaxWatts));
-            AddInspectorRow("Strings", $"{sysCalc.StringCount}");
-            if (sysCalc.TotalPanels > 0)
-                AddInspectorRow("Est. annual", $"~{_project.GetEnergyEstimate().EstimatedAnnualKwh:0} kWh");
-
-            if (sysCalc.Strings.Count > 0)
-            {
-                AddInspectorSection("Strings");
-                var si = 0;
-                foreach (var s in sysCalc.Strings)
-                {
-                    AddInspectorStringRow(si, s.DisplayName,
-                        $"{s.PanelCount} mod · {s.VmpVolts:0.#} Vmp · {s.VocVolts:0.#} Voc");
-                    si++;
-                }
-            }
-
-            AddInspectorSection("Path");
-            AddInspectorNote("Modules → String → [Combiner] → [PV Disc.] → Inverter MPPT");
-            AddInspectorNote("Inverter AC → [AC Disc.] → Load Center");
-
-            var invCount = _project.Graph.Equipment.Values.Count(e => e.Kind == EquipmentKind.StringInverter);
-            var combinerCount = _project.Graph.Equipment.Values.Count(e => e.Kind == EquipmentKind.CombinerBox);
-            AddInspectorSection("Gear");
-            AddInspectorRow("Inverters", $"{invCount}");
-            AddInspectorRow("Combiners", $"{combinerCount}");
-            AddInspectorNote("Design aid — not a stamped one-line. Full text: ⋯ → Single-Line.");
-            return;
-        }
-
         InspectorHeading.Text = "Project";
         if (InspectorSubheading is not null)
             InspectorSubheading.Text = FriendlyProjectName();
@@ -1138,7 +1095,7 @@ public partial class MainWindow : Window
 
     private void RebuildPanelVisuals()
     {
-        // Roof plan + Combined — Interior is equipment-only.
+        // Roof plan shows modules; Equipment plan is gear-only.
         if (!ShowsPanels)
         {
             foreach (var visual in _panelVisuals.Values.ToList())
@@ -2258,22 +2215,20 @@ public partial class MainWindow : Window
         {
             // Roof plan: module-to-module string wiring only.
             WorkspacePlan.Roof => startIsPanel && endIsPanel,
-            // Interior: equipment↔equipment only.
+            // Equipment: equipment↔equipment only.
             WorkspacePlan.Interior => startIsEquipment && endIsEquipment,
-            // Combined: show all DC runs including module↔equipment home-runs.
-            WorkspacePlan.Combined => true,
             _ => true,
         };
     }
 
     private bool ShowsRoofGeometry =>
-        _workspacePlan is WorkspacePlan.Roof or WorkspacePlan.Combined;
+        _workspacePlan == WorkspacePlan.Roof;
 
     private bool ShowsPanels =>
-        _workspacePlan is WorkspacePlan.Roof or WorkspacePlan.Combined;
+        _workspacePlan == WorkspacePlan.Roof;
 
     private bool ShowsEquipment =>
-        _workspacePlan is WorkspacePlan.Interior or WorkspacePlan.Combined;
+        _workspacePlan == WorkspacePlan.Interior;
 
     private Point2Mm GetPortWorldPoint(ElectricalPort port)
     {
@@ -2314,8 +2269,6 @@ public partial class MainWindow : Window
     private void RoofPlan_Click(object sender, RoutedEventArgs e) => SetWorkspacePlan(WorkspacePlan.Roof);
 
     private void InteriorPlan_Click(object sender, RoutedEventArgs e) => SetWorkspacePlan(WorkspacePlan.Interior);
-
-    private void CombinedPlan_Click(object sender, RoutedEventArgs e) => SetWorkspacePlan(WorkspacePlan.Combined);
 
     private void ThemeToggle_Click(object sender, RoutedEventArgs e)
     {
@@ -2420,10 +2373,6 @@ public partial class MainWindow : Window
                     or UiTool.Wire or UiTool.Measure or UiTool.Select)
                     _uiTool = UiTool.Add;
                 break;
-            case WorkspacePlan.Combined:
-                if (_layersCategory == LayersCategory.Equipment && _project.Graph.Equipment.Count == 0)
-                    _layersCategory = LayersCategory.Roofs;
-                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(plan), plan, null);
         }
@@ -2444,9 +2393,7 @@ public partial class MainWindow : Window
         // Category visibility is applied when opening Add (RefreshAddPalette).
         RoofToolsPanel.Visibility = Visibility.Collapsed;
         RackingPanel.Visibility = showRoofTools ? Visibility.Visible : Visibility.Collapsed;
-        SiteTempsPanel.Visibility = showEquipLib || _workspacePlan == WorkspacePlan.Combined
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        SiteTempsPanel.Visibility = showEquipLib ? Visibility.Visible : Visibility.Collapsed;
 
         LayersRoofsTab.Visibility = showRoofTools ? Visibility.Visible : Visibility.Collapsed;
         LayersPanelsTab.Visibility = showPanelsLib ? Visibility.Visible : Visibility.Collapsed;
@@ -2455,10 +2402,6 @@ public partial class MainWindow : Window
 
         StylePlanTab(RoofPlanButton, _workspacePlan == WorkspacePlan.Roof);
         StylePlanTab(InteriorPlanButton, _workspacePlan == WorkspacePlan.Interior);
-        StylePlanTab(CombinedPlanButton, _workspacePlan == WorkspacePlan.Combined);
-
-        if (_workspacePlan == WorkspacePlan.Combined)
-            SetInspectorOpen(true);
 
         UpdateToolRailStyles();
         UpdateContextToolbar();
@@ -2494,17 +2437,6 @@ public partial class MainWindow : Window
                 EmptyStateTitle.Text = "Add equipment";
                 EmptyStateBody.Text = "Place combiners, inverters, and batteries.";
                 EmptyStateButton.Content = "Add Inverter";
-                break;
-            }
-            case WorkspacePlan.Combined:
-            {
-                var empty = _project.Graph.Panels.Count == 0
-                    && _project.Graph.Equipment.Count == 0
-                    && !HasAnyRoofVertices();
-                EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
-                EmptyStateTitle.Text = "Build your system";
-                EmptyStateBody.Text = "Roof modules and equipment on one canvas.";
-                EmptyStateButton.Content = "Trace on map";
                 break;
             }
             default:

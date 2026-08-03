@@ -45,7 +45,7 @@ Launch-solarSim.bat
 
 Public beta builds ship on every `v*` tag:
 
-1. Open [Releases](https://github.com/Salutatorian/solarSim/releases) (latest: **v0.1.29**)
+1. Open [Releases](https://github.com/Salutatorian/solarSim/releases) (latest: **v0.1.30**)
 2. Download `solarSim-<version>-win-x64.zip`
 3. Unzip and run `solarSim.exe`
 
@@ -199,8 +199,8 @@ Full phase-by-phase history: **[CHANGELOG.md](CHANGELOG.md)** (keep updated for 
 - Clearsky POA estimate → inspector; built-in C# estimate remains default for Single-Line / reports
 - Install: `pip install pvlib pandas numpy`
 
-**Phase 2.3 — Combined plan + dark CAD HUD:** done
-- Tabs: **Roof** · **Interior** · **Combined** (modules + gear + home-run wiring)
+**Phase 2.3 — Dark CAD HUD:** done
+- Tabs: **Roof** · **Equipment** (combined System view deferred)
 - Dark CAD HUD default; top-bar **Light** / **Dark** toggle
 
 **Next:** Cesium / Unity roof parity · iterate public beta feedback

@@ -305,6 +305,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 ### Uniform Add catalog tiles (`0.1.29`)
 - Electrical / Add palette tiles share one fixed 108×118 size (photo and glyph cards alike)
 
+### Remove System tab (`0.1.30`)
+- Dropped the **System** (combined) workspace tab — plans are **Roof** and **Equipment** only for now
+- Combined roof+equipment canvas deferred to a later feature
+
 ---
 
 ## How to verify for submission

@@ -1,10 +1,10 @@
-solarSim 0.1.29
-Released: 2026-07-30
+solarSim 0.1.30
+Released: 2026-08-03
 
-Add palette
-• Every catalog tile is the same size (108×118) — no more short MC4 / tall AC cards
-• Shared thumb slot so photos and Y+/icon tiles line up in the grid
+Workspace
+• Removed the System tab (combined roof + equipment view)
+• Plans are Roof and Equipment only — combining them returns later
 
 Earlier
+• 0.1.29 — uniform Add catalog tiles
 • 0.1.28 — short clean equipment wires
-• 0.1.27 — Properties scrollbar gutter

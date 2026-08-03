@@ -52,8 +52,6 @@
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <Button x:Name="InteriorPlanButton" Content="Equipment" Style="{StaticResource NavTabButton}" Click="InteriorPlan_Click"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button x:Name="CombinedPlanButton" Content="System" Style="{StaticResource NavTabButton}" Click="CombinedPlan_Click"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
                     <Button Content="↶" Style="{StaticResource IconGhostButton}" Width="34" Click="Undo_Click" ToolTip="Undo"
