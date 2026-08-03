@@ -1357,7 +1357,7 @@ public partial class MainWindow : Window
         var (x, y) = WorldToCanvas(panel.PositionXMm, panel.PositionYMm);
         Canvas.SetLeft(visual.Root, x);
         Canvas.SetTop(visual.Root, y);
-        Panel.SetZIndex(visual.Root, 100); // above PV wires (z≈40), below ports (z≈960)
+        Panel.SetZIndex(visual.Root, 100); // below PV string wires (z≈115) and port overlays (z≈960)
         visual.Root.Width = size.Width;
         visual.Root.Height = size.Height;
         visual.Root.Background = Brushes.Transparent;
@@ -1451,19 +1451,23 @@ public partial class MainWindow : Window
             var p1 = GetPortCanvasPoint(start);
             var p2 = GetPortCanvasPoint(end);
             var selected = _selectedConnectionIds.Contains(connection.Id);
-            var thickness = selected ? 2.5 : 1.75;
+            var thickness = selected ? 2.75 : 2.15;
             var stroke = selected ? cableBrushSelected : cableBrush;
 
-            // Panel↔panel cables stay under modules; equipment cables sit above gear so they stay draggable.
+            // Panel jumpers above module faces so strings stay visible; equipment above gear.
             var startEq = _project.Graph.Equipment.ContainsKey(start.OwnerComponentId);
             var endEq = _project.Graph.Equipment.ContainsKey(end.OwnerComponentId);
-            var wireZ = selected ? 720 : (startEq || endEq ? 120 : 40);
-            var hitZ = selected ? 721 : (startEq || endEq ? 121 : 41);
+            var panelJumper = !startEq && !endEq;
+            var wireZ = selected ? 720 : (panelJumper ? 115 : 120);
+            var hitZ = selected ? 721 : (panelJumper ? 116 : 121);
 
             laneByConnection.TryGetValue(connection.Id, out var lane);
             var route = BuildPvWireRoute(start, end, p1, p2, connection, obstacles, lane.offset * laneSpacing);
-            // Lock auto-routes into world-mm waypoints so zoom/pan cannot reshuffle paths.
-            if (connection.Wire.Waypoints.Count == 0 && route.PathPoints.Count >= 3)
+            // Bake equipment corridors for zoom stability. Panel jumpers stay live so ports
+            // always own the path (old baked midpoints used to hide under modules).
+            if (!panelJumper
+                && connection.Wire.Waypoints.Count == 0
+                && route.PathPoints.Count >= 3)
             {
                 for (var i = 1; i < route.PathPoints.Count - 1; i++)
                 {
@@ -1471,7 +1475,6 @@ public partial class MainWindow : Window
                     connection.Wire.Waypoints.Add(new Point2Mm(xMm, yMm));
                 }
 
-                // Rebuild once with manual geometry so lane offsets don't apply.
                 route = BuildPvWireRoute(start, end, p1, p2, connection, obstacles, 0);
             }
 
@@ -1679,7 +1682,10 @@ public partial class MainWindow : Window
         }
 
         IReadOnlyList<PvVec2>? manual = null;
-        if (connection.Wire.Waypoints.Count > 0)
+        var startIsPanel = _project.Graph.Panels.ContainsKey(start.OwnerComponentId);
+        var endIsPanel = _project.Graph.Panels.ContainsKey(end.OwnerComponentId);
+        // Panel↔panel jumpers always live-route (ignore stale baked midpoints from older builds).
+        if (connection.Wire.Waypoints.Count > 0 && !(startIsPanel && endIsPanel))
         {
             manual = connection.Wire.Waypoints
                 .Select(wp =>
@@ -3613,15 +3619,35 @@ public partial class MainWindow : Window
             _project.EnsureDefinition(builtIn);
 
         foreach (var panel in loaded.Graph.Panels.Values)
+        {
+            // Panels came from a live graph — clear occupancy before re-link or TryConnect no-ops.
+            foreach (var port in panel.Ports)
+                port.ForceClearConnection();
             _project.Graph.AddPanel(panel);
+        }
 
         foreach (var equipment in loaded.Graph.Equipment.Values)
+        {
+            foreach (var port in equipment.Ports)
+                port.ForceClearConnection();
             _project.Graph.AddEquipment(equipment);
+        }
 
         foreach (var connection in loaded.Graph.Connections.Values)
         {
-            _project.Graph.TryConnect(connection.StartPortId, connection.EndPortId, connection.Wire.Clone(), out _);
+            var result = _project.Graph.TryConnect(
+                connection.StartPortId,
+                connection.EndPortId,
+                connection.Wire.Clone(),
+                out _);
+            if (!result.IsValid)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ReplaceProject: skipped wire {connection.Id}: {result.Errors.FirstOrDefault()?.Message}");
+            }
         }
+
+        _project.Graph.HealWiringVisualState();
 
         _project.Roofs.Clear();
         foreach (var roof in loaded.Roofs.Roofs)

@@ -309,6 +309,10 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Dropped the **System** (combined) workspace tab — plans are **Roof** and **Equipment** only for now
 - Combined roof+equipment canvas deferred to a later feature
 
+### Restore panel string wires after open (`0.1.31`)
+- Opening a project no longer leaves ports “occupied” with invisible wires (port links are cleared before reconnect)
+- Panel↔panel jumpers draw above module faces again; stale baked midpoints are ignored for live routing
+
 ---
 
 ## How to verify for submission

@@ -1,10 +1,11 @@
-solarSim 0.1.30
+solarSim 0.1.31
 Released: 2026-08-03
 
-Workspace
-• Removed the System tab (combined roof + equipment view)
-• Plans are Roof and Equipment only — combining them returns later
+Panel strings
+• Fixed: after Open/update, terminals said “already connected” but no wire showed
+• Panel string cables draw above the modules again
+• Re-open your .solarproj (or reconnect once) to see strings
 
 Earlier
+• 0.1.30 — removed System tab
 • 0.1.29 — uniform Add catalog tiles
-• 0.1.28 — short clean equipment wires

@@ -32,6 +32,59 @@ public class Phase07WireRoutingBomTests
     }
 
     [Fact]
+    public void Readding_connected_panels_requires_clearing_port_occupancy()
+    {
+        var project = new SolarProject();
+        var def = SolarPanelDefinition.CreateBoviet270();
+        var a = project.AddPanelFromDefinition(def.Id, 0, 0, recordHistory: false);
+        var b = project.AddPanelFromDefinition(def.Id, 2000, 0, recordHistory: false);
+        Assert.True(project.Graph.TryConnect(
+            a.PositivePort.Id, b.NegativePort.Id, null, out _).IsValid);
+
+        // Simulate ReplaceProject: clear graph maps but keep the same panel instances.
+        var panels = project.Graph.Panels.Values.ToList();
+        var wires = project.Graph.Connections.Values
+            .Select(c => (c.StartPortId, c.EndPortId, c.Wire.Clone()))
+            .ToList();
+        project.Graph.Clear();
+
+        foreach (var panel in panels)
+            project.Graph.AddPanel(panel);
+
+        // Without clearing occupancy, reconnect fails and wires vanish while ports stay "busy".
+        Assert.False(project.Graph.TryConnect(
+            wires[0].StartPortId, wires[0].EndPortId, wires[0].Item3, out _).IsValid);
+        Assert.Empty(project.Graph.Connections);
+
+        foreach (var panel in panels)
+        {
+            foreach (var port in panel.Ports)
+                port.ForceClearConnection();
+        }
+
+        Assert.True(project.Graph.TryConnect(
+            wires[0].StartPortId, wires[0].EndPortId, wires[0].Item3, out _).IsValid);
+        Assert.Single(project.Graph.Connections);
+        project.Graph.HealWiringVisualState();
+        Assert.Single(project.Graph.Connections);
+    }
+
+    [Fact]
+    public void Heal_clears_orphan_port_connection_ids()
+    {
+        var project = new SolarProject();
+        var def = SolarPanelDefinition.CreateBoviet270();
+        var a = project.AddPanelFromDefinition(def.Id, 0, 0, recordHistory: false);
+        var ghostId = Guid.NewGuid();
+        a.PositivePort.ForceClearConnection();
+        a.PositivePort.AssignConnection(ghostId);
+
+        Assert.True(a.PositivePort.IsOccupied);
+        project.Graph.HealWiringVisualState();
+        Assert.False(a.PositivePort.IsOccupied);
+    }
+
+    [Fact]
     public void Wire_waypoints_roundtrip_schema_7()
     {
         var project = new SolarProject();
