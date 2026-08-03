@@ -243,7 +243,11 @@ public static class SolarProjectSerializer
         var directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
-        File.WriteAllText(path, json);
+
+        // Write temp then replace so a crash mid-save doesn't truncate the project file.
+        var tempPath = path + ".tmp";
+        File.WriteAllText(tempPath, json);
+        File.Move(tempPath, path, overwrite: true);
         project.FilePath = path;
         project.Name = Path.GetFileNameWithoutExtension(path);
     }

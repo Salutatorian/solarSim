@@ -16,9 +16,11 @@ internal sealed class AppUpdateService
     public const string Owner = "Salutatorian";
     public const string Repo = "solarSim";
     private const string ApiLatest = "https://api.github.com/repos/Salutatorian/solarSim/releases/latest";
+    private const string LatestReleasePage = "https://github.com/Salutatorian/solarSim/releases/latest";
     private const string ReleaseDownloadPathPrefix = "/Salutatorian/solarSim/releases/download/";
 
     private static readonly HttpClient Http = CreateClient();
+    private static readonly HttpClient RedirectHttp = CreateRedirectClient();
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -54,6 +56,16 @@ internal sealed class AppUpdateService
         return http;
     }
 
+    private static HttpClient CreateRedirectClient()
+    {
+        var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+        {
+            Timeout = TimeSpan.FromSeconds(30),
+        };
+        http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("solarSim", "1.0"));
+        return http;
+    }
+
     public static string UpdatesRoot()
     {
         var dir = Path.Combine(
@@ -76,16 +88,43 @@ internal sealed class AppUpdateService
     {
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, ApiLatest);
-            using var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
-            resp.EnsureSuccessStatusCode();
-            await using var stream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-            var release = await JsonSerializer.DeserializeAsync<GitHubRelease>(stream, JsonOptions, ct)
-                .ConfigureAwait(false);
-            if (release is null || string.IsNullOrWhiteSpace(release.TagName))
-                return;
+            // Prefer github.com /releases/latest redirect — does not burn the unauthenticated
+            // api.github.com quota (60 requests / hour / IP), which Settings spam hits easily.
+            var resolved = await TryResolveLatestFromReleasePageAsync(ct).ConfigureAwait(false);
+            string? notes = null;
+            DateTimeOffset? publishedAt = null;
 
-            var remote = NormalizeVersion(release.TagName);
+            if (resolved is null)
+            {
+                // Fallback: GitHub API (may 403 when rate-limited).
+                var fromApi = await TryResolveLatestFromApiAsync(ct).ConfigureAwait(false);
+                if (fromApi is null)
+                {
+                    lock (_gate)
+                    {
+                        DownloadError ??=
+                            "Could not reach GitHub Releases. If you checked many times, wait up to an hour (API rate limit) and try again.";
+                    }
+                    Raise();
+                    return;
+                }
+
+                resolved = (fromApi.Value.TagName, fromApi.Value.Version, fromApi.Value.ZipUrl);
+                notes = fromApi.Value.Notes;
+                publishedAt = fromApi.Value.PublishedAt;
+            }
+            else
+            {
+                // Optional notes; ignore API failures (including rate limit).
+                var fromApi = await TryResolveLatestFromApiAsync(ct).ConfigureAwait(false);
+                if (fromApi is not null && fromApi.Value.Version == resolved.Value.Version)
+                {
+                    notes = fromApi.Value.Notes;
+                    publishedAt = fromApi.Value.PublishedAt;
+                }
+            }
+
+            var remote = resolved.Value.Version;
             var local = NormalizeVersion(currentVersion);
             if (!IsNewer(remote, local))
             {
@@ -102,19 +141,13 @@ internal sealed class AppUpdateService
                 return;
             }
 
-            var asset = release.Assets?.FirstOrDefault(a =>
-                a.Name is not null
-                && a.Name.EndsWith("-win-x64.zip", StringComparison.OrdinalIgnoreCase)
-                && IsAllowedAssetUrl(a.BrowserDownloadUrl));
-
-            if (asset?.BrowserDownloadUrl is null)
+            if (string.IsNullOrWhiteSpace(resolved.Value.ZipUrl) || !IsAllowedAssetUrl(resolved.Value.ZipUrl))
             {
-                // Tag exists but CI has not uploaded the zip yet — common for ~1–3 minutes after push.
                 lock (_gate)
                 {
                     Available = null;
                     DownloadError =
-                        $"Release {remote} is on GitHub but the Windows zip is not ready yet. Wait a minute and check again.";
+                        $"Release {remote} is on GitHub but the Windows zip URL is not allowed or missing.";
                 }
                 Raise();
                 return;
@@ -123,17 +156,18 @@ internal sealed class AppUpdateService
             var info = new UpdateInfo
             {
                 Version = remote,
-                TagName = release.TagName!,
-                Notes = release.Body?.Trim() ?? "",
-                ZipUrl = asset.BrowserDownloadUrl,
-                ZipName = asset.Name ?? $"solarSim-{remote}-win-x64.zip",
-                PublishedAt = release.PublishedAt,
+                TagName = resolved.Value.TagName,
+                Notes = notes?.Trim() ?? "",
+                ZipUrl = resolved.Value.ZipUrl,
+                ZipName = $"solarSim-{remote}-win-x64.zip",
+                PublishedAt = publishedAt,
             };
 
             lock (_gate)
             {
                 Available = info;
                 LastCheckedLatest = remote;
+                DownloadError = null;
                 if (DownloadComplete && File.Exists(StagedZipPath(info.Version)))
                 {
                     DownloadProgress01 = 1;
@@ -144,7 +178,6 @@ internal sealed class AppUpdateService
                     DownloadComplete = File.Exists(StagedZipPath(info.Version));
                     DownloadProgress01 = DownloadComplete ? 1 : 0;
                     DownloadProgressIndeterminate = false;
-                    DownloadError = null;
                 }
             }
 
@@ -156,8 +189,89 @@ internal sealed class AppUpdateService
         }
         catch (Exception ex)
         {
-            DownloadError = ex.Message;
+            DownloadError = FormatUpdateCheckError(ex);
             Raise();
+        }
+    }
+
+    private static string FormatUpdateCheckError(Exception ex)
+    {
+        var msg = ex.Message;
+        if (msg.Contains("403", StringComparison.Ordinal)
+            || msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return "GitHub rate limit hit (too many update checks from this network). Wait up to an hour, or open Releases in the browser.";
+        }
+
+        return msg;
+    }
+
+    /// <summary>
+    /// Resolve latest tag via HTTPS redirect on the releases page (no API quota).
+    /// </summary>
+    private async Task<(string TagName, string Version, string ZipUrl)?> TryResolveLatestFromReleasePageAsync(
+        CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, LatestReleasePage);
+        using var resp = await RedirectHttp.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct)
+            .ConfigureAwait(false);
+
+        if ((int)resp.StatusCode is < 300 or >= 400)
+            return null;
+
+        var location = resp.Headers.Location;
+        if (location is null) return null;
+        if (!location.IsAbsoluteUri)
+            location = new Uri(new Uri("https://github.com"), location);
+
+        // .../Salutatorian/solarSim/releases/tag/v0.1.32
+        var parts = location.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var tagIdx = Array.FindIndex(parts, p => p.Equals("tag", StringComparison.OrdinalIgnoreCase));
+        if (tagIdx < 0 || tagIdx + 1 >= parts.Length) return null;
+
+        var tagName = parts[tagIdx + 1];
+        var version = NormalizeVersion(tagName);
+        if (string.IsNullOrWhiteSpace(version)) return null;
+
+        var zipUrl =
+            $"https://github.com/{Owner}/{Repo}/releases/download/{tagName}/solarSim-{version}-win-x64.zip";
+        if (!IsAllowedAssetUrl(zipUrl)) return null;
+        return (tagName, version, zipUrl);
+    }
+
+    private async Task<(string TagName, string Version, string ZipUrl, string Notes, DateTimeOffset? PublishedAt)?>
+        TryResolveLatestFromApiAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, ApiLatest);
+            using var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
+            if ((int)resp.StatusCode == 403)
+                return null;
+
+            if (!resp.IsSuccessStatusCode)
+                return null;
+
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            var release = await JsonSerializer.DeserializeAsync<GitHubRelease>(stream, JsonOptions, ct)
+                .ConfigureAwait(false);
+            if (release is null || string.IsNullOrWhiteSpace(release.TagName))
+                return null;
+
+            var version = NormalizeVersion(release.TagName);
+            var asset = release.Assets?.FirstOrDefault(a =>
+                a.Name is not null
+                && a.Name.EndsWith("-win-x64.zip", StringComparison.OrdinalIgnoreCase)
+                && IsAllowedAssetUrl(a.BrowserDownloadUrl));
+
+            var zipUrl = asset?.BrowserDownloadUrl
+                ?? $"https://github.com/{Owner}/{Repo}/releases/download/{release.TagName}/solarSim-{version}-win-x64.zip";
+
+            return (release.TagName!, version, zipUrl, release.Body?.Trim() ?? "", release.PublishedAt);
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -370,9 +484,33 @@ internal sealed class AppUpdateService
         File.WriteAllText(notesPath, notes);
 
         // Paths via env vars avoid quoting bugs in Expand-Archive.
+        // Reject zip entries that escape the extract folder (zip-slip).
         File.WriteAllText(ps1, """
 $ErrorActionPreference = 'Stop'
-Expand-Archive -LiteralPath $env:SOLARSIM_ZIP -DestinationPath $env:SOLARSIM_EXTRACT -Force
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zipPath = $env:SOLARSIM_ZIP
+$destRoot = [System.IO.Path]::GetFullPath($env:SOLARSIM_EXTRACT)
+if (-not (Test-Path -LiteralPath $destRoot)) { New-Item -ItemType Directory -Path $destRoot | Out-Null }
+$zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+try {
+  foreach ($entry in $zip.Entries) {
+    $name = $entry.FullName
+    if ([string]::IsNullOrWhiteSpace($name)) { continue }
+    $target = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($destRoot, $name))
+    $prefix = if ($destRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar)) { $destRoot } else { $destRoot + [System.IO.Path]::DirectorySeparatorChar }
+    if (-not $target.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase) -and $target -ne $destRoot) {
+      throw "Refusing zip entry outside extract folder: $name"
+    }
+    if ($name.EndsWith('/') -or $name.EndsWith('\')) {
+      if (-not (Test-Path -LiteralPath $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
+      continue
+    }
+    $parent = [System.IO.Path]::GetDirectoryName($target)
+    if ($parent -and -not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent | Out-Null }
+    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $true)
+  }
+}
+finally { $zip.Dispose() }
 """);
 
         var cmd = $"""

@@ -70,6 +70,21 @@ public class Phase07WireRoutingBomTests
     }
 
     [Fact]
+    public void Heal_does_not_clear_panel_jumper_waypoints()
+    {
+        var project = new SolarProject();
+        var def = SolarPanelDefinition.CreateBoviet270();
+        var a = project.AddPanelFromDefinition(def.Id, 0, 0, recordHistory: false);
+        var b = project.AddPanelFromDefinition(def.Id, 2000, 0, recordHistory: false);
+        Assert.True(project.Graph.TryConnect(a.PositivePort.Id, b.NegativePort.Id, null, out var conn).IsValid);
+        conn!.Wire.Waypoints.Add(new Point2Mm(1000, 500));
+
+        project.Graph.HealWiringVisualState();
+        Assert.Single(conn.Wire.Waypoints);
+        Assert.Equal(1000, conn.Wire.Waypoints[0].X);
+    }
+
+    [Fact]
     public void Heal_clears_orphan_port_connection_ids()
     {
         var project = new SolarProject();

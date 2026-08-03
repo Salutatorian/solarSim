@@ -3633,6 +3633,7 @@ public partial class MainWindow : Window
             _project.Graph.AddEquipment(equipment);
         }
 
+        var skippedWires = 0;
         foreach (var connection in loaded.Graph.Connections.Values)
         {
             var result = _project.Graph.TryConnect(
@@ -3642,7 +3643,8 @@ public partial class MainWindow : Window
                 out _);
             if (!result.IsValid)
             {
-                System.Diagnostics.Debug.WriteLine(
+                skippedWires++;
+                Debug.WriteLine(
                     $"ReplaceProject: skipped wire {connection.Id}: {result.Errors.FirstOrDefault()?.Message}");
             }
         }
@@ -3664,12 +3666,62 @@ public partial class MainWindow : Window
         _project.Units.PreferredLengthUnit = loaded.Units.PreferredLengthUnit;
         SelectCurrentUnitInCombo();
 
+        // Site / racking / canvas must come from the loaded file — not the previous project.
+        CopySiteDesign(_project.Site, loaded.Site);
+        CopyRacking(_project.Racking, loaded.Racking);
+        CopyCanvasSettings(_project.Canvas, loaded.Canvas);
+        _project.SchemaVersion = loaded.SchemaVersion;
+
         _project.Name = loaded.Name;
         _project.FilePath = loaded.FilePath;
         _project.ProjectId = loaded.ProjectId;
         _project.History.Clear();
         ClearTransientSelection();
         RefreshAll();
+
+        if (skippedWires > 0)
+        {
+            MessageBox.Show(
+                this,
+                $"{skippedWires} wire(s) from the file could not be restored (ports busy or invalid). " +
+                "Other site data and equipment should still be intact — check strings on the roof.",
+                "Some wires were skipped",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private static void CopySiteDesign(SiteDesignConditions dest, SiteDesignConditions src)
+    {
+        dest.LocationName = src.LocationName;
+        dest.LatitudeDegrees = src.LatitudeDegrees;
+        dest.LongitudeDegrees = src.LongitudeDegrees;
+        dest.MinAmbientCelsius = src.MinAmbientCelsius;
+        dest.HotCellCelsius = src.HotCellCelsius;
+        dest.PeakSunHoursPerDay = src.PeakSunHoursPerDay;
+        dest.SystemDerateFactor = src.SystemDerateFactor;
+        dest.ArrayTiltDegrees = src.ArrayTiltDegrees;
+        dest.ArrayAzimuthDegrees = src.ArrayAzimuthDegrees;
+    }
+
+    private static void CopyRacking(RackingParameters dest, RackingParameters src)
+    {
+        dest.RafterSpacingMm = src.RafterSpacingMm;
+        dest.RailOverhangMm = src.RailOverhangMm;
+        dest.AttachmentEdgeOffsetMm = src.AttachmentEdgeOffsetMm;
+    }
+
+    private static void CopyCanvasSettings(CanvasSettings dest, CanvasSettings src)
+    {
+        dest.ShowGrid = src.ShowGrid;
+        dest.SnapToGrid = src.SnapToGrid;
+        dest.PanelSnapping = src.PanelSnapping;
+        dest.ElectricalTerminalSnapping = src.ElectricalTerminalSnapping;
+        dest.PanelSpacingMm = src.PanelSpacingMm;
+        dest.GridSizeMm = src.GridSizeMm;
+        dest.Zoom = src.Zoom;
+        dest.CameraXMm = src.CameraXMm;
+        dest.CameraYMm = src.CameraYMm;
     }
 
     private void StringsList_SelectionChanged(object sender, SelectionChangedEventArgs e)

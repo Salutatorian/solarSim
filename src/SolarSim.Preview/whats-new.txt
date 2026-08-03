@@ -1,11 +1,13 @@
-solarSim 0.1.31
+solarSim 0.1.32
 Released: 2026-08-03
 
-Panel strings
-• Fixed: after Open/update, terminals said “already connected” but no wire showed
-• Panel string cables draw above the modules again
-• Re-open your .solarproj (or reconnect once) to see strings
+Open / save safety
+• Fixed: opening a project no longer keeps the previous site, racking, or camera
+• Saves write via a temp file then replace (less chance of a truncated .solarproj)
+• Warns if some wires from the file could not be restored
+• Update check uses the Releases page first (avoids GitHub API rate-limit 403s)
+• Update zip extract rejects path-traversal entries
 
 Earlier
+• 0.1.31 — panel string wires after open
 • 0.1.30 — removed System tab
-• 0.1.29 — uniform Add catalog tiles

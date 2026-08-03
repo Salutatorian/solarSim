@@ -313,6 +313,14 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 - Opening a project no longer leaves ports “occupied” with invisible wires (port links are cleared before reconnect)
 - Panel↔panel jumpers draw above module faces again; stale baked midpoints are ignored for live routing
 
+### Open copies site/racking/canvas + save/update hardening (`0.1.32`)
+- `ReplaceProject` now copies Site, Racking, Canvas, and SchemaVersion from the loaded file (was silently keeping the previous project’s values — data-loss risk on save)
+- `HealWiringVisualState` no longer clears panel-jumper waypoints
+- Atomic `.solarproj` save (temp + replace)
+- Update extract scripts reject zip-slip paths
+- Update check prefers `github.com/.../releases/latest` redirect so Settings spam does not hit the API 60/hour rate limit
+- Surface a warning when some wires fail to restore on open
+
 ---
 
 ## How to verify for submission

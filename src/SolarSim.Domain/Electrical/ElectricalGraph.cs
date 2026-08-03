@@ -239,7 +239,7 @@ public sealed class ElectricalGraph : IElectricalGraphService
     }
 
     /// <summary>
-    /// Drop orphan port→connection links and clear panel-jumper waypoints so strings redraw.
+    /// Drop orphan port→connection links (port says connected but wire is gone).
     /// </summary>
     public void HealWiringVisualState()
     {
@@ -248,18 +248,6 @@ public sealed class ElectricalGraph : IElectricalGraphService
             if (!port.ConnectionId.HasValue) continue;
             if (_connections.ContainsKey(port.ConnectionId.Value)) continue;
             port.ForceClearConnection();
-        }
-
-        foreach (var connection in _connections.Values)
-        {
-            if (!_ports.TryGetValue(connection.StartPortId, out var start)
-                || !_ports.TryGetValue(connection.EndPortId, out var end))
-                continue;
-
-            var startPanel = _panels.ContainsKey(start.OwnerComponentId);
-            var endPanel = _panels.ContainsKey(end.OwnerComponentId);
-            if (startPanel && endPanel)
-                connection.Wire.Waypoints.Clear();
         }
     }
 
