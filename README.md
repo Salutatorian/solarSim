@@ -1,13 +1,53 @@
 # solarSim
 
-Professional visual solar-system design application for Windows.
+A visual solar design lab for Windows — still a **public beta**, still improving, built from the heart.
+
+I started this because I believe in positive energy: people who care about solar but do not yet know every detail of the craft should still have a place to **learn, sketch, and see** how a system comes together. I am learning as I go. I am **not a certified electrician** — I only build what I know and keep learning. If something is wrong, confusing, or missing, please [open a GitHub Issue](https://github.com/Salutatorian/solarSim/issues). I will happily listen and improve.
 
 **Owner:** Salutatorian — see [LICENSE](LICENSE) and [OWNERSHIP.md](OWNERSHIP.md).  
-Public Releases are for **use**. Please **do not fork** this repository.
+Download official builds from [Releases](https://github.com/Salutatorian/solarSim/releases). Please **do not fork** this repository; use Issues and stars instead.
 
-**Phase 1 focus: Solar Panel Lab** — place real-sized modules, magnetically snap them, connect PV+/PV− with MC4-style interaction, and see live string calculations (Pmax, Vmp, Voc, Imp, Isc) with no Calculate button.
+This is a **design and simulation aid**, not electrical-code, structural, or bankable-yield approval. **Your projects stay on your computer** — solarSim does not sync designs to any cloud.
 
-This is a design and simulation aid, not electrical-code approval software. **Your projects stay on your computer** — solarSim does not sync designs to any cloud.
+---
+
+## What you can do
+
+### 1. Trace your real roof from satellite
+
+Scan / outline your house on the map and **import a near–real-world size** footprint so panel planning matches the roof you actually have — not a guessed rectangle.
+
+![Trace roof on satellite map — outline corners, live edge lengths, import traced roof](docs/screenshots/01-trace-roof-on-map.png)
+
+- Open **Trace roof on map…** (WebView2 + satellite imagery)
+- Click corners to outline; drag handles, Undo, and live edge lengths while you work
+- Use **New section** for L / T / multi-wing roofs
+- **Import traced roof** brings the polygon onto the canvas at scale (with straighten + lock so you can place modules without nudging the house)
+
+### 2. Place modules your way — and see strings light up
+
+Drop panels at **real width × length**, with the **wattage** and electrical settings of your plan (Vmp, Voc, Imp, Isc, cold Voc / hot cell, and more). Wire them into strings and the UI shows which modules belong together.
+
+![Roof plan with modules, edge dimensions, setbacks, and string highlighting](docs/screenshots/02-roof-panels-and-strings.png)
+
+- Catalog panels (e.g. Boviet 270 W) or **Custom panel…** for your own size and watts
+- Magnetic snap, rotate, duplicate; roof **setbacks** and edge lengths on the canvas
+- Connect **PV+ / PV−** into series strings — the string highlights on the roof and appears in the **Strings** list (bottom right / inspector)
+- Live project summary: module count, DC power, string count, rough annual kWh estimate
+- Optional racking helpers (rails, attachments, clamps) as a design aid
+
+### 3. Design the indoor electrical gear
+
+On the **Equipment** plan, lay out the “back of house” — inverter, battery, disconnects, combiner — and wire them like a schematic.
+
+![Equipment plan — inverter, battery, disconnect, combiner, and properties](docs/screenshots/03-equipment-electrical.png)
+
+- Place **inverters** (including ANENJI hybrids), **batteries**, **solar / battery disconnects**, **combiners**, AC gear, and MC4 Y branches
+- Drag ports to connect; Smart Wiring keeps routes ortho and out of equipment bodies
+- Inspector shows ports, size (aspect-locked resize), MPPT channels, and more
+- Keep roof module work on **Roof** and gear on **Equipment** (a combined System view is planned for later)
+
+---
 
 ## Stack
 
@@ -49,7 +89,7 @@ Public beta builds ship on every `v*` tag:
 2. Download `solarSim-<version>-win-x64.zip`
 3. Unzip and run `solarSim.exe`
 
-Windows may show **SmartScreen / Defender** warnings because builds are not Authenticode-signed yet. That is expected for a new open-source `.exe`. Choose **More info → Run anyway**, or allow the folder under Windows Security. The app only contacts GitHub Releases for updates; projects stay local.
+Windows may show **SmartScreen / Defender** warnings because builds are not Authenticode-signed yet. That is expected for a new public-beta `.exe`. Choose **More info → Run anyway**, or allow the folder under Windows Security. The app only contacts GitHub Releases for updates; projects stay local.
 4. Optional: ⋯ → **About solarSim…** for disclaimer + WebView2 note
 
 **Requirements:** Windows 10/11 x64 · [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (for **Trace roof on map**)
