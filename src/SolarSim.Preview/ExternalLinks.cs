@@ -16,10 +16,10 @@ internal static class ExternalLinks
     public const string Issues = "https://github.com/Salutatorian/solarSim/issues";
     public const string WebView2 = "https://developer.microsoft.com/microsoft-edge/webview2/";
 
-    /// <summary>Stripe Payment Links (AUD) — card data never touches solarSim.</summary>
-    public const string Donate1 = "https://donate.stripe.com/28EbJ26qt8V0cOtfXP5AQ00";
-    public const string Donate3 = "https://donate.stripe.com/4gM4gA7ux0oubKp7rj5AQ01";
-    public const string Donate5 = "https://donate.stripe.com/28EaEY3eh6MS9Ch12V5AQ02";
+    /// <summary>Stripe Payment Links (USD) — card data never touches solarSim.</summary>
+    public const string Donate1 = "https://donate.stripe.com/eVq7sM9CF6MS01H7rj5AQ03";
+    public const string Donate3 = "https://donate.stripe.com/9B6bJ24ilefkcOth1T5AQ04";
+    public const string Donate5 = "https://donate.stripe.com/aFa14ocORefk9Chh1T5AQ05";
 
     public static void Open(string url, Window? owner = null)
     {

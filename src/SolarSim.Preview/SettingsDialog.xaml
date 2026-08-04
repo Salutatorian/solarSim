@@ -81,13 +81,13 @@
                     <WrapPanel Margin="0,0,0,8">
                         <Button Content="Donate $1" Style="{StaticResource ModernButtonBase}" Padding="12,7"
                                 Margin="0,0,8,8" Click="Donate1_Click"
-                                ToolTip="Opens Stripe donation checkout for A$1"/>
+                                ToolTip="Opens Stripe donation checkout for US$1"/>
                         <Button Content="Donate $3" Style="{StaticResource ModernButtonBase}" Padding="12,7"
                                 Margin="0,0,8,8" Click="Donate3_Click"
-                                ToolTip="Opens Stripe donation checkout for A$3"/>
+                                ToolTip="Opens Stripe donation checkout for US$3"/>
                         <Button Content="Donate $5" Style="{StaticResource PrimaryButton}" Padding="12,7"
                                 Margin="0,0,8,8" Click="Donate5_Click"
-                                ToolTip="Opens Stripe donation checkout for A$5"/>
+                                ToolTip="Opens Stripe donation checkout for US$5"/>
                     </WrapPanel>
 
                     <TextBlock Text="Privacy" Style="{StaticResource SectionLabel}" Margin="0,8,0,8"/>
