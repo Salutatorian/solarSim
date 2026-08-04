@@ -9,6 +9,9 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 ### License
 - Relicensed to **Apache License 2.0** (see [LICENSE](LICENSE) and [NOTICE](NOTICE)); proprietary / no-fork terms removed.
 
+### Tips / donations (`0.1.34`)
+- Settings → **Support solarSim** with Donate $1 / $3 / $5 (USD Stripe Payment Links; browser checkout)
+
 ### MC4 Unity connect asset (GrabCAD)
 - Exported matching male/female MC4 + connect clip into `UnityProject/Assets/SolarSim/Art/MC4/`
 - `Mc4ConnectionPresenter` + `WireView` spawn/play clip on new series joins
