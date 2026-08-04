@@ -49,7 +49,7 @@
                            Foreground="{DynamicResource MutedBrush}" FontSize="12.5"/>
                 <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" FontSize="12.5"
                            LineHeight="20"
-                           Text="Visual solar design lab for Windows. Design / simulation aid only — not stamped electrical, structural, or bankable-yield approval.&#10;&#10;Projects stay on this computer only (no cloud sync).&#10;&#10;Owned by Salutatorian — see LICENSE. Please do not fork."/>
+                           Text="Visual solar design lab for Windows. Design / simulation aid only — not stamped electrical, structural, or bankable-yield approval.&#10;&#10;Projects stay on this computer only (no cloud sync).&#10;&#10;Maintained by Salutatorian — Apache License 2.0 (see LICENSE)."/>
             </StackPanel>
         </DockPanel>
     </Border>

@@ -3,6 +3,6 @@ contact_links:
   - name: Download latest release
     url: https://github.com/Salutatorian/solarSim/releases/latest
     about: Grab the newest Windows zip (solarSim-*-win-x64.zip).
-  - name: Ownership / license
+  - name: License (Apache 2.0)
     url: https://github.com/Salutatorian/solarSim/blob/main/LICENSE
-    about: Proprietary license — please do not fork; use Releases instead.
+    about: Open source under Apache License 2.0 — see LICENSE and NOTICE.

@@ -1,14 +1,10 @@
-# Ownership & forking
+# Maintainer
 
-**solarSim is owned solely by Salutatorian.**
+**solarSim** is maintained by **Salutatorian**.
 
-This repository is public so people can **download and use** official
-Windows builds. That is not an invitation to fork, rebrand, or republish
-the project as your own.
+- Licensed under the [Apache License 2.0](LICENSE) — see also [NOTICE](NOTICE).
+- Official builds: [GitHub Releases](https://github.com/Salutatorian/solarSim/releases).
+- Feedback: [Issues](https://github.com/Salutatorian/solarSim/issues).
+- Your `.solarproj` files stay on **your computer only** — solarSim does not sync designs to any cloud.
 
-- See [LICENSE](LICENSE) (proprietary — all rights reserved).
-- Please **do not fork**. Use Releases, Issues, and stars instead.
-- GitHub may still show a Fork button on public repos; using it still
-  violates the license.
-- Your `.solarproj` files stay on **your computer only** — solarSim does
-  not sync designs to any cloud.
+Forks and contributions are welcome under the Apache 2.0 terms (keep license and NOTICE attribution).

@@ -15,7 +15,7 @@
     <FileVersion>0.1.33.0</FileVersion>
     <InformationalVersion>0.1.33</InformationalVersion>
     <Company>solarSim</Company>
-    <Description>Visual solar design lab for Windows (design aid — not stamped approval). Local projects only; proprietary — see LICENSE.</Description>
+    <Description>Visual solar design lab for Windows (design aid — not stamped approval). Local projects only. Apache-2.0 — see LICENSE.</Description>
     <ApplicationIcon>Assets\solarsim-logo.ico</ApplicationIcon>
   </PropertyGroup>
 

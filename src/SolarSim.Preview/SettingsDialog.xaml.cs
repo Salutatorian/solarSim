@@ -151,5 +151,14 @@ public partial class SettingsDialog : Window
     private void OpenIssues_Click(object sender, RoutedEventArgs e) =>
         ExternalLinks.Open(ExternalLinks.Issues, this);
 
+    private void Donate1_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.Donate1, this);
+
+    private void Donate3_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.Donate3, this);
+
+    private void Donate5_Click(object sender, RoutedEventArgs e) =>
+        ExternalLinks.Open(ExternalLinks.Donate5, this);
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

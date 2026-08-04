@@ -4,8 +4,8 @@ A visual solar design lab for Windows — still a **public beta**, still improvi
 
 I started this because I believe in positive energy: people who care about solar but do not yet know every detail of the craft should still have a place to **learn, sketch, and see** how a system comes together. I am learning as I go. I am **not a certified electrician** — I only build what I know and keep learning. If something is wrong, confusing, or missing, please [open a GitHub Issue](https://github.com/Salutatorian/solarSim/issues). I will happily listen and improve.
 
-**Owner:** Salutatorian — see [LICENSE](LICENSE) and [OWNERSHIP.md](OWNERSHIP.md).  
-Download official builds from [Releases](https://github.com/Salutatorian/solarSim/releases). Please **do not fork** this repository; use Issues and stars instead.
+**Maintainer:** Salutatorian — [Apache License 2.0](LICENSE) · [NOTICE](NOTICE) · [maintainer notes](OWNERSHIP.md).  
+Download official builds from [Releases](https://github.com/Salutatorian/solarSim/releases). Issues and stars welcome.
 
 This is a **design and simulation aid**, not electrical-code, structural, or bankable-yield approval. **Your projects stay on your computer** — solarSim does not sync designs to any cloud.
 

@@ -74,6 +74,22 @@
                                 Margin="0,0,8,8" Click="OpenIssues_Click"/>
                     </WrapPanel>
 
+                    <TextBlock Text="Support solarSim" Style="{StaticResource SectionLabel}" Margin="0,8,0,8"/>
+                    <TextBlock Text="Optional tips help keep development going. Opens Stripe Checkout in your browser — card details stay with Stripe, never this app."
+                               TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                               Margin="0,0,0,10"/>
+                    <WrapPanel Margin="0,0,0,8">
+                        <Button Content="Donate $1" Style="{StaticResource ModernButtonBase}" Padding="12,7"
+                                Margin="0,0,8,8" Click="Donate1_Click"
+                                ToolTip="Opens Stripe donation checkout for A$1"/>
+                        <Button Content="Donate $3" Style="{StaticResource ModernButtonBase}" Padding="12,7"
+                                Margin="0,0,8,8" Click="Donate3_Click"
+                                ToolTip="Opens Stripe donation checkout for A$3"/>
+                        <Button Content="Donate $5" Style="{StaticResource PrimaryButton}" Padding="12,7"
+                                Margin="0,0,8,8" Click="Donate5_Click"
+                                ToolTip="Opens Stripe donation checkout for A$5"/>
+                    </WrapPanel>
+
                     <TextBlock Text="Privacy" Style="{StaticResource SectionLabel}" Margin="0,8,0,8"/>
                     <TextBlock Text="• No cloud sync&#10;• Autosave writes only to your chosen .solarproj path&#10;• Recent list is local (%LocalAppData%\solarSim)"
                                Foreground="{DynamicResource TextBrush}" FontSize="12.5" LineHeight="20"/>
