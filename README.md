@@ -1,23 +1,21 @@
 # solarSim
 
-A visual **solar design lab** for Windows.
+[![Download](https://img.shields.io/badge/Download-v0.1.34-4C9AFF?labelColor=333333)](https://github.com/Salutatorian/solarSim/releases/latest)
+[![Platform](https://img.shields.io/badge/Windows-native-0B1220?labelColor=333333)](https://github.com/Salutatorian/solarSim/releases/latest)
+[![Privacy](https://img.shields.io/badge/Privacy-no_cloud_sync-22C55E?labelColor=333333)](https://github.com/Salutatorian/solarSim#what-it-does)
+[![License](https://img.shields.io/badge/License-Apache_2.0-3B82F6?labelColor=333333)](LICENSE)
 
-Trace a roof, place panels, wire strings, and sketch equipment — on your computer.  
-No accounts. No cloud sync. Public beta — still improving.
+A visual **solar design lab**. Trace a roof, place panels, wire strings, and sketch equipment.
 
-This is a **design aid**, not stamped electrical, structural, or bankable-yield approval.
+Public beta — still improving. Design aid only — not stamped electrical, structural, or bankable-yield approval.
 
 ## Download
 
-**[Download the latest release](https://github.com/Salutatorian/solarSim/releases/latest)**
+**[Get the latest zip](https://github.com/Salutatorian/solarSim/releases/latest)** → unzip → run `solarSim.exe`
 
-| Platform | Get |
-| --- | --- |
-| **Windows** | `solarSim-*-win-x64.zip` → unzip → run `solarSim.exe` |
-
-Needs Windows 10/11 x64. For **Trace roof on map**, install [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
-
-Windows may warn (SmartScreen) because builds aren’t code-signed yet — **More info → Run anyway** is normal for this beta.
+- Windows 10/11 x64
+- Map tracer needs [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/)
+- SmartScreen may warn (unsigned beta) — **More info → Run anyway**
 
 ## What it does
 
@@ -39,24 +37,13 @@ Lay out inverters, batteries, disconnects, and combiners on an equipment plan.
 
 ![Equipment plan](docs/screenshots/03-equipment-electrical.png)
 
-## Privacy
-
-Projects stay on your PC (`.solarproj`). Updates only check GitHub Releases. Optional tips in Settings open Stripe in your browser — card details never touch the app.
-
-## License
-
-[Apache License 2.0](LICENSE). See [NOTICE](NOTICE).
-
 ## For developers
 
 ```powershell
 Launch-solarSim.bat
 # or
 dotnet run --project src\SolarSim.Preview\SolarSim.Preview.csproj -c Release
-```
-
-```powershell
 dotnet test
 ```
 
-More detail: [CHANGELOG.md](CHANGELOG.md) · [RELEASE.md](RELEASE.md) · [SMOKE.md](SMOKE.md) · [ARCHITECTURE.md](ARCHITECTURE.md)
+More: [CHANGELOG.md](CHANGELOG.md) · [RELEASE.md](RELEASE.md) · [SMOKE.md](SMOKE.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [NOTICE](NOTICE)
