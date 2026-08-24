@@ -471,7 +471,7 @@ internal sealed class AppUpdateService
         var pending = ReadPending();
         if (pending is null || !File.Exists(pending.ZipPath)) return false;
 
-        var appDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var appDir = InstalledAppDirectory();
         var extractDir = Path.Combine(UpdatesRoot(), pending.Version, "extracted");
         var script = Path.Combine(UpdatesRoot(), "apply-update.cmd");
         var ps1 = Path.Combine(UpdatesRoot(), "expand-update.ps1");
@@ -723,6 +723,23 @@ del "%~f0"
 
     public static string StagedZipPath(string version) =>
         Path.Combine(UpdatesRoot(), version, $"solarSim-{version}-win-x64.zip");
+
+    /// <summary>
+    /// Folder that holds the .exe the user launched (Downloads, Desktop, …),
+    /// not the single-file extract cache under %TEMP%\.net.
+    /// </summary>
+    private static string InstalledAppDirectory()
+    {
+        var processPath = Environment.ProcessPath;
+        if (!string.IsNullOrWhiteSpace(processPath))
+        {
+            var dir = Path.GetDirectoryName(processPath);
+            if (!string.IsNullOrWhiteSpace(dir))
+                return dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+
+        return AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
 
     public static bool IsAllowedAssetUrl(string? url)
     {

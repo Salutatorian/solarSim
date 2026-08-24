@@ -1,11 +1,11 @@
-solarSim 1.5.11
+solarSim 1.5.12
 Released: 2026-08-25
 
-Updates
-• Reminder is bottom-right: Ignore or Update
-• Settings just says an update is available — click Update
+Windows is one file
+• Download the .exe and double-click — no unzip
 
 Earlier
+• 1.5.11 — update reminder bottom-right
 • 1.5.1 — wrap suggestion arrays; updates on Home
 • 1.5.0 — one window for Home, map, and dialogs
 • 0.1.40 — suggestion rail, polarity cables, estimate on demand

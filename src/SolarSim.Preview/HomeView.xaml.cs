@@ -212,6 +212,6 @@ public partial class HomeView : UserControl
         }
 
         var v = asm.GetName().Version;
-        return v is null ? "1.5.11" : $"{v.Major}.{v.Minor}.{v.Build}";
+        return v is null ? "1.5.12" : $"{v.Major}.{v.Minor}.{v.Build}";
     }
 }

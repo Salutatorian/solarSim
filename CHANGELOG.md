@@ -6,6 +6,9 @@ Project history for review and submission.
 
 Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect all passing).
 
+### One-click Windows (`1.5.12`)
+- Windows download is a single `.exe` — no unzip
+
 ### Update toast (`1.5.11`)
 - Update reminder sits bottom-right (Ignore / Update) — it no longer covers Save in the title bar
 - Settings only says an update is available; release-note markdown is gone

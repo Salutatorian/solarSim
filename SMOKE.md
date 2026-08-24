@@ -3,7 +3,7 @@
 Run through this on a clean Windows machine (or your own) after `.\Tools\Publish-Windows.ps1` or a GitHub Release zip.
 
 ## Launch
-- [ ] Unzip `solarSim-*-win-x64.zip` and run `solarSim.exe` (no .NET SDK required)
+- [ ] Download `solarSim-*-win-x64.exe` and run it (no unzip, no .NET SDK)
 - [ ] Title bar shows version + **design aid**
 - [ ] ⋯ → **About solarSim…** shows disclaimer + WebView2 note
 

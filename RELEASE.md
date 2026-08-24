@@ -1,6 +1,6 @@
 # Releasing solarSim
 
-## Local publish (zip)
+## Local publish
 
 ```powershell
 cd C:\Users\JW\Desktop\projects\solarSim
@@ -9,8 +9,8 @@ cd C:\Users\JW\Desktop\projects\solarSim
 
 Output:
 
-- `artifacts/publish/solarSim-<version>-win-x64/` — runnable folder (`solarSim.exe`)
-- `artifacts/publish/solarSim-<version>-win-x64.zip` — uploadable archive
+- `artifacts/publish/solarSim-<version>-win-x64.exe` — double-click this (no unzip)
+- `artifacts/publish/solarSim-<version>-win-x64.zip` — same exe, for in-app updates
 
 macOS (run on a Mac or in GitHub Actions `macos-latest`):
 
@@ -32,8 +32,8 @@ Prefer **milestone releases** (~every 10 patches, or when something big ships) s
 4. When publishing a milestone, create and push a version tag:
 
 ```powershell
-git tag v1.5.11
-git push origin v1.5.11
+git tag v1.5.12
+git push origin v1.5.12
 ```
 
 The **Release** workflow builds, tests, zips, and publishes a GitHub Release with the zip attached.

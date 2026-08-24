@@ -62,7 +62,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: solarSim-${{ steps.ver.outputs.version }}-win-x64
-          path: artifacts/publish/solarSim-${{ steps.ver.outputs.version }}-win-x64.zip
+          path: |
+            artifacts/publish/solarSim-${{ steps.ver.outputs.version }}-win-x64.exe
+            artifacts/publish/solarSim-${{ steps.ver.outputs.version }}-win-x64.zip
 
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -106,7 +108,7 @@ jobs:
       - name: Flatten installers
         run: |
           mkdir -p release-files
-          find dist \( -name '*.zip' -o -name '*.dmg' \) -exec cp {} release-files/ \;
+          find dist \( -name '*.zip' -o -name '*.dmg' -o -name '*.exe' \) -exec cp {} release-files/ \;
           ls -la release-files
 
       - name: Create GitHub Release
@@ -119,9 +121,7 @@ jobs:
             Public beta — design aid only (not stamped approval).
 
             ### Windows (full editor)
-            1. Download `solarSim-${{ needs.publish-windows.outputs.version }}-win-x64.zip`
-            2. Unzip and run `solarSim.exe`
-            3. Install [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) if map tracer fails
+            Download `solarSim-${{ needs.publish-windows.outputs.version }}-win-x64.exe` and double-click it.
 
             ### macOS (preview)
             - **Apple Silicon:** `solarSim-${{ needs.publish-windows.outputs.version }}-osx-arm64.dmg`
