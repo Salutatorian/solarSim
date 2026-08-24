@@ -5,7 +5,8 @@ Patch tags still exist in git for history; only milestone pages stay on Releases
 
 | Milestone | Covers | Download |
 |-----------|--------|----------|
-| **v1.5.0** (latest) | 0.1.35 → 1.5.0 (one-window editor, kWh start, estimate, map overlay) | Current Windows zip + macOS preview |
+| **v1.5.1** (latest) | 1.5.1 (Home updates, wrapped array fill) | Current Windows zip + macOS preview |
+| **v1.5.0** | 0.1.35 → 1.5.0 (one-window editor, kWh start, estimate, map overlay) | Historical |
 | **v0.1.34** | 0.1.34 (tips + Apache 2.0) | Historical |
 | **v0.1.33** | 0.1.31 → 0.1.33 | Historical |
 | **v0.1.30** | 0.1.21 → 0.1.30 | Historical |

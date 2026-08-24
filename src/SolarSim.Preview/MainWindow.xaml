@@ -45,7 +45,7 @@
                             Foreground="{DynamicResource TextBrush}"
                             ToolTip="Project menu"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <TextBlock x:Name="AppVersionLabel" Text="1.5.0" Foreground="{DynamicResource MutedBrush}"
+                    <TextBlock x:Name="AppVersionLabel" Text="1.5.1" Foreground="{DynamicResource MutedBrush}"
                                FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.7"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -490,12 +490,13 @@
 
         <Border x:Name="UpdateToast"
                 Visibility="Collapsed"
+                Grid.Row="0" Grid.RowSpan="2"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
                 Margin="0,0,18,24" Padding="14,12"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                 CornerRadius="12" Width="300"
-                Panel.ZIndex="90"
+                Panel.ZIndex="850"
                 shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">

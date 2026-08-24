@@ -1,12 +1,12 @@
-solarSim 1.5.0
-Released: 2026-08-24
+solarSim 1.5.1
+Released: 2026-08-25
 
-One window
-• Home, kWh, Trace roof, and confirms stay in the same window
-• Import from the map goes straight to the canvas
-• Home labels are light; Recent fills the rest of the panel
+Home updates + array wrap
+• Check and install updates from the Home screen — no need to open a project
+• Suggestion Lay on roof wraps to extra rows when one line is too long (10 → 2×5)
 
 Earlier
+• 1.5.0 — one window for Home, map, and dialogs
 • 0.1.40 — suggestion rail, polarity cables, estimate on demand
 • 0.1.39 — jump in from kWh
 • 0.1.38 — module size presets on the estimate

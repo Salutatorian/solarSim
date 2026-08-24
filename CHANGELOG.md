@@ -6,6 +6,10 @@ Project history for review and submission.
 
 Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect all passing).
 
+### Wrap + Home updates (`1.5.1`)
+- Suggestion **Lay on roof** wraps into extra rows when a single line would be too long (10 modules → 2×5 on a short roof)
+- Update check, install, and What’s new run on the Home screen — you do not need to open a project first
+
 ### One window (`1.5.0`)
 - Home, kWh, Trace roof, Settings, and confirms are overlays on the editor window so window-capture recorders keep running
 - Map Import goes straight to the canvas (WebView2 was hiding the confirm card)

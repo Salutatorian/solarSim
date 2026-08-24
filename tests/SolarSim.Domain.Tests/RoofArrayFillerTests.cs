@@ -43,4 +43,47 @@ public class RoofArrayFillerTests
         Assert.True(packed.Count >= 1);
         Assert.True(packed.Count < 40);
     }
+
+    [Fact]
+    public void Wraps_to_a_second_row_instead_of_one_long_line()
+    {
+        // 14 m × 4 m holds 10 portrait modules in a single row, or 2×5 landscape.
+        var roofs = new RoofDocument();
+        var roof = roofs.AddRoof();
+        roof.SetbackMm = 0;
+        roof.SetVertices(
+        [
+            new Point2Mm(0, 0),
+            new Point2Mm(14000, 0),
+            new Point2Mm(14000, 4000),
+            new Point2Mm(0, 4000),
+        ], closed: true);
+
+        var packed = RoofArrayFiller.Pack(roofs, 1134, 2278, maxCount: 10, occupied: []);
+        Assert.Equal(10, packed.Count);
+        var rows = packed.Select(p => Math.Round(p.YMm / 10)).Distinct().Count();
+        var cols = packed.Select(p => Math.Round(p.XMm / 10)).Distinct().Count();
+        Assert.True(rows >= 2, $"expected a wrapped grid, got {rows}×{cols}");
+        Assert.True(Math.Max(rows, cols) <= 5);
+    }
+
+    [Fact]
+    public void Short_roof_still_fills_two_rows_when_one_row_cannot_hold_ten()
+    {
+        var roofs = new RoofDocument();
+        var roof = roofs.AddRoof();
+        roof.SetbackMm = 0;
+        roof.SetVertices(
+        [
+            new Point2Mm(0, 0),
+            new Point2Mm(7000, 0),
+            new Point2Mm(7000, 6000),
+            new Point2Mm(0, 6000),
+        ], closed: true);
+
+        var packed = RoofArrayFiller.Pack(roofs, 1134, 2278, maxCount: 10, occupied: []);
+        Assert.Equal(10, packed.Count);
+        var rows = packed.Select(p => Math.Round(p.YMm / 10)).Distinct().Count();
+        Assert.True(rows >= 2);
+    }
 }

@@ -200,6 +200,7 @@ public partial class MainWindow : Window
     {
         LoadProjectFromPath(path);
         HideHomeOverlay();
+        RefreshUpdateUi();
         ShowWhatsNewIfPresent();
     }
 
@@ -285,7 +286,7 @@ public partial class MainWindow : Window
 
         if (HomeIsOpen)
         {
-            // Home lives in this same window — no empty-project warning, no What's new yet.
+            // Home lives in this same window — check for updates here, not only after a project opens.
         }
         else if (string.IsNullOrWhiteSpace(_project.FilePath))
         {
@@ -305,8 +306,7 @@ public partial class MainWindow : Window
         if (!HomeIsOpen && HasEstimateTarget() && ShowsRoofGeometry && _project.Graph.Panels.Count == 0)
             SetUiTool(UiTool.Roof);
 
-        if (!HomeIsOpen)
-            ShowWhatsNewAfterProjectReady();
+        ShowWhatsNewAfterProjectReady();
         AppUpdateService.Instance.StateChanged += OnUpdateServiceStateChanged;
         AppUpdateService.Instance.ApplyRequested += OnUpdateApplyRequested;
         Closed += (_, _) =>
@@ -318,7 +318,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Home → open/create project → MainWindow paints, then What's new pops over the editor.
+    /// What's new can appear on Home or over the editor — do not wait for a project to open.
     /// </summary>
     private void ShowWhatsNewAfterProjectReady()
     {
@@ -426,7 +426,8 @@ public partial class MainWindow : Window
             svc.RequestUserUpdate();
         }
 
-        var showToast = hasUpdate && !svc.UserDismissedToast;
+        var showToast = hasUpdate && !svc.UserDismissedToast && !HomeIsOpen;
+        BindHomeUpdateOffer(svc, hasUpdate);
         if (UpdateToast is null) return;
 
         UpdateToast.Visibility = showToast ? Visibility.Visible : Visibility.Collapsed;
@@ -470,6 +471,45 @@ public partial class MainWindow : Window
             UpdateToastApplyButton.Content = "Update";
             UpdateToastApplyButton.IsEnabled = true;
         }
+    }
+
+    private void BindHomeUpdateOffer(AppUpdateService svc, bool hasUpdate)
+    {
+        if (HomeOverlay is null)
+            return;
+
+        if (!HomeIsOpen || !hasUpdate || svc.UserDismissedToast || svc.Available is null)
+        {
+            HomeOverlay.BindUpdateOffer(null, null, false, null, null);
+            return;
+        }
+
+        string body;
+        var canApply = true;
+        if (svc.IsDownloading || svc.AutoApplyWhenReady)
+        {
+            body = "Downloading and installing — you can wait here.";
+            canApply = false;
+        }
+        else if (svc.DownloadComplete)
+            body = "Install from Home — you do not need to open a project.";
+        else
+            body = "Download and install from Home — you do not need to open a project.";
+
+        HomeOverlay.BindUpdateOffer(
+            svc.Available.Version,
+            body,
+            canApply,
+            () =>
+            {
+                AppUpdateService.Instance.RequestUserUpdate();
+                RefreshUpdateUi();
+            },
+            () =>
+            {
+                AppUpdateService.Instance.DismissUpdateUi();
+                RefreshUpdateUi();
+            });
     }
 
     private void Settings_Click(object sender, RoutedEventArgs e)
