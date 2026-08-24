@@ -8,14 +8,26 @@ using SolarSim.Application.Serialization;
 
 namespace SolarSim.Preview;
 
-public partial class HomeWindow : Window
+public partial class HomeView : UserControl
 {
     private string? _chosenPath;
 
-    public HomeWindow()
+    public event Action<string>? ProjectChosen;
+
+    public HomeView()
     {
         InitializeComponent();
         Loaded += (_, _) => RefreshRecents();
+    }
+
+    private Window? OwnerWindow => Window.GetWindow(this);
+
+    private void SetHomeError(string? message)
+    {
+        HomeError.Text = message ?? "";
+        HomeError.Visibility = string.IsNullOrWhiteSpace(message)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     private void RefreshRecents()
@@ -25,9 +37,26 @@ public partial class HomeWindow : Window
         RecentEmpty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         foreach (var entry in items)
         {
+            var stack = new StackPanel();
+            stack.Children.Add(new TextBlock
+            {
+                Text = entry.Name,
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 13,
+                Foreground = (System.Windows.Media.Brush)FindResource("TextBrush"),
+            });
+            stack.Children.Add(new TextBlock
+            {
+                Text = entry.Path,
+                FontSize = 11.5,
+                Foreground = (System.Windows.Media.Brush)FindResource("MutedBrush"),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextWrapping = TextWrapping.NoWrap,
+                Margin = new Thickness(0, 2, 0, 0),
+            });
             var row = new ListBoxItem
             {
-                Content = $"{entry.Name}\n{entry.Path}",
+                Content = stack,
                 Tag = entry.Path,
                 Padding = new Thickness(10, 8, 10, 8),
                 Margin = new Thickness(0, 0, 0, 4),
@@ -48,19 +77,19 @@ public partial class HomeWindow : Window
             DefaultExt = ".solarproj",
             OverwritePrompt = true,
         };
-        if (dialog.ShowDialog(this) != true) return;
+        if (dialog.ShowDialog(OwnerWindow) != true) return;
         _chosenPath = dialog.FileName;
         PathBox.Text = _chosenPath;
         NameBox.Text = Path.GetFileNameWithoutExtension(_chosenPath);
-        HomeError.Text = "";
+        SetHomeError("");
     }
 
     private void Create_Click(object sender, RoutedEventArgs e)
     {
-        HomeError.Text = "";
+        SetHomeError("");
         if (string.IsNullOrWhiteSpace(_chosenPath))
         {
-            HomeError.Text = "Browse to choose a folder and filename first.";
+            SetHomeError("Browse to choose a folder and filename first.");
             return;
         }
 
@@ -69,7 +98,7 @@ public partial class HomeWindow : Window
             var dir = Path.GetDirectoryName(_chosenPath);
             if (string.IsNullOrWhiteSpace(dir))
             {
-                HomeError.Text = "That save location is invalid.";
+                SetHomeError("That save location is invalid.");
                 return;
             }
 
@@ -80,7 +109,7 @@ public partial class HomeWindow : Window
 
             if (File.Exists(path))
             {
-                var overwrite = MessageBox.Show(this,
+                var overwrite = AppConfirmDialog.Alert(OwnerWindow,
                     $"“{name}.solarproj” already exists.\n\nOverwrite it?",
                     "solarSim",
                     MessageBoxButton.YesNo,
@@ -94,12 +123,15 @@ public partial class HomeWindow : Window
                 FilePath = path,
             };
             SolarProjectSerializer.SaveToFile(project, path);
+            var wizard = new QuickEstimateWizardWindow(project);
+            if (AppModalHost.Show(wizard) == true)
+                SolarProjectSerializer.SaveToFile(project, path);
             RecentProjectsStore.Remember(path);
             OpenEditor(path);
         }
         catch (Exception ex)
         {
-            HomeError.Text = ex.Message;
+            SetHomeError(ex.Message);
         }
     }
 
@@ -110,7 +142,7 @@ public partial class HomeWindow : Window
             Filter = "solarSim Project (*.solarproj)|*.solarproj",
             Title = "Open project from this computer",
         };
-        if (dialog.ShowDialog(this) != true) return;
+        if (dialog.ShowDialog(OwnerWindow) != true) return;
         OpenEditor(dialog.FileName);
     }
 
@@ -120,26 +152,29 @@ public partial class HomeWindow : Window
             OpenEditor(path);
     }
 
+    private void RecentList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && RecentList.SelectedItem is ListBoxItem { Tag: string path })
+            OpenEditor(path);
+    }
+
     private void OpenEditor(string path)
     {
         try
         {
             if (!File.Exists(path))
             {
-                HomeError.Text = "That file is missing on this PC.";
+                SetHomeError("That file is missing on this PC.");
                 RefreshRecents();
                 return;
             }
 
             RecentProjectsStore.Remember(path);
-            var editor = new MainWindow(path);
-            System.Windows.Application.Current.MainWindow = editor;
-            editor.Show();
-            Close();
+            ProjectChosen?.Invoke(path);
         }
         catch (Exception ex)
         {
-            HomeError.Text = ex.Message;
+            SetHomeError(ex.Message);
         }
     }
 
@@ -151,8 +186,11 @@ public partial class HomeWindow : Window
         return raw;
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState.Minimized;
+    private void Minimize_Click(object sender, RoutedEventArgs e)
+    {
+        if (OwnerWindow is { } window)
+            window.WindowState = WindowState.Minimized;
+    }
 
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Close_Click(object sender, RoutedEventArgs e) => OwnerWindow?.Close();
 }

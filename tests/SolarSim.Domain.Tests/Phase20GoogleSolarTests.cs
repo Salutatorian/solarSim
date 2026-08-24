@@ -67,6 +67,11 @@ public class Phase20GoogleSolarTests
         Assert.Equal(2, result.RoofSegmentCount);
         Assert.Equal(2, result.Roofs.Count);
         Assert.All(result.Roofs, r => Assert.True(r.IsClosed && r.Vertices.Count == 4));
+        Assert.Equal(18.5, result.Roofs[0].PitchDegrees);
+        Assert.Equal(180.0, result.Roofs[0].AzimuthDegrees);
+        Assert.Equal(18.2, result.Roofs[1].PitchDegrees);
+        Assert.Equal(90.0, result.Roofs[1].AzimuthDegrees);
+        Assert.DoesNotContain("pitch", result.Roofs[0].Name, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(1640, result.MaxSunshineHoursPerYear);
         Assert.Contains("Imported 2", result.Summary);
     }
@@ -87,6 +92,8 @@ public class Phase20GoogleSolarTests
         Assert.Equal(37.445, project.Site.LatitudeDegrees);
         Assert.Equal(-122.139, project.Site.LongitudeDegrees);
         Assert.InRange(project.Site.PeakSunHoursPerDay, 4.0, 5.0); // 1640/365
+        Assert.Equal(18.5, project.Roofs.Roofs[0].PitchDegrees);
+        Assert.InRange(project.Site.ArrayAzimuthDegrees, 90, 180);
     }
 
     [Fact]

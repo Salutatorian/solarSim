@@ -2,6 +2,7 @@ using SolarSim.Application.Commands;
 using SolarSim.Application.Reports;
 using SolarSim.Domain.Electrical;
 using SolarSim.Domain.Equipment;
+using SolarSim.Domain.Estimate;
 using SolarSim.Domain.Roof;
 
 namespace SolarSim.Application.Project;
@@ -111,6 +112,8 @@ public sealed class SolarProject
     public Units.UnitConversionService Units { get; } = new();
     public SiteDesignConditions Site { get; } = new();
     public RackingParameters Racking { get; } = new();
+    /// <summary>Optional Quick System Estimate result. Does not place modules or equipment.</summary>
+    public InitialDesignTarget? InitialDesignTarget { get; set; }
 
     public event Action<string>? ProjectChanged;
     public event Action? CalculationsUpdated;
@@ -280,7 +283,7 @@ public sealed class SolarProject
     }
 
     public string BuildSingleLineSummary() =>
-        SingleLineDiagramService.Build(Graph, GetCalculationSnapshot(), Definitions, GetMpptReports(), Site);
+        SingleLineDiagramService.Build(Graph, GetCalculationSnapshot(), Definitions, GetMpptReports(), Site, Roofs);
 
     public EnergyEstimate GetEnergyEstimate()
     {
@@ -297,7 +300,7 @@ public sealed class SolarProject
     }
 
     public DetailedProductionEstimate GetDetailedProductionEstimate() =>
-        DetailedProductionEstimateService.Estimate(GetCalculationSnapshot().TotalPmaxWatts, Site);
+        DetailedProductionEstimateService.Estimate(GetCalculationSnapshot().TotalPmaxWatts, Site, Roofs);
 
     /// <summary>Last successful optional pvlib run (null if never run / failed).</summary>
     public DetailedProductionEstimate? LastPvlibEstimate { get; private set; }
@@ -324,7 +327,8 @@ public sealed class SolarProject
             GetMpptReports(),
             Site,
             ComputeRackingLayout(),
-            BuildBomSchedule());
+            BuildBomSchedule(),
+            Roofs);
     }
 
     public string ExportDesignReportHtml(string path)

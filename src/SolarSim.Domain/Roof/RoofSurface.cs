@@ -56,7 +56,8 @@ public sealed class RoofObstacle
 
     public bool IntersectsAxisAlignedRect(double rectX, double rectY, double rectW, double rectH)
     {
-        if (AllowOverlap) return false;
+        // Vents are markers only — they do not keep panels off the roof.
+        if (AllowOverlap || Kind == RoofObstacleKind.Vent) return false;
         return rectX < XMm + WidthMm
                && rectX + rectW > XMm
                && rectY < YMm + HeightMm
@@ -81,6 +82,12 @@ public sealed class RoofSurface
     public bool EnforceSetback { get; set; } = true;
     public bool EnforceBoundary { get; set; } = true;
     public bool EnforceObstacles { get; set; } = true;
+
+    /// <summary>Pitch from horizontal (degrees). Null inherits project site tilt.</summary>
+    public double? PitchDegrees { get; set; }
+
+    /// <summary>Azimuth: 0 = north, 90 = east, 180 = south. Null inherits project site azimuth.</summary>
+    public double? AzimuthDegrees { get; set; }
 
     public IReadOnlyList<Point2Mm> Vertices => _vertices;
     public IReadOnlyList<RoofObstacle> Obstacles => _obstacles;

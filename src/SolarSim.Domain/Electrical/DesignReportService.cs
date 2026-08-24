@@ -56,7 +56,8 @@ public static class DesignReportService
         IReadOnlyList<InverterMpptReport> mpptReports,
         SiteDesignConditions site,
         RackingLayoutResult? racking,
-        BomReport bom)
+        BomReport bom,
+        RoofDocument? roofs = null)
     {
         var stringByPanel = new Dictionary<Guid, string>();
         var si = 1;
@@ -93,13 +94,13 @@ public static class DesignReportService
             .Distinct()
             .ToList();
 
-        var energy = DetailedProductionEstimateService.Estimate(calc.TotalPmaxWatts, site);
+        var energy = DetailedProductionEstimateService.Estimate(calc.TotalPmaxWatts, site, roofs);
 
         return new DesignReport
         {
             ProjectName = string.IsNullOrWhiteSpace(projectName) ? "Untitled" : projectName,
             GeneratedUtc = DateTime.UtcNow,
-            SingleLineText = SingleLineDiagramService.Build(graph, calc, definitions, mpptReports, site),
+            SingleLineText = SingleLineDiagramService.Build(graph, calc, definitions, mpptReports, site, roofs),
             BomText = bom.ToPlainText(),
             Modules = modules,
             PanelCount = calc.TotalPanels,

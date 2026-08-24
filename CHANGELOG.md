@@ -1,13 +1,66 @@
 # solarSim — Changelog / development history
 
 Project history for review and submission.  
-**Primary product UI:** WPF (`Launch-solarSim.bat`). Unity is a secondary Panel Lab shell.  
+**Primary product UI:** WPF on Windows (`Launch-solarSim.bat`). Avalonia macOS preview (`Launch-Mac.sh`). Unity is a secondary Panel Lab shell.  
 **Disclaimer throughout:** design / simulation aid — not stamped electrical, structural, or bankable-yield approval.
 
 Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect all passing).
 
+### One window (`1.5.0`)
+- Home, kWh, Trace roof, Settings, and confirms are overlays on the editor window so window-capture recorders keep running
+- Map Import goes straight to the canvas (WebView2 was hiding the confirm card)
+- Home: light labels, compact cards, Recent fills the rest of the panel
+- Suggestion is its own left-rail icon. X returns to Select
+- The estimate is not laid on the roof until **Lay on roof** / **Replace array**
+- Same-polarity cables: red +/+, black −/−. Parallel batteries may join BAT+↔BAT+ and BAT−↔BAT−
+
+### Side rail close + polarity cables (`0.1.40`)
+- Suggestion is its own left-rail icon (after a roof exists). X on any side panel returns to Select with the canvas clear
+- Create Project, kWh prompt, Trace roof, and in-app confirms stay in the same window so window-capture recorders keep running
+- The estimate is not laid on the roof until you click **Lay on roof** / **Replace array**. Replace asks OK or Cancel if modules are already there
+- Equipment library no longer stays glued open; click Equipment to place, X to wire with a full canvas
+- Dropping a wire on an equipment body snaps to the nearest legal terminal (combiner prefers MPPT, batteries prefer BAT)
+- Parallel batteries can join BAT+ to BAT+ and BAT− to BAT−
+- Same-polarity cables take the conductor color: red for +/+, black for −/−
+
+### kWh start (`0.1.39`)
+- Create Project asks for kWh per month or per year, then opens the editor
+- Location, rooms, appliances, roof quiz, budget, and the results page are gone from onboarding
+- Skip still opens a blank project; enter kWh later from the sidebar
+
 ### License
 - Relicensed to **Apache License 2.0** (see [LICENSE](LICENSE) and [NOTICE](NOTICE)); proprietary / no-fork terms removed.
+
+### Module presets on the estimate (`0.1.38`)
+- After usage is entered, Quick System Estimate shows 270 / 400 / 550 / 700 W cards: panel count, kW, footprint, and whether it fits the estimated roof
+- Same kWh target — smaller watts need more modules and more roof; larger watts need fewer modules and less roof
+- Tap a card to use that size as the starting design, then change anything on the canvas
+- Generic 700 W added to the panel library
+- Billing calendar shows two months at once and paints the full start→end span
+- Trace tutorial actually closes the outline; the first point turns green when it is ready to finish (tutorial only)
+
+### US utilities directory (`0.1.37`)
+- Quick System Estimate lists retail electric utilities for all 50 states, DC, and US territories (AS, GU, MP, PR, VI)
+- Source: EIA Form 861 2024 sales-to-ultimate-customers (states + DC); territories are not in EIA-861 and are listed from official utility sites
+- **View published rates / FAC** opens the utility's rate page when we have it, otherwise OpenEI search — solarSim does not invent monthly fuel clauses except CUC (CNMI)
+- Prefer kWh from the bill; other utilities still use a manual $/kWh if you reverse-estimate from dollars
+- Billing dates use an in-app calendar (tap start, then end). Room counts start blank. AC is optional (mini-split or window/boxed) with wattage math behind the scenes
+- Blank numeric fields in Quick System Estimate count as 0 (not a hidden default or an appliance guess). Pick **I don't know** if you want a household-appliance estimate instead
+- Equipment is its own left-rail tool (no longer inside Layers). Roof / Equipment plan switch stays a fixed size so the canvas does not jump
+
+### Quick System Estimate (`0.1.36`)
+- Optional first step after **Create Project**: location/utility → usage → home profile → appliances → roof → budget/battery → recommended system
+- Combines bill kWh, household appliances, roof capacity, and budget into a preliminary array / inverter / battery target — **does not auto-place equipment**
+- Prefers kWh on the bill; CUC residential tariff uses dated FAC (Jul 2026 $0.32505, Aug 2026 $0.34129) with day-proration; dollars reverse-estimate at lower confidence
+- Always labeled: *Preliminary estimate. Your recommendation will become more accurate after tracing the roof, selecting equipment, and adding detailed usage.*
+- Saved as `initialDesignTarget` on the project (schema 10 extra JSON). After the roof is traced, the inspector compares estimate vs fit.
+
+### Architecture docs + per-roof pitch/azimuth (`0.1.35`)
+- Rewrote [ARCHITECTURE.md](ARCHITECTURE.md) to match the real product (WPF primary, Unity secondary, schema 10)
+- README lists electrical, production, and equipment features that were already in the code
+- Each `RoofSurface` stores optional pitch / azimuth (Google Solar import no longer stuffs them into the layer name)
+- Monthly production area-weights roof orientations; inspector can edit the active roof (blank = inherit site tilt/az)
+- **macOS preview** (`src/SolarSim.Desktop`, Avalonia): open/save the same `.solarproj`, place/move panels; CI publishes Apple Silicon and Intel **.dmg** installers
 
 ### Tips / donations (`0.1.34`)
 - Settings → **Support solarSim** with Donate $1 / $3 / $5 (USD Stripe Payment Links; browser checkout)
@@ -329,6 +382,11 @@ Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect a
 
 ### Modeless Settings (`0.1.33`)
 - Settings opens with `Show()` instead of `ShowDialog()` so the main window stays usable (minimize, taskbar, canvas)
+
+### Architecture docs + per-roof pitch/azimuth (`0.1.35`)
+- Rewrote architecture + README to match WPF as the shipping product
+- Optional pitch/azimuth on each roof; Google Solar import stores them as properties; production area-weights planes
+- **macOS preview** via Avalonia (`src/SolarSim.Desktop`) — same `.solarproj` engine; CI publishes `osx-arm64` / `osx-x64` app bundles
 
 ---
 

@@ -9,4 +9,8 @@
     <AssemblyName>SolarSim.Domain</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Estimate\Data\us-utilities.json" LogicalName="SolarSim.Domain.us-utilities.json" />
+  </ItemGroup>
+
 </Project>

@@ -126,10 +126,121 @@ public sealed class SolarPanelDefinition
         temperatureCoefficientVocPercentPerC: -0.27,
         temperatureCoefficientPmaxPercentPerC: -0.34);
 
+    public static SolarPanelDefinition CreateGeneric700() => new(
+        id: Guid.Parse("11111111-1111-1111-1111-111111111004"),
+        manufacturer: "Generic",
+        model: "700 W",
+        pmaxWatts: 700,
+        vmpVolts: 41.0,
+        impAmps: 17.07,
+        vocVolts: 49.4,
+        iscAmps: 18.15,
+        widthMm: 1303,
+        heightMm: 2384,
+        depthMm: 35,
+        temperatureCoefficientVocPercentPerC: -0.26,
+        temperatureCoefficientPmaxPercentPerC: -0.30);
+
     public static IReadOnlyList<SolarPanelDefinition> BuiltInLibrary { get; } =
     [
         CreateBoviet270(),
         CreateGeneric400(),
         CreateGeneric550(),
+        CreateGeneric700(),
     ];
+
+    /// <summary>
+    /// Catalog module if watts match, otherwise a generated Generic {W} W with interpolated size.
+    /// </summary>
+    public static SolarPanelDefinition CreateGeneric(int watts)
+    {
+        watts = Math.Clamp((int)Math.Round(watts / 10.0) * 10, 250, 800);
+        foreach (var built in BuiltInLibrary)
+        {
+            if (Math.Abs(built.PmaxWatts - watts) < 0.5)
+                return built;
+        }
+
+        var ordered = BuiltInLibrary.OrderBy(p => p.PmaxWatts).ToList();
+        SolarPanelDefinition a;
+        SolarPanelDefinition b;
+        double t;
+        if (watts <= ordered[0].PmaxWatts)
+        {
+            a = ordered[0];
+            var scale = Math.Sqrt(watts / a.PmaxWatts);
+            return BuildGenerated(watts, a.WidthMm * scale, a.HeightMm * scale, a, a, 0);
+        }
+
+        if (watts >= ordered[^1].PmaxWatts)
+        {
+            a = ordered[^1];
+            var scale = Math.Sqrt(watts / a.PmaxWatts);
+            return BuildGenerated(watts, a.WidthMm * scale, a.HeightMm * scale, a, a, 0);
+        }
+
+        a = ordered[0];
+        b = ordered[^1];
+        for (var i = 0; i < ordered.Count - 1; i++)
+        {
+            if (watts >= ordered[i].PmaxWatts && watts <= ordered[i + 1].PmaxWatts)
+            {
+                a = ordered[i];
+                b = ordered[i + 1];
+                break;
+            }
+        }
+
+        t = (watts - a.PmaxWatts) / (b.PmaxWatts - a.PmaxWatts);
+        return BuildGenerated(
+            watts,
+            Lerp(a.WidthMm, b.WidthMm, t),
+            Lerp(a.HeightMm, b.HeightMm, t),
+            a,
+            b,
+            t);
+    }
+
+    private static SolarPanelDefinition BuildGenerated(
+        int watts,
+        double widthMm,
+        double heightMm,
+        SolarPanelDefinition a,
+        SolarPanelDefinition b,
+        double t)
+    {
+        var vmp = t == 0 ? a.VmpVolts : Lerp(a.VmpVolts, b.VmpVolts, t);
+        var voc = t == 0 ? a.VocVolts : Lerp(a.VocVolts, b.VocVolts, t);
+        var imp = watts / Math.Max(0.1, vmp);
+        var iscRatio = t == 0
+            ? a.IscAmps / Math.Max(0.1, a.ImpAmps)
+            : Lerp(a.IscAmps / Math.Max(0.1, a.ImpAmps), b.IscAmps / Math.Max(0.1, b.ImpAmps), t);
+        var vocCoef = t == 0
+            ? a.TemperatureCoefficientVocPercentPerC
+            : Lerp(a.TemperatureCoefficientVocPercentPerC ?? -0.28, b.TemperatureCoefficientVocPercentPerC ?? -0.28, t);
+        var pmaxCoef = t == 0
+            ? a.TemperatureCoefficientPmaxPercentPerC
+            : Lerp(a.TemperatureCoefficientPmaxPercentPerC ?? -0.34, b.TemperatureCoefficientPmaxPercentPerC ?? -0.34, t);
+
+        return new SolarPanelDefinition(
+            id: new Guid($"a1111111-0001-4000-8000-{watts:D12}"),
+            manufacturer: "Generic",
+            model: $"{watts} W",
+            pmaxWatts: watts,
+            vmpVolts: vmp,
+            impAmps: imp,
+            vocVolts: voc,
+            iscAmps: iscRatio * imp,
+            widthMm: widthMm,
+            heightMm: heightMm,
+            depthMm: t == 0 ? a.DepthMm : Lerp(a.DepthMm, b.DepthMm, t),
+            temperatureCoefficientVocPercentPerC: vocCoef,
+            temperatureCoefficientPmaxPercentPerC: pmaxCoef,
+            connectorFamily: a.ConnectorFamily,
+            positiveLeadLengthMm: a.PositiveLeadLengthMm,
+            negativeLeadLengthMm: a.NegativeLeadLengthMm,
+            isCustom: true);
+    }
+
+    private static double Lerp(double a, double b, double t) => a + (b - a) * t;
 }

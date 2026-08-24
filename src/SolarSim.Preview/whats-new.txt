@@ -1,14 +1,16 @@
-solarSim 0.1.34
-Released: 2026-08-04
+solarSim 1.5.0
+Released: 2026-08-24
 
-Support
-• Settings → optional tip donations ($1 / $3 / $5 USD via Stripe Checkout in your browser)
-• Card details stay with Stripe — never stored in solarSim
-
-License
-• Project is now Apache License 2.0 (see LICENSE and NOTICE)
+One window
+• Home, kWh, Trace roof, and confirms stay in the same window
+• Import from the map goes straight to the canvas
+• Home labels are light; Recent fills the rest of the panel
 
 Earlier
-• 0.1.33 — Settings modeless (main window stays usable)
-• 0.1.32 — open copies site/racking/canvas; update check avoids API rate limits
-• 0.1.31 — panel string wires after open
+• 0.1.40 — suggestion rail, polarity cables, estimate on demand
+• 0.1.39 — jump in from kWh
+• 0.1.38 — module size presets on the estimate
+• 0.1.37 — US utilities directory
+• 0.1.36 — Quick System Estimate
+• 0.1.35 — per-roof pitch/azimuth + architecture docs
+• 0.1.34 — tip donations + Apache 2.0

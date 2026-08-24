@@ -2,6 +2,7 @@ using SolarSim.Application.Project;
 using SolarSim.Application.Reports;
 using SolarSim.Domain.Electrical;
 using SolarSim.Domain.Equipment;
+using SolarSim.Domain.Roof;
 
 namespace SolarSim.Domain.Tests;
 
@@ -59,5 +60,32 @@ public class Phase21DetailedProductionTests
         Assert.Equal(SolarProject.CurrentSchemaVersion, loaded.SchemaVersion);
         Assert.Equal(27.5, loaded.Site.ArrayTiltDegrees);
         Assert.Equal(195, loaded.Site.ArrayAzimuthDegrees);
+    }
+
+    [Fact]
+    public void Monthly_estimate_uses_roof_orientation_when_present()
+    {
+        var site = new SiteDesignConditions
+        {
+            LatitudeDegrees = 33,
+            PeakSunHoursPerDay = 5,
+            SystemDerateFactor = 0.85,
+            ArrayTiltDegrees = 20,
+            ArrayAzimuthDegrees = 180,
+        };
+        var roofs = new RoofDocument();
+        var roof = new RoofSurface();
+        roof.SetVertices(
+            [new Point2Mm(0, 0), new Point2Mm(8000, 0), new Point2Mm(8000, 8000), new Point2Mm(0, 8000)],
+            closed: true);
+        roof.PitchDegrees = 5;
+        roof.AzimuthDegrees = 90;
+        roofs.AddExisting(roof);
+
+        var siteOnly = DetailedProductionEstimateService.Estimate(5000, site);
+        var withRoof = DetailedProductionEstimateService.Estimate(5000, site, roofs);
+        Assert.Equal(5, withRoof.ArrayTiltDegrees, 3);
+        Assert.Equal(90, withRoof.ArrayAzimuthDegrees, 3);
+        Assert.NotEqual(siteOnly.EstimatedAnnualKwh, withRoof.EstimatedAnnualKwh);
     }
 }

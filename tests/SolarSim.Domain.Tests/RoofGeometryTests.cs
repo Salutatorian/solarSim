@@ -66,11 +66,21 @@ public class RoofGeometryTests
     }
 
     [Fact]
-    public void Obstacle_blocks_panel()
+    public void Vent_does_not_block_panel()
     {
         var roof = ClosedRectangle(setback: 0);
         roof.EnforceSetback = false;
         roof.AddObstacle(new RoofObstacle(Guid.NewGuid(), RoofObstacleKind.Vent, 1000, 1000, 500, 500));
+        var result = RoofGeometry.EvaluatePanelPlacement(roof, 900, 900, 992, 1640);
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Chimney_blocks_panel()
+    {
+        var roof = ClosedRectangle(setback: 0);
+        roof.EnforceSetback = false;
+        roof.AddObstacle(new RoofObstacle(Guid.NewGuid(), RoofObstacleKind.Chimney, 1000, 1000, 500, 500));
         var result = RoofGeometry.EvaluatePanelPlacement(roof, 900, 900, 992, 1640);
         Assert.False(result.IsValid);
         Assert.Equal("OBSTACLE_COLLISION", result.Code);
@@ -93,6 +103,49 @@ public class RoofGeometryTests
         Assert.Equal(457.2, loaded.Roofs.Roofs[0].SetbackMm, 3);
         Assert.Single(loaded.Roofs.Roofs[0].Obstacles);
         Assert.Equal(96.0, loaded.Roofs.TotalAreaSquareMeters(), 3);
+    }
+
+    [Fact]
+    public void Roof_pitch_and_azimuth_roundtrip()
+    {
+        var project = new SolarProject();
+        project.CreateDemoRectangularRoof(12000, 8000, 457.2);
+        project.Roof.PitchDegrees = 22.5;
+        project.Roof.AzimuthDegrees = 270;
+
+        var json = SolarProjectSerializer.Serialize(project);
+        var loaded = SolarProjectSerializer.Deserialize(json);
+
+        Assert.Equal(22.5, loaded.Roofs.Roofs[0].PitchDegrees);
+        Assert.Equal(270, loaded.Roofs.Roofs[0].AzimuthDegrees);
+    }
+
+    [Fact]
+    public void Effective_orientation_area_weights_roof_planes()
+    {
+        var roofs = new RoofDocument();
+        var south = new RoofSurface(Guid.NewGuid(), "South")
+        {
+            PitchDegrees = 20,
+            AzimuthDegrees = 180,
+        };
+        south.SetVertices(
+            [new Point2Mm(0, 0), new Point2Mm(10000, 0), new Point2Mm(10000, 10000), new Point2Mm(0, 10000)],
+            closed: true);
+        var west = new RoofSurface(Guid.NewGuid(), "West")
+        {
+            PitchDegrees = 20,
+            AzimuthDegrees = 270,
+        };
+        west.SetVertices(
+            [new Point2Mm(0, 0), new Point2Mm(10000, 0), new Point2Mm(10000, 10000), new Point2Mm(0, 10000)],
+            closed: true);
+        roofs.AddExisting(south, makeActive: true);
+        roofs.AddExisting(west, makeActive: false);
+
+        var (tilt, az) = roofs.EffectiveOrientation(fallbackTiltDegrees: 10, fallbackAzimuthDegrees: 0);
+        Assert.Equal(20, tilt, 3);
+        Assert.Equal(225, az, 3);
     }
 
     [Fact]

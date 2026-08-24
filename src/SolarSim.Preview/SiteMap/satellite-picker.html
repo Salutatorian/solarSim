@@ -17,7 +17,7 @@
     .leaflet-container {
       width: 100% !important; height: 100% !important;
       background: #0e0e10;
-      font: 13px Bahnschrift, "Segoe UI", sans-serif;
+      font: 13px "Segoe UI Variable Text", "Segoe UI", sans-serif;
       cursor: crosshair;
     }
     .leaflet-container.leaflet-drag-target,
@@ -27,33 +27,147 @@
     .leaflet-grab { cursor: crosshair; }
     .leaflet-dragging .leaflet-grab { cursor: default; }
     .leaflet-tile { border: none; outline: none; }
-    .hint, .scale, .measure-hud {
-      position: absolute; z-index: 1000; pointer-events: none;
-      background: rgba(24, 24, 27, 0.92);
-      border: 1px solid #3f3f46; border-radius: 8px;
+    /* Leaflet hides tiles until loaded — that is the black flash on zoom. */
+    .leaflet-container .leaflet-tile { visibility: visible !important; }
+    .leaflet-control-attribution { display: none !important; }
+    .leaflet-control-zoom {
+      border: 1px solid #3f3f46 !important;
+      border-radius: 10px !important;
+      overflow: hidden;
+      margin: 0 12px 12px 0 !important;
+      box-shadow: none !important;
     }
-    .hint {
-      left: 12px; bottom: 12px; color: #e4e4e7; padding: 8px 12px;
-      max-width: min(460px, calc(100% - 24px));
+    .leaflet-control-zoom a {
+      background: rgba(24,24,27,0.94) !important;
+      color: #e4e4e7 !important;
+      border-bottom-color: #3f3f46 !important;
+      width: 32px !important; height: 32px !important;
+      line-height: 32px !important;
+      font-size: 16px !important;
     }
-    .scale {
-      right: 12px; bottom: 12px; color: #a1a1aa; padding: 6px 10px;
-      font-variant-numeric: tabular-nums;
+    .leaflet-control-zoom a:hover { background: #27272a !important; color: #fff !important; }
+    .tutorial {
+      position: absolute; inset: 0; z-index: 2000;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(9,9,11,0.55);
+      font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
     }
-    .measure-hud {
-      left: 12px; top: 12px; color: #fbbf24; padding: 8px 12px;
-      font-variant-numeric: tabular-nums; font-weight: 600;
-      max-width: min(520px, calc(100% - 24px));
+    .tutorial.show { display: flex; }
+    .tutorial-card {
+      width: min(340px, calc(100% - 32px));
+      background: #18181b; border: 1px solid #27272a; border-radius: 16px;
+      padding: 18px 18px 16px; color: #fafafa;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+    }
+    .tutorial-demo {
+      height: 140px; border-radius: 12px; background: #0c0c0e;
+      border: 1px solid #27272a; margin-bottom: 14px; overflow: hidden;
+      position: relative;
+    }
+    .tutorial-kicker {
+      margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: #2dd4bf;
+    }
+    .tutorial-card h2 {
+      margin: 0 0 6px; font-size: 18px; font-weight: 600;
+      font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
+    }
+    .tutorial-card p {
+      margin: 0 0 14px; font-size: 13px; line-height: 1.45; color: #a1a1aa;
+    }
+    .tutorial-card button {
+      width: 100%; height: 36px; border: 0; border-radius: 10px;
+      background: #2dd4bf; color: #042f2e; font-weight: 600; font-size: 13px;
+      cursor: pointer;
+    }
+    .tutorial-card button:hover { background: #5eead4; }
+    .demo-fill {
+      fill: #22c55e; stroke: none; opacity: 0;
+      animation: fillRoof 7s ease-in-out infinite;
+    }
+    .demo-roof {
+      fill: none; stroke: #2dd4bf; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round;
+      stroke-dasharray: 100; stroke-dashoffset: 100;
+      animation: drawRoof 7s ease-in-out infinite;
+    }
+    .demo-dot { fill: #2dd4bf; opacity: 0; }
+    .demo-dot.d1 { animation: popDotFirst 7s ease-in-out infinite; }
+    .demo-dot.d2 { animation: popDot 7s ease-in-out infinite 0.7s; }
+    .demo-dot.d3 { animation: popDot 7s ease-in-out infinite 1.4s; }
+    .demo-dot.d4 { animation: popDot 7s ease-in-out infinite 2.1s; }
+    .demo-dot.d5 { animation: popDot 7s ease-in-out infinite 2.8s; }
+    .demo-close {
+      fill: #22c55e; stroke: #fff; stroke-width: 1.5;
+      opacity: 0; transform-box: fill-box; transform-origin: center;
+      animation: showClose 7s ease-in-out infinite;
+    }
+    .demo-close-ring {
+      fill: none; stroke: #22c55e; stroke-width: 2;
+      opacity: 0; transform-box: fill-box; transform-origin: center;
+      animation: pulseClose 7s ease-in-out infinite;
+    }
+    .demo-cursor {
+      fill: #fafafa; stroke: #18181b; stroke-width: 1;
+      transform-box: fill-box; transform-origin: 0 0;
+      animation: moveCursor 7s ease-in-out infinite;
+    }
+    @keyframes drawRoof {
+      0%, 10% { stroke-dashoffset: 100; }
+      20% { stroke-dashoffset: 79; }
+      30% { stroke-dashoffset: 58; }
+      40% { stroke-dashoffset: 45; }
+      52% { stroke-dashoffset: 13; }
+      64%, 86% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 100; }
+    }
+    @keyframes fillRoof {
+      0%, 62% { opacity: 0; }
+      68%, 86% { opacity: 0.22; }
+      100% { opacity: 0; }
+    }
+    @keyframes popDot {
+      0%, 6% { opacity: 0; }
+      12%, 86% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @keyframes popDotFirst {
+      0%, 6% { opacity: 0; }
+      12%, 56% { opacity: 1; }
+      60%, 86% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes showClose {
+      0%, 56% { opacity: 0; transform: scale(0.7); }
+      62%, 86% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.7); }
+    }
+    @keyframes pulseClose {
+      0%, 56% { opacity: 0; transform: scale(0.8); }
+      62% { opacity: 1; transform: scale(1); }
+      70% { opacity: 0.4; transform: scale(1.6); }
+      78%, 86% { opacity: 0.9; transform: scale(1.15); }
+      100% { opacity: 0; transform: scale(0.8); }
+    }
+    @keyframes moveCursor {
+      0%   { transform: translate(28px, 92px); }
+      10%  { transform: translate(36px, 78px); }
+      20%  { transform: translate(92px, 28px); }
+      30%  { transform: translate(168px, 42px); }
+      40%  { transform: translate(186px, 88px); }
+      52%  { transform: translate(70px, 108px); }
+      64%  { transform: translate(36px, 78px); }
+      86%  { transform: translate(36px, 78px); }
+      100% { transform: translate(28px, 92px); }
     }
     .edge-label {
       background: rgba(255,255,255,0.92); color: #1f2937;
-      border: 1px solid #f59e0b; border-radius: 4px;
-      padding: 1px 5px; font: 600 11px Bahnschrift, "Segoe UI", sans-serif;
+      border: 1px solid #2DD4BF; border-radius: 8px;
+      padding: 1px 5px; font: 600 11px "Segoe UI Variable Text", "Segoe UI", sans-serif;
       white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
     }
     .corner-marker {
       width: 6px; height: 6px; margin-left: -3px; margin-top: -3px;
-      border-radius: 50%; background: #f59e0b; border: 1.5px solid #fff;
+      border-radius: 50%; background: #2DD4BF; border: 1.5px solid #fff;
       box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
       cursor: default;
     }
@@ -68,11 +182,11 @@
     }
     .basemap-toggle button {
       background: rgba(24,24,27,0.92); color: #e4e4e7; border: 1px solid #3f3f46;
-      border-radius: 6px; padding: 6px 10px; font: 12px Bahnschrift, "Segoe UI", sans-serif;
+      border-radius: 8px; padding: 6px 10px; font: 12px "Segoe UI Variable Text", "Segoe UI", sans-serif;
       cursor: default;
     }
     .basemap-toggle button.active {
-      border-color: #f59e0b; color: #fbbf24;
+      border-color: #2DD4BF; color: #5EEAD4;
     }
   </style>
   <script>
@@ -87,12 +201,31 @@
 <body>
   <div id="map"></div>
   <div class="basemap-toggle">
-    <button type="button" id="btnGoogle" class="active" title="Sharp satellite (Google)">Sharp</button>
-    <button type="button" id="btnEsri" title="Esri World Imagery">Esri</button>
+    <button type="button" id="btnGoogle" class="active" title="Sharp satellite">Sharp</button>
+    <button type="button" id="btnEsri" title="Esri imagery">Esri</button>
   </div>
-  <div class="measure-hud" id="measureHud">Click roof corners — drag handles to adjust</div>
-  <div class="hint" id="hint">Search → zoom → click every corner (any count). Click the first point (green ring) to close — roofs are not forced to 4 sides.</div>
-  <div class="scale" id="scale">—</div>
+  <div id="traceTutorial" class="tutorial" role="dialog" aria-label="Trace roof">
+    <div class="tutorial-card">
+      <div class="tutorial-demo">
+        <svg viewBox="0 0 220 140" width="100%" height="140">
+          <polygon class="demo-fill" points="36,78 92,28 168,42 186,88 70,108"/>
+          <path class="demo-roof" pathLength="100" d="M36,78 L92,28 L168,42 L186,88 L70,108 Z"/>
+          <circle class="demo-dot d1" cx="36" cy="78" r="4"/>
+          <circle class="demo-dot d2" cx="92" cy="28" r="4"/>
+          <circle class="demo-dot d3" cx="168" cy="42" r="4"/>
+          <circle class="demo-dot d4" cx="186" cy="88" r="4"/>
+          <circle class="demo-dot d5" cx="70" cy="108" r="4"/>
+          <circle class="demo-close-ring" cx="36" cy="78" r="8"/>
+          <circle class="demo-close" cx="36" cy="78" r="5"/>
+          <polygon class="demo-cursor" points="0,0 0,16 4.5,12.5 8,20 10.5,19 7,11.5 12,11.5"/>
+        </svg>
+      </div>
+      <p class="tutorial-kicker">How to trace</p>
+      <h2>Click every corner</h2>
+      <p>Search the address, zoom in, then click around the roof. The first point turns green when the outline can close — click it to finish, then import.</p>
+      <button type="button" id="tutorialDismiss">Got it</button>
+    </div>
+  </div>
   <script>
     // Google sat tiles are sharp to ~z20. Esri often grays out / forces overzoom blur.
     const MIN_ZOOM = 2;
@@ -210,50 +343,12 @@
 
     function updateScale() {
       const m = metersPerPixel();
-      const el = document.getElementById('scale');
-      if (!el || !m) return;
-      const z = map.getZoom();
-      if (z >= VISUAL_MAX) el.textContent = '~' + m.toFixed(2) + ' m/px — max zoom';
-      else if (m < 0.4) el.textContent = '~' + m.toFixed(2) + ' m/px — good for corners';
-      else if (m < 1.5) el.textContent = '~' + m.toFixed(2) + ' m/px — zoom in more';
-      else el.textContent = '~' + m.toFixed(1) + ' m/px — drag / scroll';
+      if (!m) return;
+      post({ type: 'view', mPerPx: m, zoom: map ? map.getZoom() : 0 });
     }
 
     function updateMeasureHud() {
-      const hud = document.getElementById('measureHud');
-      const hint = document.getElementById('hint');
-      const active = rings[activeRing] || [];
-      const activeClosed = isClosed(activeRing);
-      const parts = [];
-      var totalArea = 0;
-      rings.forEach(function (r, idx) {
-        if (r.length < 3) return;
-        const m = ringMetrics(r, isClosed(idx) || idx !== activeRing);
-        totalArea += m.area;
-        parts.push('S' + (idx + 1) + ': ' + r.length + ' pts · ' + m.area.toFixed(1) + ' m²');
-      });
-      if (active.length === 1) {
-        parts.push('keep clicking corners…');
-      } else if (active.length === 2) {
-        parts.push(haversineM(active[0], active[1]).toFixed(2) + ' m');
-      } else if (active.length >= 3 && !activeClosed) {
-        const m = ringMetrics(active, false);
-        const edgeTxt = m.edges.map(function (x) { return x.toFixed(2) + ' m'; }).join(' · ');
-        parts.push(active.length + ' corners open · ' + edgeTxt + ' · click first point to close');
-      }
-      if (totalArea > 0) parts.push('Σ ' + totalArea.toFixed(1) + ' m²');
-      hud.textContent = parts.length ? parts.join('  |  ') : 'Click every roof corner — any number of sides';
-
-      if (active.length === 0 && allImportableRings().length === 0)
-        hint.textContent = 'Search → zoom → click every corner (3, 5, 8… whatever the roof needs). Ctrl+Z undo.';
-      else if (active.length > 0 && active.length < 3)
-        hint.textContent = active.length + ' point(s) — keep clicking. Need ≥ 3 before you can close.';
-      else if (active.length >= 3 && !activeClosed)
-        hint.textContent = active.length + ' corners — keep clicking more sides, or click the first point (green) / Finish to close. Not limited to 4.';
-      else if (activeClosed)
-        hint.textContent = 'Section closed (' + active.length + ' sides). New section for another wing, or Import.';
-      else
-        hint.textContent = allImportableRings().length + ' section(s) ready — New section or Import.';
+      /* Status lives in the app chrome, not on the map. */
     }
 
     function emitOutline() {
@@ -549,18 +644,20 @@
       map = L.map(el, {
         crs: L.CRS.EPSG3857,
         zoomControl: true,
-        attributionControl: true,
+        attributionControl: false,
         doubleClickZoom: false,
         boxZoom: false,
         zoomSnap: 1,
         zoomDelta: 1,
         wheelPxPerZoomLevel: 80,
         fadeAnimation: false,
-        zoomAnimation: false,
+        zoomAnimation: true,
+        markerZoomAnimation: true,
         trackResize: true,
         maxBounds: [[-85, -180], [85, 180]],
         maxBoundsViscosity: 0.8,
       }).setView([-25.2744, 133.7751], 4);
+      map.zoomControl.setPosition('bottomright');
 
       googleLayer = L.tileLayer(
         'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
@@ -570,9 +667,9 @@
           maxZoom: VISUAL_MAX,
           maxNativeZoom: 20,
           detectRetina: false,
-          updateWhenZooming: false,
+          updateWhenZooming: true,
           updateWhenIdle: true,
-          attribution: 'Imagery © Google',
+          keepBuffer: 8,
         }
       );
 
@@ -583,9 +680,9 @@
           maxZoom: VISUAL_MAX,
           maxNativeZoom: ESRI_NATIVE,
           detectRetina: false,
-          updateWhenZooming: false,
+          updateWhenZooming: true,
           updateWhenIdle: true,
-          attribution: 'Tiles © Esri',
+          keepBuffer: 8,
         }
       );
 
@@ -639,8 +736,27 @@
         const active = rings[activeRing] || [];
         return active.slice();
       },
-      invalidate: function () { scheduleInvalidate(); }
+      invalidate: function () { scheduleInvalidate(); },
+      showTutorial: function () {
+        var el = document.getElementById('traceTutorial');
+        if (el) el.classList.add('show');
+      },
+      hideTutorial: function () {
+        var el = document.getElementById('traceTutorial');
+        if (el) el.classList.remove('show');
+      }
     };
+
+    document.getElementById('tutorialDismiss').onclick = function () {
+      window.solarSimMap.hideTutorial();
+      post({ type: 'tutorial-dismissed' });
+    };
+    document.getElementById('traceTutorial').addEventListener('click', function (ev) {
+      if (ev.target.id === 'traceTutorial') {
+        window.solarSimMap.hideTutorial();
+        post({ type: 'tutorial-dismissed' });
+      }
+    });
 
     if (window.ResizeObserver) {
       new ResizeObserver(function () { scheduleInvalidate(); })

@@ -1,11 +1,14 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using SolarSim.Application.Equipment;
 using SolarSim.Domain.Equipment;
 
 namespace SolarSim.Preview;
 
-public partial class CustomPanelDialog : Window
+public partial class CustomPanelDialog : UserControl, IAppModal
 {
+    public event Action<bool?>? Completed;
     public SolarPanelDefinition? CreatedDefinition { get; private set; }
 
     public CustomPanelDialog()
@@ -37,14 +40,18 @@ public partial class CustomPanelDialog : Window
         }
 
         CreatedDefinition = CustomPanelFactory.Create(request);
-        DialogResult = true;
-        Close();
+        Completed?.Invoke(true);
     }
 
-    private void Cancel_Click(object sender, RoutedEventArgs e)
+    private void Cancel_Click(object sender, RoutedEventArgs e) => Completed?.Invoke(false);
+
+    private void Dialog_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        DialogResult = false;
-        Close();
+        if (e.Key == Key.Escape)
+        {
+            Completed?.Invoke(false);
+            e.Handled = true;
+        }
     }
 
     private static double Parse(string text) =>

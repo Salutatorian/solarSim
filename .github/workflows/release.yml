@@ -64,27 +64,74 @@ jobs:
           name: solarSim-${{ steps.ver.outputs.version }}-win-x64
           path: artifacts/publish/solarSim-${{ steps.ver.outputs.version }}-win-x64.zip
 
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+
+  publish-macos:
+    runs-on: macos-latest
+    needs: publish-windows
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish macOS arm64
+        run: pwsh ./Tools/Publish-Mac.ps1 -Version "${{ needs.publish-windows.outputs.version }}" -Runtime osx-arm64
+
+      - name: Publish macOS x64
+        run: pwsh ./Tools/Publish-Mac.ps1 -Version "${{ needs.publish-windows.outputs.version }}" -Runtime osx-x64
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: solarSim-${{ needs.publish-windows.outputs.version }}-macos
+          path: |
+            artifacts/publish/solarSim-${{ needs.publish-windows.outputs.version }}-osx-arm64.dmg
+            artifacts/publish/solarSim-${{ needs.publish-windows.outputs.version }}-osx-x64.dmg
+
+  github-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [publish-windows, publish-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Flatten installers
+        run: |
+          mkdir -p release-files
+          find dist \( -name '*.zip' -o -name '*.dmg' \) -exec cp {} release-files/ \;
+          ls -la release-files
+
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: solarSim ${{ steps.ver.outputs.version }}
+          name: solarSim ${{ needs.publish-windows.outputs.version }}
           body: |
-            ## solarSim ${{ steps.ver.outputs.version }}
+            ## solarSim ${{ needs.publish-windows.outputs.version }}
 
-            Public beta — Windows x64 WPF design lab.
+            Public beta — design aid only (not stamped approval).
 
-            ### Run
-            1. Download `solarSim-${{ steps.ver.outputs.version }}-win-x64.zip`
+            ### Windows (full editor)
+            1. Download `solarSim-${{ needs.publish-windows.outputs.version }}-win-x64.zip`
             2. Unzip and run `solarSim.exe`
-            3. Install [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) if map tracer fails to load
+            3. Install [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) if map tracer fails
 
-            ### Notes
-            - Design / simulation aid only — not stamped electrical, structural, or bankable-yield approval.
-            - Map needs internet + WebView2; offline → Draw roof.
-            - Imported roofs lock after straighten (Unlock to edit geometry).
-            - See `SMOKE.md`, `RELEASE.md`, `CHANGELOG.md`.
-          files: artifacts/publish/solarSim-${{ steps.ver.outputs.version }}-win-x64.zip
+            ### macOS (preview)
+            - **Apple Silicon:** `solarSim-${{ needs.publish-windows.outputs.version }}-osx-arm64.dmg`
+            - **Intel:** `solarSim-${{ needs.publish-windows.outputs.version }}-osx-x64.dmg`
+            1. Open the DMG and drag `solarSim` into Applications
+            2. First launch: right-click → **Open** (unsigned beta)
+            3. Same `.solarproj` files as Windows. Map tracing is still Windows-only.
+
+            See `SMOKE.md`, `RELEASE.md`, `CHANGELOG.md`.
+          files: release-files/*
           draft: false
           generate_release_notes: true
         env:

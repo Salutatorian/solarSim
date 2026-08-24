@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
@@ -7,6 +7,16 @@ namespace SolarSim.Preview;
 
 public partial class App : System.Windows.Application
 {
+    private void App_Startup(object sender, StartupEventArgs e)
+    {
+        Window window;
+        var file = e.Args.FirstOrDefault(a =>
+            a.EndsWith(".solarproj", StringComparison.OrdinalIgnoreCase) && File.Exists(a));
+        window = file is not null ? new MainWindow(file) : new MainWindow();
+        MainWindow = window;
+        window.Show();
+    }
+
     public App()
     {
         DispatcherUnhandledException += (_, e) =>

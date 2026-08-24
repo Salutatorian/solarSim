@@ -1,12 +1,17 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using SolarSim.Preview.Updates;
 
 namespace SolarSim.Preview;
 
-public partial class SettingsDialog : Window
+public partial class SettingsDialog : UserControl, IAppModal
 {
     private readonly string _currentVersion;
     private readonly Action? _onStateChanged;
+    private bool _completed;
+
+    public event Action<bool?>? Completed;
 
     public SettingsDialog(string currentVersion, Action? onStateChanged = null)
     {
@@ -17,7 +22,6 @@ public partial class SettingsDialog : Window
         ApplyOnExitCheck.Checked += (_, _) => AppUpdateService.Instance.ApplyOnExit = true;
         ApplyOnExitCheck.Unchecked += (_, _) => AppUpdateService.Instance.ApplyOnExit = false;
         ApplyOnExitCheck.IsChecked = AppUpdateService.Instance.ApplyOnExit;
-        Closed += (_, _) => AppUpdateService.Instance.StateChanged -= OnUpdateState;
         Loaded += async (_, _) =>
         {
             UpdateProgressTrack.SizeChanged += (_, _) => LayoutProgress();
@@ -25,6 +29,25 @@ public partial class SettingsDialog : Window
             await AppUpdateService.Instance.CheckForUpdatesAsync(_currentVersion);
             RefreshUi();
         };
+    }
+
+    public void Complete(bool? result = false)
+    {
+        if (_completed) return;
+        _completed = true;
+        AppUpdateService.Instance.StateChanged -= OnUpdateState;
+        Completed?.Invoke(result);
+    }
+
+    private void Close_Click(object sender, RoutedEventArgs e) => Complete(true);
+
+    private void Dialog_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            Complete(true);
+            e.Handled = true;
+        }
     }
 
     private void OnUpdateState() =>
@@ -159,6 +182,4 @@ public partial class SettingsDialog : Window
 
     private void Donate5_Click(object sender, RoutedEventArgs e) =>
         ExternalLinks.Open(ExternalLinks.Donate5, this);
-
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

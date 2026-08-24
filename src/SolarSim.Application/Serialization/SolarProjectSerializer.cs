@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using SolarSim.Application.Project;
 using SolarSim.Domain.Electrical;
 using SolarSim.Domain.Equipment;
+using SolarSim.Domain.Estimate;
 using SolarSim.Domain.Roof;
 
 namespace SolarSim.Application.Serialization;
@@ -51,6 +52,29 @@ public sealed class SolarProjectDocument
 
     [JsonPropertyName("equipment")]
     public List<EquipmentDto> Equipment { get; set; } = new();
+
+    [JsonPropertyName("initialDesignTarget")]
+    public InitialDesignTargetDto? InitialDesignTarget { get; set; }
+}
+
+public sealed class InitialDesignTargetDto
+{
+    public double TargetDailyKwh { get; set; }
+    public double TargetAnnualKwh { get; set; }
+    public double TargetDcKw { get; set; }
+    public Guid PreferredPanelDefinitionId { get; set; }
+    public int TargetPanelCount { get; set; }
+    public int? EstimatedRoofPanelLimit { get; set; }
+    public double? BudgetUsd { get; set; }
+    public bool BudgetIsInstalled { get; set; }
+    public double TargetOffsetPercent { get; set; }
+    public double SuggestedInverterKw { get; set; }
+    public double SuggestedBatteryKwh { get; set; }
+    public string Confidence { get; set; } = "Low";
+    public string UtilityId { get; set; } = "";
+    public string PanelLabel { get; set; } = "";
+    public double PanelWatts { get; set; }
+    public string Notes { get; set; } = "";
 }
 
 public sealed class SiteConditionsDto
@@ -117,6 +141,8 @@ public sealed class RoofDto
     public bool EnforceObstacles { get; set; } = true;
     public List<PointDto> Vertices { get; set; } = new();
     public List<ObstacleDto> Obstacles { get; set; } = new();
+    public double? PitchDegrees { get; set; }
+    public double? AzimuthDegrees { get; set; }
 }
 
 public sealed class PointDto
@@ -363,6 +389,27 @@ public static class SolarProjectSerializer
                 RailOverhangMm = project.Racking.RailOverhangMm,
                 AttachmentEdgeOffsetMm = project.Racking.AttachmentEdgeOffsetMm,
             },
+            InitialDesignTarget = project.InitialDesignTarget is { } target
+                ? new InitialDesignTargetDto
+                {
+                    TargetDailyKwh = target.TargetDailyKwh,
+                    TargetAnnualKwh = target.TargetAnnualKwh,
+                    TargetDcKw = target.TargetDcKw,
+                    PreferredPanelDefinitionId = target.PreferredPanelDefinitionId,
+                    TargetPanelCount = target.TargetPanelCount,
+                    EstimatedRoofPanelLimit = target.EstimatedRoofPanelLimit,
+                    BudgetUsd = target.BudgetUsd,
+                    BudgetIsInstalled = target.BudgetIsInstalled,
+                    TargetOffsetPercent = target.TargetOffsetPercent,
+                    SuggestedInverterKw = target.SuggestedInverterKw,
+                    SuggestedBatteryKwh = target.SuggestedBatteryKwh,
+                    Confidence = target.Confidence.ToString(),
+                    UtilityId = target.UtilityId,
+                    PanelLabel = target.PanelLabel,
+                    PanelWatts = target.PanelWatts,
+                    Notes = target.Notes,
+                }
+                : null,
         };
     }
 
@@ -495,6 +542,30 @@ public static class SolarProjectSerializer
             project.Racking.AttachmentEdgeOffsetMm = doc.Racking.AttachmentEdgeOffsetMm;
         }
 
+        if (doc.InitialDesignTarget is { } dto)
+        {
+            _ = Enum.TryParse<EstimateConfidence>(dto.Confidence, true, out var confidence);
+            project.InitialDesignTarget = new InitialDesignTarget
+            {
+                TargetDailyKwh = dto.TargetDailyKwh,
+                TargetAnnualKwh = dto.TargetAnnualKwh,
+                TargetDcKw = dto.TargetDcKw,
+                PreferredPanelDefinitionId = dto.PreferredPanelDefinitionId,
+                TargetPanelCount = dto.TargetPanelCount,
+                EstimatedRoofPanelLimit = dto.EstimatedRoofPanelLimit,
+                BudgetUsd = dto.BudgetUsd,
+                BudgetIsInstalled = dto.BudgetIsInstalled,
+                TargetOffsetPercent = dto.TargetOffsetPercent,
+                SuggestedInverterKw = dto.SuggestedInverterKw,
+                SuggestedBatteryKwh = dto.SuggestedBatteryKwh,
+                Confidence = confidence,
+                UtilityId = dto.UtilityId ?? "",
+                PanelLabel = dto.PanelLabel ?? "",
+                PanelWatts = dto.PanelWatts,
+                Notes = dto.Notes ?? "",
+            };
+        }
+
         return project;
     }
 
@@ -510,6 +581,8 @@ public static class SolarProjectSerializer
         EnforceBoundary = roof.EnforceBoundary,
         EnforceObstacles = roof.EnforceObstacles,
         Vertices = roof.Vertices.Select(v => new PointDto { X = v.X, Y = v.Y }).ToList(),
+        PitchDegrees = roof.PitchDegrees,
+        AzimuthDegrees = roof.AzimuthDegrees,
         Obstacles = roof.Obstacles.Select(o => new ObstacleDto
         {
             Id = o.Id,
@@ -532,6 +605,8 @@ public static class SolarProjectSerializer
         roof.EnforceSetback = dto.EnforceSetback;
         roof.EnforceBoundary = dto.EnforceBoundary;
         roof.EnforceObstacles = dto.EnforceObstacles;
+        roof.PitchDegrees = dto.PitchDegrees;
+        roof.AzimuthDegrees = dto.AzimuthDegrees;
         roof.SetVertices(dto.Vertices.Select(v => new Point2Mm(v.X, v.Y)), dto.IsClosed);
 
         foreach (var obstacleDto in dto.Obstacles)

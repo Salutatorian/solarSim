@@ -27,6 +27,26 @@ public class Phase11BatteryTests
     }
 
     [Fact]
+    public void Parallel_batteries_join_same_polarity_bat_terminals()
+    {
+        var project = new SolarProject();
+        var a = project.AddBattery(0, 0);
+        var b = project.AddBattery(2000, 0);
+        var aPos = a.Ports.First(p => p.Label == "BAT1+");
+        var bPos = b.Ports.First(p => p.Label == "BAT1+");
+        var aNeg = a.Ports.First(p => p.Label == "BAT1-");
+        var bNeg = b.Ports.First(p => p.Label == "BAT1-");
+
+        Assert.True(project.Graph.TryConnect(aPos.Id, bPos.Id, null, out _).IsValid);
+        Assert.True(project.Graph.TryConnect(aNeg.Id, bNeg.Id, null, out _).IsValid);
+        Assert.False(project.Graph.TryConnect(
+            a.Ports.First(p => p.Label == "BAT2+").Id,
+            b.Ports.First(p => p.Label == "BAT2-").Id,
+            null,
+            out _).IsValid);
+    }
+
+    [Fact]
     public void Large_batteries_have_dual_bat_terminals()
     {
         var project = new SolarProject();

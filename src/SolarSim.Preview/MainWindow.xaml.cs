@@ -17,6 +17,7 @@ using SolarSim.Application.Serialization;
 using SolarSim.Application.Units;
 using SolarSim.Domain.Electrical;
 using SolarSim.Domain.Equipment;
+using SolarSim.Domain.Estimate;
 using SolarSim.Domain.Roof;
 using SolarSim.Preview.Updates;
 
@@ -30,6 +31,10 @@ public partial class MainWindow : Window
     private readonly Dictionary<Guid, WireCanvasVisual> _wireVisuals = new();
 
     private const double MmToPx = 0.12; // 1 mm → 0.12 px (keeps modules readable)
+    /// <summary>Houses sit near 100%. Warehouses (~50–400 m) need to go much lower.</summary>
+    private const double ZoomMin = 0.01;
+    private const double ZoomMax = 6.0;
+    private const double ZoomFitMax = 2.8;
     /// <summary>Catch radius per axis (mm). Independent X/Y so top/bottom snaps without needing perfect column align.</summary>
     private const double SnapThresholdMm = 70;
     private const double PortHitRadiusPx = 14;
@@ -85,6 +90,7 @@ public partial class MainWindow : Window
     private readonly List<UIElement> _alignmentGuideVisuals = new();
 
     private bool _isMarqueeSelecting;
+    private bool _inspectorRevealPending;
     private Point _marqueeStart;
     private Rectangle? _marqueeRect;
 
@@ -99,11 +105,9 @@ public partial class MainWindow : Window
         Select,
         Roof,
         Panel,
-        Wire,
-        Obstacle,
         Measure,
-        Add,
-        Layers,
+        Equipment,
+        Suggestion,
     }
 
     private WorkspacePlan _workspacePlan = WorkspacePlan.Roof;
@@ -113,7 +117,6 @@ public partial class MainWindow : Window
     {
         Select,
         DrawRoof,
-        PlaceObstacle,
         Measure,
     }
 
@@ -128,7 +131,8 @@ public partial class MainWindow : Window
     private readonly List<string> _recentAddKeys = new();
     private System.Windows.Shapes.Path? _previewWire;
     private Ellipse? _hoverPortMarker;
-    private TextBlock? _connectedToast;
+    private FrameworkElement? _connectedToast;
+    private DispatcherTimer? _canvasToastTimer;
     private TextBlock? _previewPlugHint;
     private bool _refreshRunning;
     private bool _refreshQueued;
@@ -137,14 +141,6 @@ public partial class MainWindow : Window
     private int _draggingWireSegmentIndex = -1; // index of segment start in full path (start+waypoints+end)
     private bool _draggingWireSegmentHorizontal;
 
-    private enum LayersCategory
-    {
-        Roofs,
-        Panels,
-        Equipment,
-    }
-
-    private LayersCategory _layersCategory = LayersCategory.Roofs;
     private bool _suppressLayerListSelection;
     private Line? _roofRubberBandLine;
     private TextBlock? _roofLiveMeasureLabel;
@@ -166,11 +162,13 @@ public partial class MainWindow : Window
     private bool _applyUpdateOnCloseRequested;
     private bool _updateApplyKickoff;
     private SettingsDialog? _openSettingsDialog;
+    private readonly List<FrameworkElement> _appModals = new();
     private DispatcherTimer? _updateCheckTimer;
 
     public MainWindow()
     {
         InitializeComponent();
+        OverflowMenuButton.PreviewMouseLeftButtonDown += OverflowMenu_PreviewMouseDown;
         PopulateUnitsCombo();
         PopulateClimatePresetCombo();
         PanelAppearance.Load();
@@ -185,10 +183,87 @@ public partial class MainWindow : Window
         };
         _project.CalculationsUpdated += () => Dispatcher.BeginInvoke(RefreshStatusAndInspector, DispatcherPriority.Background);
         Loaded += MainWindow_Loaded;
+        StateChanged += (_, _) => SyncChromeIcons();
         ApplyWorkspacePlanUi();
         SetUiTool(UiTool.Select);
         RefreshAll();
+        if (HomeOverlay is not null)
+            HomeOverlay.ProjectChosen += OnHomeProjectChosen;
+        if (MapOverlay is not null)
+        {
+            MapOverlay.Imported += OnMapOverlayImported;
+            MapOverlay.Cancelled += (_, _) => HideMapOverlay();
+        }
     }
+
+    private void OnHomeProjectChosen(string path)
+    {
+        LoadProjectFromPath(path);
+        HideHomeOverlay();
+        ShowWhatsNewIfPresent();
+    }
+
+    private void HideHomeOverlay()
+    {
+        if (HomeOverlay is not null)
+            HomeOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private bool HomeIsOpen => HomeOverlay?.Visibility == Visibility.Visible;
+    private bool MapIsOpen => MapOverlay?.Visibility == Visibility.Visible;
+
+    private void HideMapOverlay()
+    {
+        if (MapOverlay is null) return;
+        MapOverlay.SetBrowserVisible(false);
+        MapOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    internal bool? ShowAppModal(IAppModal content)
+    {
+        if (content is not FrameworkElement fe)
+            throw new ArgumentException("Modal must be a FrameworkElement.", nameof(content));
+
+        bool? result = false;
+        var frame = new DispatcherFrame();
+
+        void OnCompleted(bool? r)
+        {
+            content.Completed -= OnCompleted;
+            result = r;
+            _appModals.Remove(fe);
+            PresentTopModal();
+            frame.Continue = false;
+        }
+
+        content.Completed += OnCompleted;
+        _appModals.Add(fe);
+        PresentTopModal();
+        fe.Focusable = true;
+        fe.Focus();
+        Dispatcher.PushFrame(frame);
+        return result;
+    }
+
+    private void PresentTopModal()
+    {
+        if (_appModals.Count == 0)
+        {
+            if (ModalHost is not null)
+                ModalHost.Content = null;
+            if (ModalLayer is not null)
+                ModalLayer.Visibility = Visibility.Collapsed;
+            MapOverlay?.SetBrowserVisible(true);
+            return;
+        }
+
+        // HWND-hosted map would cover this WPF card.
+        MapOverlay?.SetBrowserVisible(false);
+        ModalHost.Content = _appModals[^1];
+        ModalLayer.Visibility = Visibility.Visible;
+    }
+
+    private bool ModalIsOpen => ModalLayer?.Visibility == Visibility.Visible;
 
     /// <summary>Open editor with a project that already has a born path on disk.</summary>
     public MainWindow(string projectPath) : this()
@@ -196,20 +271,26 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(projectPath))
             throw new ArgumentException("Project path is required.", nameof(projectPath));
         LoadProjectFromPath(projectPath);
+        HideHomeOverlay();
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         if (AppVersionLabel is not null)
             AppVersionLabel.Text = GetAppVersion();
+        SyncChromeIcons();
         if (ShowAttachmentsCheck is not null)
             ShowAttachmentsCheck.IsChecked = _showAttachments;
         RebuildRackingVisuals();
 
-        if (string.IsNullOrWhiteSpace(_project.FilePath))
+        if (HomeIsOpen)
+        {
+            // Home lives in this same window — no empty-project warning, no What's new yet.
+        }
+        else if (string.IsNullOrWhiteSpace(_project.FilePath))
         {
             // Safety: editor must be opened from Home with a real path.
-            MessageBox.Show(this,
+            AppConfirmDialog.Alert(this,
                 "Open or create a project from the home screen so it has a save location on this PC.",
                 "solarSim",
                 MessageBoxButton.OK,
@@ -221,7 +302,11 @@ public partial class MainWindow : Window
             RefreshStatusAndInspector();
         }
 
-        ShowWhatsNewAfterProjectReady();
+        if (!HomeIsOpen && HasEstimateTarget() && ShowsRoofGeometry && _project.Graph.Panels.Count == 0)
+            SetUiTool(UiTool.Roof);
+
+        if (!HomeIsOpen)
+            ShowWhatsNewAfterProjectReady();
         AppUpdateService.Instance.StateChanged += OnUpdateServiceStateChanged;
         AppUpdateService.Instance.ApplyRequested += OnUpdateApplyRequested;
         Closed += (_, _) =>
@@ -275,8 +360,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dlg = new WhatsNewDialog(version, released, body) { Owner = this };
-        dlg.ShowDialog();
+        var dlg = new WhatsNewDialog(version, released, body);
+        AppModalHost.Show(dlg);
         AppUpdateService.MarkWhatsNewSeen(current);
     }
 
@@ -318,7 +403,7 @@ public partial class MainWindow : Window
     private void OnUpdateApplyRequested() =>
         Dispatcher.BeginInvoke(() =>
         {
-            _openSettingsDialog?.Close();
+            _openSettingsDialog?.Complete(false);
             _openSettingsDialog = null;
             _applyUpdateOnCloseRequested = true;
             Close();
@@ -389,24 +474,15 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
-        // Modeless — ShowDialog() disables the main window (no minimize / taskbar).
-        if (_openSettingsDialog is { IsLoaded: true } open)
-        {
-            if (open.WindowState == WindowState.Minimized)
-                open.WindowState = WindowState.Normal;
-            open.Activate();
+        if (_openSettingsDialog is { IsLoaded: true })
             return;
-        }
 
-        var dlg = new SettingsDialog(GetAppVersion(), RefreshUpdateUi) { Owner = this };
+        var dlg = new SettingsDialog(GetAppVersion(), RefreshUpdateUi);
         _openSettingsDialog = dlg;
-        dlg.Closed += (_, _) =>
-        {
-            if (ReferenceEquals(_openSettingsDialog, dlg))
-                _openSettingsDialog = null;
-            RefreshUpdateUi();
-        };
-        dlg.Show();
+        AppModalHost.Show(dlg);
+        if (ReferenceEquals(_openSettingsDialog, dlg))
+            _openSettingsDialog = null;
+        RefreshUpdateUi();
     }
 
     private void UpdateToastLater_Click(object sender, RoutedEventArgs e)
@@ -450,13 +526,12 @@ public partial class MainWindow : Window
             UpdateSetbackBoxFromActiveRoof();
             UpdateSiteTempBoxes();
             UpdateRackingBoxes();
-            UpdateLayersTabStyles();
             ApplyWorkspacePlanUi();
             UpdateLockRoofButton();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this,
+            AppConfirmDialog.Alert(this,
                 $"Display refresh failed:\n{ex.Message}",
                 "solarSim",
                 MessageBoxButton.OK,
@@ -524,8 +599,34 @@ public partial class MainWindow : Window
             || _selectedEquipmentIds.Count > 0
             || _selectedObstacleId is not null;
         if (DeleteButton.IsEnabled && InspectorPanel?.Visibility != Visibility.Visible)
-            SetInspectorOpen(true);
+        {
+            if (IsCanvasPointerHeld())
+                _inspectorRevealPending = true;
+            else
+            {
+                _inspectorRevealPending = false;
+                SetInspectorOpen(true);
+            }
+        }
         ZoomLabel.Text = $"{_zoom * 100:0}%";
+    }
+
+    private bool IsCanvasPointerHeld() =>
+        Mouse.LeftButton == MouseButtonState.Pressed
+        || _isMarqueeSelecting
+        || _draggingPanelId is not null;
+
+    private void TryRevealInspectorAfterPointerUp()
+    {
+        if (!_inspectorRevealPending) return;
+        _inspectorRevealPending = false;
+        if (InspectorPanel?.Visibility == Visibility.Visible) return;
+        if (_selectedPanelIds.Count == 0
+            && _selectedConnectionIds.Count == 0
+            && _selectedEquipmentIds.Count == 0
+            && _selectedObstacleId is null)
+            return;
+        SetInspectorOpen(true);
     }
 
     private void UpdateHud(ProjectCalculationResult calc, int errors, int warnings)
@@ -1056,6 +1157,7 @@ public partial class MainWindow : Window
         AddInspectorRow("Strings", $"{calc.StringCount}");
         if (calc.TotalPanels > 0)
             AddInspectorRow("Est. annual", $"~{_project.GetEnergyEstimate().EstimatedAnnualKwh:0} kWh");
+        AddQuickEstimateInspector();
         AddInspectorNote("Site and racking settings appear below when nothing is selected.");
     }
 
@@ -1437,8 +1539,6 @@ public partial class MainWindow : Window
         _wireVisuals.Clear();
 
         var obstacles = CollectRoutingObstacleRects();
-        var cableBrush = NeutralCableBrush();
-        var cableBrushSelected = NeutralCableBrush(selected: true);
         var laneByConnection = ComputeWireLaneIndices();
         var laneSpacing = Math.Clamp(8 * Math.Max(_zoom, 0.55), 5, 14);
 
@@ -1460,7 +1560,7 @@ public partial class MainWindow : Window
             var p2 = GetPortCanvasPoint(end);
             var selected = _selectedConnectionIds.Contains(connection.Id);
             var thickness = selected ? 2.75 : 2.15;
-            var stroke = selected ? cableBrushSelected : cableBrush;
+            var stroke = CableBrushFor(start, end, selected);
 
             // Panel jumpers above module faces so strings stay visible; equipment above gear.
             var startEq = _project.Graph.Equipment.ContainsKey(start.OwnerComponentId);
@@ -1494,6 +1594,20 @@ public partial class MainWindow : Window
             var hitPath = CreateWirePath(route, Brushes.Transparent, 14, connection.Id, isHitTarget: true, rounded: false);
             visual.Shapes.Add(hitPath);
             AddWireShape(hitPath, z: hitZ);
+
+            // Black negative cables get a light halo so they still read on the dark canvas.
+            if (start.Polarity == end.Polarity && start.Polarity == Polarity.Negative)
+            {
+                var halo = CreateWirePath(
+                    route,
+                    (Brush)FindResource("MutedBrush"),
+                    thickness + 2.4,
+                    connection.Id,
+                    isHitTarget: false,
+                    rounded: true);
+                visual.Shapes.Add(halo);
+                AddWireShape(halo, z: wireZ - 1);
+            }
 
             // Visible Smart Wiring cable (rounded ortho elbows).
             var cablePath = CreateWirePath(route, stroke, thickness, connection.Id, isHitTarget: false, rounded: true);
@@ -1579,6 +1693,11 @@ public partial class MainWindow : Window
             {
                 if (e.ChangedButton != MouseButton.Left) return;
                 BeginWireSegmentDrag(connection.Id, segIndex, isHorizontal);
+                e.Handled = true;
+            };
+            handle.MouseRightButtonUp += (_, e) =>
+            {
+                DisconnectWire(connection.Id);
                 e.Handled = true;
             };
 
@@ -1751,6 +1870,36 @@ public partial class MainWindow : Window
         return selected
             ? new SolidColorBrush(Color.FromRgb(0xC4, 0xC4, 0xCC))
             : new SolidColorBrush(Color.FromRgb(0x8B, 0x8B, 0x96));
+    }
+
+    private Brush CableBrushFor(ElectricalPort start, ElectricalPort end, bool selected)
+    {
+        if (start.Polarity == end.Polarity)
+            return PolarityCableBrush(start.Polarity, selected);
+        return NeutralCableBrush(selected);
+    }
+
+    private Brush PolarityCableBrush(Polarity polarity, bool selected)
+    {
+        if (polarity == Polarity.Positive)
+        {
+            return selected
+                ? new SolidColorBrush(Color.FromRgb(0xF8, 0x71, 0x71))
+                : (Brush)FindResource("PositiveBrush");
+        }
+
+        // Physical black negative conductor.
+        var dark = ThemeController.Current == ThemeController.ThemeKind.DarkCad;
+        if (dark)
+        {
+            return selected
+                ? new SolidColorBrush(Color.FromRgb(0x27, 0x27, 0x2A))
+                : new SolidColorBrush(Color.FromRgb(0x09, 0x09, 0x0B));
+        }
+
+        return selected
+            ? new SolidColorBrush(Color.FromRgb(0x3F, 0x3F, 0x46))
+            : new SolidColorBrush(Color.FromRgb(0x11, 0x11, 0x13));
     }
 
     private System.Windows.Shapes.Path CreateWirePath(
@@ -1982,6 +2131,7 @@ public partial class MainWindow : Window
         Canvas.SetTop(hitTarget, center.Y - hit / 2);
         Panel.SetZIndex(hitTarget, 960);
         hitTarget.MouseLeftButtonDown += Port_MouseLeftButtonDown;
+        hitTarget.MouseRightButtonUp += Port_MouseRightButtonUp;
         DesignCanvas.Children.Add(hitTarget);
         _panelPortHitOverlays[port.Id] = hitTarget;
     }
@@ -2085,10 +2235,9 @@ public partial class MainWindow : Window
             SelectConnection(connectionId);
             e.Handled = true;
         };
-        element.MouseRightButtonDown += (_, e) =>
+        element.MouseRightButtonUp += (_, e) =>
         {
-            SelectConnection(connectionId);
-            ShowCanvasContextMenu(e.GetPosition(DesignCanvas));
+            DisconnectWire(connectionId);
             e.Handled = true;
         };
     }
@@ -2290,10 +2439,7 @@ public partial class MainWindow : Window
             ? ThemeController.ThemeKind.LightAtelier
             : ThemeController.ThemeKind.DarkCad;
         ThemeController.Apply(next);
-        ThemeToggleButton.Content = "◐";
-        ThemeToggleButton.ToolTip = next == ThemeController.ThemeKind.DarkCad
-            ? "Switch to light theme"
-            : "Switch to dark theme";
+        SyncChromeIcons();
         ApplyWorkspacePlanUi();
         RefreshAll();
     }
@@ -2304,8 +2450,20 @@ public partial class MainWindow : Window
     private void Maximize_Click(object sender, RoutedEventArgs e)
     {
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-        if (MaximizeButton is not null)
-            MaximizeButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
+        SyncChromeIcons();
+    }
+
+    private void SyncChromeIcons()
+    {
+        if (ThemeToggleIcon is not null)
+        {
+            var dark = ThemeController.Current == ThemeController.ThemeKind.DarkCad;
+            ThemeToggleIcon.Kind = dark ? AppIconKind.Sun : AppIconKind.Moon;
+            ThemeToggleButton.ToolTip = dark ? "Switch to light theme" : "Switch to dark theme";
+        }
+
+        if (MaximizeIcon is not null)
+            MaximizeIcon.Kind = WindowState == WindowState.Maximized ? AppIconKind.Restore : AppIconKind.Maximize;
     }
 
     private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
@@ -2326,18 +2484,343 @@ public partial class MainWindow : Window
         AddInspectorNote("Edit site and racking fields below. These stay hidden while a canvas object is selected.");
     }
 
+    private void QuickEstimate_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new QuickEstimateWizardWindow(_project);
+        if (AppModalHost.Show(dlg) != true)
+            return;
+        if (!string.IsNullOrWhiteSpace(_project.FilePath))
+            SolarProjectSerializer.SaveToFile(_project, _project.FilePath);
+        SetUiTool(UiTool.Roof);
+        RefreshAll();
+    }
+
+    private void AddQuickEstimateInspector()
+    {
+        if (_project.InitialDesignTarget is not { } target)
+            return;
+
+        AddInspectorSection("Quick estimate");
+        AddInspectorRow("Usage", $"{target.TargetDailyKwh:0.0} kWh/day");
+        AddInspectorRow("Target", $"{target.TargetPanelCount} × {target.PanelLabel} ({target.TargetDcKw:0.0} kW)");
+        AddInspectorRow("Offset", $"{target.TargetOffsetPercent:0}%");
+        if (target.SuggestedInverterKw > 0)
+            AddInspectorRow("Inverter", $"{target.SuggestedInverterKw:0.#} kW");
+        if (target.SuggestedBatteryKwh > 0)
+            AddInspectorRow("Battery", $"{target.SuggestedBatteryKwh:0.##} kWh");
+        AddInspectorRow("Confidence", target.Confidence.ToString());
+
+        var tracedSqM = _project.Roofs.Roofs.Where(r => r.IsClosed).Sum(r => r.AreaSquareMeters());
+        if (tracedSqM > 0 && target.TargetPanelCount > 0)
+        {
+            var def = target.PreferredPanelDefinitionId != Guid.Empty
+                && _project.Definitions.TryGetValue(target.PreferredPanelDefinitionId, out var found)
+                ? found
+                : SolarPanelDefinition.BuiltInLibrary.FirstOrDefault();
+            if (def is not null)
+            {
+                var fit = RoofCapacityEstimator.PanelsForTracedRoofSqM(tracedSqM, def.WidthMm, def.HeightMm);
+                AddInspectorNote(
+                    $"Your initial estimate called for {target.TargetPanelCount} panels. " +
+                    $"Based on the traced roof, about {fit} of the selected module could fit.");
+            }
+        }
+
+        AddInspectorNote(QuickSystemEstimateResult.Disclaimer);
+    }
+
+    private void RefreshEstimateBanner()
+    {
+        var target = _project.InitialDesignTarget;
+        var hasTarget = target is { TargetPanelCount: > 0 };
+        var alreadyPlaced = _project.Graph.Panels.Count > 0;
+        if (EstimateBanner is not null)
+            EstimateBanner.Visibility = Visibility.Collapsed;
+        if (EstimatePlacePanel is not null)
+            EstimatePlacePanel.Visibility = Visibility.Collapsed;
+
+        if (SuggestionEstimateButton is not null)
+            SuggestionEstimateButton.Visibility = hasTarget ? Visibility.Collapsed : Visibility.Visible;
+        if (SuggestionPlaceButton is not null)
+            SuggestionPlaceButton.Visibility = hasTarget ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!SuggestionToolAvailable())
+            return;
+
+        if (!hasTarget || target is null)
+        {
+            if (SuggestionBody is not null)
+                SuggestionBody.Text = "No estimate on this project yet. Enter kWh and we’ll size the array for this roof.";
+            if (SuggestionHint is not null)
+                SuggestionHint.Text = "Same kWh prompt as when you create a project. Skip it and this page stays empty.";
+            SuggestionChipHost?.Children.Clear();
+            return;
+        }
+
+        var def = ResolveEstimatePanel(target);
+        var want = EstimatePanelCount(target, def);
+        var roofReady = _project.Roofs.HasAnyClosedRoof;
+        var text = roofReady
+            ? $"{want} × {def.DisplayName}  ·  sized from your kWh and this roof"
+            : $"{want} × {def.DisplayName}  ·  trace or draw the roof, then lay this array on it";
+        if (EstimateBannerText is not null)
+            EstimateBannerText.Text = text;
+        if (EstimatePlaceHint is not null)
+            EstimatePlaceHint.Text = text;
+        if (EstimatePlaceButton is not null)
+        {
+            EstimatePlaceButton.IsEnabled = roofReady;
+            EstimatePlaceButton.Content = alreadyPlaced ? "Replace array" : "Lay on roof";
+        }
+
+        if (SuggestionBody is not null)
+            SuggestionBody.Text = text;
+        if (SuggestionPlaceButton is not null)
+        {
+            SuggestionPlaceButton.IsEnabled = roofReady;
+            SuggestionPlaceButton.Content = alreadyPlaced ? "Replace array" : "Lay on roof";
+        }
+        if (SuggestionHint is not null)
+        {
+            SuggestionHint.Text = roofReady
+                ? "The roof stays empty until you lay or replace the array. Replace asks first if modules are already there."
+                : "Close the roof outline, then lay the array from here.";
+        }
+
+        FillEstimateWattageChips(SuggestionChipHost, target, def);
+        if (!alreadyPlaced)
+            FillEstimateWattageChips(EstimatePresetHost, target, def);
+        else
+            EstimatePresetHost?.Children.Clear();
+    }
+
+    private bool HasEstimateTarget() =>
+        _project.InitialDesignTarget is { TargetPanelCount: > 0 };
+
+    private bool SuggestionToolAvailable() =>
+        ShowsRoofGeometry && _project.Roofs.HasAnyClosedRoof;
+
+    private void FillEstimateWattageChips(Panel? host, InitialDesignTarget target, SolarPanelDefinition selected)
+    {
+        if (host is null) return;
+        host.Children.Clear();
+        var usable = EstimateUsableRoofFt2();
+        var rec = ModuleWattageAdvisor.Recommend(target.TargetDcKw, usable);
+        var extra = target.PanelWatts > 0 ? (int)Math.Round(target.PanelWatts) : (int?)null;
+        foreach (var watts in ModuleWattageAdvisor.ChipWatts(rec, extra))
+        {
+            var module = SolarPanelDefinition.CreateGeneric(watts);
+            var count = EstimatePanelCount(target, module);
+            var isSelected = Math.Abs(module.PmaxWatts - selected.PmaxWatts) < 0.5;
+            var chip = new Button
+            {
+                Content = $"{module.PmaxWatts:0} W · {count}",
+                Tag = module,
+                Margin = new Thickness(0, 0, 6, 4),
+                Padding = new Thickness(10, 5, 10, 5),
+                FontSize = 12,
+                Cursor = Cursors.Hand,
+                Style = (Style)FindResource("GhostButton"),
+                BorderBrush = isSelected
+                    ? (Brush)FindResource("AccentBrush")
+                    : (Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(isSelected ? 2 : 1),
+            };
+            chip.Click += EstimatePreset_Click;
+            host.Children.Add(chip);
+        }
+    }
+
+    private void EstimatePreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: SolarPanelDefinition def })
+            return;
+        PlaceEstimateArray(interactive: true, definition: def, replace: _project.Graph.Panels.Count > 0);
+    }
+
+    private void PlaceEstimate_Click(object sender, RoutedEventArgs e) =>
+        PlaceEstimateArray(interactive: true, replace: _project.Graph.Panels.Count > 0);
+
+    private void PlaceEstimateArray(bool interactive, SolarPanelDefinition? definition = null, bool replace = false)
+    {
+        if (_project.InitialDesignTarget is not { } target || target.TargetPanelCount <= 0)
+        {
+            if (interactive)
+                AppConfirmDialog.Alert(this, "Enter kWh first so solarSim knows how many modules to place.",
+                    "Place estimate", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (!_project.Roofs.HasAnyClosedRoof)
+        {
+            if (interactive)
+                AppConfirmDialog.Alert(this, "Trace or draw a roof first, then place the array on it.",
+                    "Place estimate", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (!interactive && !replace && _project.Graph.Panels.Count > 0)
+            return;
+
+        if (interactive && _project.Graph.Panels.Count > 0)
+        {
+            var n = _project.Graph.Panels.Count;
+            var confirmed = AppConfirmDialog.Ask(
+                this,
+                "Replace array",
+                "Replace the modules on this roof?",
+                $"This deletes {n} existing module{(n == 1 ? "" : "s")} and lays the estimate in their place.",
+                "Cancel keeps what you have.",
+                confirmLabel: "OK",
+                cancelLabel: "Cancel");
+            if (!confirmed)
+                return;
+            replace = true;
+        }
+
+        var def = definition ?? ResolveEstimatePanel(target);
+        _project.EnsureDefinition(def);
+        var want = EstimatePanelCount(target, def);
+        var occupied = replace
+            ? []
+            : _project.Graph.Panels.Values
+                .Select(p =>
+                {
+                    var (w, h) = _project.GetPanelFootprintMm(p);
+                    return (p.PositionXMm, p.PositionYMm, w, h);
+                })
+                .ToList();
+
+        var packed = RoofArrayFiller.Pack(_project.Roofs, def.WidthMm, def.HeightMm, want, occupied);
+        if (packed.Count == 0)
+        {
+            if (interactive)
+            {
+                var why = _project.Graph.Panels.Count > 0
+                    ? "No free space left. Delete existing modules if you want to place the estimate."
+                    : "Nothing fit on this roof. Try a larger module, or unlock and enlarge the outline.";
+                AppConfirmDialog.Alert(this, why, "Place estimate", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            return;
+        }
+
+        target.PreferredPanelDefinitionId = def.Id;
+        target.PanelLabel = def.DisplayName;
+        target.PanelWatts = def.PmaxWatts;
+        target.TargetPanelCount = want;
+
+        var commands = new List<SolarSim.Application.Commands.ICommand>();
+        if (replace)
+        {
+            foreach (var id in _project.Graph.Panels.Keys.ToList())
+                commands.Add(new DeletePanelCommand(_project, id));
+        }
+        commands.AddRange(packed.Select(pose =>
+        {
+            var panel = new SolarPanelInstance(Guid.NewGuid(), def.Id, pose.XMm, pose.YMm, pose.RotationDegrees);
+            return (SolarSim.Application.Commands.ICommand)new AddPanelCommand(_project, panel);
+        }));
+        _project.History.Execute(new CompositeCommand(
+            replace
+                ? $"Replace array with {packed.Count} × {def.DisplayName}"
+                : $"Place {packed.Count} × {def.DisplayName}",
+            commands));
+
+        _workspacePlan = WorkspacePlan.Roof;
+        SetSelection(panels: packed.Count > 0
+            ? _project.Graph.Panels.Keys.TakeLast(packed.Count)
+            : null);
+        FrameRoofsInView();
+        RefreshAll();
+
+        var note = packed.Count < want
+            ? $"Placed {packed.Count} of {want} × {def.DisplayName} — roof ran out of space."
+            : $"Placed {packed.Count} × {def.DisplayName} on the roof.";
+        StatusText.Text = "ROOF  |  " + note;
+        if (HudDetail is not null)
+            HudDetail.Text = note;
+    }
+
+    private SolarPanelDefinition ResolveEstimatePanel(InitialDesignTarget target)
+    {
+        if (target.PreferredPanelDefinitionId != Guid.Empty
+            && _project.Definitions.TryGetValue(target.PreferredPanelDefinitionId, out var stored))
+            return stored;
+
+        if (target.PreferredPanelDefinitionId != Guid.Empty)
+        {
+            var built = SolarPanelDefinition.BuiltInLibrary
+                .FirstOrDefault(p => p.Id == target.PreferredPanelDefinitionId);
+            if (built is not null)
+                return built;
+        }
+
+        if (target.PanelWatts >= ModuleWattageAdvisor.MinWatts)
+            return SolarPanelDefinition.CreateGeneric((int)Math.Round(target.PanelWatts));
+
+        return SolarPanelDefinition.BuiltInLibrary
+            .FirstOrDefault(p => p.DisplayName == target.PanelLabel)
+            ?? SolarPanelDefinition.CreateGeneric550();
+    }
+
+    private double EstimateUsableRoofFt2()
+    {
+        var sqM = _project.Roofs.Roofs.Where(r => r.IsClosed).Sum(r => r.AreaSquareMeters());
+        if (sqM > 0)
+            return sqM * 10.7639 * 0.62;
+        if (_project.InitialDesignTarget?.EstimatedRoofPanelLimit is int n && n > 0)
+        {
+            var reference = SolarPanelDefinition.CreateGeneric550();
+            return n * RoofCapacityEstimator.EffectivePanelAreaFt2(reference.WidthMm, reference.HeightMm);
+        }
+
+        return 0;
+    }
+
+    private static int EstimatePanelCount(InitialDesignTarget target, SolarPanelDefinition def)
+    {
+        if (target.TargetDcKw > 0 && def.PmaxWatts > 0)
+            return Math.Max(1, (int)Math.Ceiling(target.TargetDcKw * 1000.0 / def.PmaxWatts));
+        return Math.Max(1, target.TargetPanelCount);
+    }
+
+    private void OverflowMenu_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!AppFlyout.IsOpen) return;
+        AppFlyout.Close();
+        e.Handled = true;
+    }
+
     private void OverflowMenu_Click(object sender, RoutedEventArgs e)
     {
-        if (OverflowMenuButton.ContextMenu is null) return;
-        var target = sender as UIElement ?? OverflowMenuButton;
-        OverflowMenuButton.ContextMenu.PlacementTarget = target;
-        OverflowMenuButton.ContextMenu.IsOpen = true;
+        AppFlyout.ShowBelow(OverflowMenuButton,
+        [
+            AppFlyoutItem.Command("Open Project…", () => Open_Click(this, e)),
+            AppFlyoutItem.Command("Save As…", () => SaveAs_Click(this, e)),
+            AppFlyoutItem.Command("Project Settings…", () => ProjectSettings_Click(this, e)),
+            AppFlyoutItem.Command("Size from kWh…", () => QuickEstimate_Click(this, e)),
+            AppFlyoutItem.Separator(),
+            AppFlyoutItem.Command("Single-Line Diagram", () => SingleLine_Click(this, e)),
+            AppFlyoutItem.Command("BOM / Wire Schedule", () => BomSchedule_Click(this, e)),
+            AppFlyoutItem.Command("Export Report (HTML/PDF)…", () => ExportReport_Click(this, e)),
+            AppFlyoutItem.Separator(),
+            AppFlyoutItem.Command("Google Solar import (optional paid)…", () => ImportGoogleSolar_Click(this, e)),
+            AppFlyoutItem.Command("Google API key (optional)…", () => SetGoogleApiKey_Click(this, e)),
+            AppFlyoutItem.Command("pvlib Status…", () => PvlibStatus_Click(this, e)),
+            AppFlyoutItem.Separator(),
+            AppFlyoutItem.Command("Demo Roof (12×8 m)", () => DemoRoof_Click(this, e)),
+            AppFlyoutItem.Command("Demo L-Roof", () => DemoLRoof_Click(this, e)),
+            AppFlyoutItem.Command("Clear Roof", () => ClearRoof_Click(this, e)),
+            AppFlyoutItem.Separator(),
+            AppFlyoutItem.Command("Settings…", () => Settings_Click(this, e)),
+            AppFlyoutItem.Command("About solarSim…", () => About_Click(this, e)),
+        ]);
     }
 
     private void About_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new AboutDialog(GetAppVersion()) { Owner = this };
-        dlg.ShowDialog();
+        var dlg = new AboutDialog(GetAppVersion());
+        AppModalHost.Show(dlg);
     }
 
     private static string GetAppVersion()
@@ -2377,15 +2860,13 @@ public partial class MainWindow : Window
         {
             case WorkspacePlan.Roof:
                 _selectedEquipmentIds.Clear();
-                _layersCategory = LayersCategory.Roofs;
+                if (_uiTool is UiTool.Equipment or UiTool.Select)
+                    _uiTool = UiTool.Roof;
                 break;
             case WorkspacePlan.Interior:
                 _selectedPanelIds.Clear();
                 _selectedObstacleId = null;
-                _layersCategory = LayersCategory.Equipment;
-                if (_uiTool is UiTool.Roof or UiTool.Panel or UiTool.Obstacle
-                    or UiTool.Wire or UiTool.Measure or UiTool.Select)
-                    _uiTool = UiTool.Add;
+                _uiTool = UiTool.Equipment;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(plan), plan, null);
@@ -2401,30 +2882,24 @@ public partial class MainWindow : Window
     private void ApplyWorkspacePlanUi()
     {
         var showRoofTools = ShowsRoofGeometry;
-        var showPanelsLib = ShowsPanels;
         var showEquipLib = ShowsEquipment;
 
-        // Category visibility is applied when opening Add (RefreshAddPalette).
+        // Keep inspector width stable — only swap which sections are relevant.
         RoofToolsPanel.Visibility = Visibility.Collapsed;
         RackingPanel.Visibility = showRoofTools ? Visibility.Visible : Visibility.Collapsed;
         SiteTempsPanel.Visibility = showEquipLib ? Visibility.Visible : Visibility.Collapsed;
-
-        LayersRoofsTab.Visibility = showRoofTools ? Visibility.Visible : Visibility.Collapsed;
-        LayersPanelsTab.Visibility = showPanelsLib ? Visibility.Visible : Visibility.Collapsed;
-        LayersEquipmentTab.Visibility = showEquipLib ? Visibility.Visible : Visibility.Collapsed;
-        RoofLayerActions.Visibility = showRoofTools ? Visibility.Visible : Visibility.Collapsed;
 
         StylePlanTab(RoofPlanButton, _workspacePlan == WorkspacePlan.Roof);
         StylePlanTab(InteriorPlanButton, _workspacePlan == WorkspacePlan.Interior);
 
         UpdateToolRailStyles();
         UpdateContextToolbar();
+        RefreshEstimateBanner();
     }
 
     private void StylePlanTab(Button button, bool active)
     {
         button.Tag = active ? "Active" : null;
-        button.FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal;
         button.Foreground = active
             ? (Brush)FindResource("TextBrush")
             : (Brush)FindResource("MutedBrush");
@@ -2439,18 +2914,22 @@ public partial class MainWindow : Window
             {
                 var empty = _project.Graph.Panels.Count == 0 && !HasAnyRoofVertices();
                 EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
-                EmptyStateTitle.Text = "Start with your roof";
-                EmptyStateBody.Text = "Draw it, or trace it free on the satellite map.";
-                EmptyStateButton.Content = "Trace on map";
+                EmptyStateChoices.Visibility = Visibility.Visible;
+                EmptyStateTitle.Text = HasEstimateTarget()
+                    ? "Trace your roof"
+                    : "Start with your roof";
+                EmptyStateBody.Text = HasEstimateTarget()
+                    ? "Draw or trace the roof. It stays empty until you lay the array from Suggest."
+                    : "Draw it, or trace it free on the satellite map.";
                 break;
             }
             case WorkspacePlan.Interior:
             {
                 var empty = _project.Graph.Equipment.Count == 0;
                 EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+                EmptyStateChoices.Visibility = Visibility.Collapsed;
                 EmptyStateTitle.Text = "Add equipment";
-                EmptyStateBody.Text = "Place combiners, inverters, and batteries.";
-                EmptyStateButton.Content = "Add Inverter";
+                EmptyStateBody.Text = "Open Equipment in the left rail, then pick a combiner, inverter, or battery.";
                 break;
             }
             default:
@@ -2464,17 +2943,8 @@ public partial class MainWindow : Window
         DrawRoof_Click(sender, e);
     }
 
-    private void EmptyStateImport_Click(object sender, RoutedEventArgs e)
-    {
-        if (_workspacePlan == WorkspacePlan.Interior)
-        {
-            SetUiTool(UiTool.Add);
-            AddInverter5k_Click(sender, e);
-            return;
-        }
-
+    private void EmptyStateImport_Click(object sender, RoutedEventArgs e) =>
         SatelliteMap_Click(sender, e);
-    }
 
     private void EmptyStateButton_Click(object sender, RoutedEventArgs e) =>
         EmptyStateImport_Click(sender, e);
@@ -2502,13 +2972,34 @@ public partial class MainWindow : Window
         (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 
     private void ToolSelect_Click(object sender, RoutedEventArgs e) => SetUiTool(UiTool.Select);
-    private void ToolRoof_Click(object sender, RoutedEventArgs e) => SetUiTool(UiTool.Roof);
-    private void ToolPanel_Click(object sender, RoutedEventArgs e) => SetUiTool(UiTool.Panel);
-    private void ToolWire_Click(object sender, RoutedEventArgs e) => SetUiTool(UiTool.Wire);
-    private void ToolObstacle_Click(object sender, RoutedEventArgs e)
+
+    private void ToolSuggestion_Click(object sender, RoutedEventArgs e)
     {
-        SetUiTool(UiTool.Obstacle);
-        AddObstacleMode_Click(sender, e);
+        if (_workspacePlan != WorkspacePlan.Roof)
+            SetWorkspacePlan(WorkspacePlan.Roof);
+        SetUiTool(UiTool.Suggestion);
+    }
+
+    private void ToolRoof_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspacePlan != WorkspacePlan.Roof)
+            SetWorkspacePlan(WorkspacePlan.Roof);
+        SetUiTool(UiTool.Roof);
+    }
+
+    private void ToolPanel_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspacePlan != WorkspacePlan.Roof)
+            SetWorkspacePlan(WorkspacePlan.Roof);
+        SetUiTool(UiTool.Panel);
+    }
+
+    private void ToolEquipment_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspacePlan != WorkspacePlan.Interior)
+            SetWorkspacePlan(WorkspacePlan.Interior);
+        else
+            SetUiTool(UiTool.Equipment);
     }
 
     private void ToolMeasure_Click(object sender, RoutedEventArgs e)
@@ -2522,8 +3013,6 @@ public partial class MainWindow : Window
     private void SetUiTool(UiTool tool)
     {
         _uiTool = tool;
-        if (tool != UiTool.Obstacle && _tool == CanvasTool.PlaceObstacle)
-            _tool = CanvasTool.Select;
         if (tool != UiTool.Measure && _tool == CanvasTool.Measure)
         {
             ClearMeasureTool();
@@ -2536,39 +3025,36 @@ public partial class MainWindow : Window
 
         UpdateToolRailStyles();
         UpdateContextToolbar();
+        RefreshEstimateBanner();
         UpdateToolButtonStyles();
     }
 
-    private void ToolAdd_Click(object sender, RoutedEventArgs e) => SetUiTool(UiTool.Add);
-
     private void UpdateToolRailStyles()
     {
+        if (_uiTool == UiTool.Suggestion && !SuggestionToolAvailable())
+            _uiTool = UiTool.Select;
+
         StyleToolRail(ToolSelectButton, _uiTool == UiTool.Select);
         StyleToolRail(ToolRoofButton, _uiTool == UiTool.Roof);
         StyleToolRail(ToolPanelButton, _uiTool == UiTool.Panel);
-        StyleToolRail(ToolWireButton, _uiTool == UiTool.Wire);
-        StyleToolRail(ToolObstacleButton, _uiTool == UiTool.Obstacle);
         StyleToolRail(ToolMeasureButton, _uiTool == UiTool.Measure);
-        StyleToolRail(ToolAddButton, _uiTool == UiTool.Add);
-        StyleToolRail(LayersRailButton, _uiTool == UiTool.Layers);
+        StyleToolRail(ToolEquipmentButton, _uiTool == UiTool.Equipment);
+        StyleToolRail(ToolSuggestionButton, _uiTool == UiTool.Suggestion);
 
-        // Equipment plan: only equipment tools — hide roof / panel / obstacle chrome.
-        var roofish = ShowsRoofGeometry;
-        var panels = ShowsPanels;
-        var equipmentOnly = _workspacePlan == WorkspacePlan.Interior;
+        if (ToolSelectButton is not null) ToolSelectButton.Visibility = Visibility.Visible;
         if (ToolRoofButton is not null)
-            ToolRoofButton.Visibility = roofish ? Visibility.Visible : Visibility.Collapsed;
+            ToolRoofButton.Visibility = _workspacePlan == WorkspacePlan.Roof ? Visibility.Visible : Visibility.Collapsed;
         if (ToolPanelButton is not null)
-            ToolPanelButton.Visibility = panels ? Visibility.Visible : Visibility.Collapsed;
-        if (ToolObstacleButton is not null)
-            ToolObstacleButton.Visibility = roofish ? Visibility.Visible : Visibility.Collapsed;
-        // Equipment is a placement planner — no Select / Wire / Measure rail (roof plan keeps those).
-        if (ToolSelectButton is not null)
-            ToolSelectButton.Visibility = equipmentOnly ? Visibility.Collapsed : Visibility.Visible;
-        if (ToolWireButton is not null)
-            ToolWireButton.Visibility = equipmentOnly ? Visibility.Collapsed : Visibility.Visible;
-        if (ToolMeasureButton is not null)
-            ToolMeasureButton.Visibility = equipmentOnly ? Visibility.Collapsed : Visibility.Visible;
+            ToolPanelButton.Visibility = _workspacePlan == WorkspacePlan.Roof ? Visibility.Visible : Visibility.Collapsed;
+        if (ToolMeasureButton is not null) ToolMeasureButton.Visibility = Visibility.Visible;
+        if (ToolEquipmentButton is not null)
+            ToolEquipmentButton.Visibility = _workspacePlan == WorkspacePlan.Interior
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        if (ToolSuggestionButton is not null)
+            ToolSuggestionButton.Visibility = SuggestionToolAvailable()
+                ? Visibility.Visible
+                : Visibility.Collapsed;
     }
 
     private static void StyleToolRail(Button? button, bool active)
@@ -2580,12 +3066,10 @@ public partial class MainWindow : Window
     private void UpdateContextToolbar()
     {
         // Hide all side-panel sections first.
+        SetPanelVisible(SuggestionPanel, false);
         SetPanelVisible(RoofContextPanel, false);
         SetPanelVisible(PanelContextPanel, false);
-        SetPanelVisible(WireContextPanel, false);
-        SetPanelVisible(ObstacleContextPanel, false);
         SetPanelVisible(AddPalette, false);
-        SetPanelVisible(LayersDrawer, false);
         SetPanelVisible(MeasureContextPanel, false);
         SetPanelVisible(ImportRoofPanel, false);
 
@@ -2596,38 +3080,30 @@ public partial class MainWindow : Window
         {
             case UiTool.Select:
                 break;
+            case UiTool.Equipment:
+                ContextTitle.Text = "Equipment";
+                SetPanelVisible(AddPalette, true);
+                RefreshAddPalette();
+                break;
             case UiTool.Roof:
                 ContextTitle.Text = "Roof";
                 SetPanelVisible(RoofContextPanel, true);
+                RefreshLayersPanel();
                 break;
             case UiTool.Panel:
                 ContextTitle.Text = "Panels";
                 SetPanelVisible(PanelContextPanel, true);
                 break;
-            case UiTool.Wire:
-                ContextTitle.Text = "Wire";
-                SetPanelVisible(WireContextPanel, true);
-                break;
-            case UiTool.Obstacle:
-                ContextTitle.Text = "Object";
-                SetPanelVisible(ObstacleContextPanel, true);
-                break;
             case UiTool.Measure:
                 ContextTitle.Text = "Measure";
                 SetPanelVisible(MeasureContextPanel, true);
                 break;
-            case UiTool.Add:
-                ContextTitle.Text = "Add";
-                SetPanelVisible(AddPalette, true);
-                RefreshAddPalette();
-                break;
-            case UiTool.Layers:
-                ContextTitle.Text = "Layers";
-                SetPanelVisible(LayersDrawer, true);
-                RefreshLayersPanel();
+            case UiTool.Suggestion:
+                ContextTitle.Text = "Suggestion";
+                SetPanelVisible(SuggestionPanel, true);
                 break;
             default:
-                break;
+                throw new ArgumentOutOfRangeException(nameof(_uiTool), _uiTool, null);
         }
     }
 
@@ -2704,13 +3180,18 @@ public partial class MainWindow : Window
     {
         if (_selectedPanelIds.Count == 0) return;
         var commands = _selectedPanelIds
-            .Select(id => (SolarSim.Application.Commands.ICommand)new DuplicatePanelCommand(_project, id))
+            .Select(id => new DuplicatePanelCommand(_project, id))
             .ToList();
         _project.History.Execute(new CompositeCommand(
             commands.Count == 1 ? "Duplicated panel" : $"Duplicated {commands.Count} panels",
             commands));
-        RefreshAll();
-        StatusText.Text = $"Duplicated {commands.Count} panel(s)";
+        var newIds = commands
+            .Select(c => c.DuplicateId)
+            .Where(id => id is not null)
+            .Select(id => id!.Value)
+            .ToList();
+        SetSelection(panels: newIds);
+        StatusText.Text = $"Duplicated {newIds.Count} panel(s)";
     }
 
     private void CopySelectedPanels()
@@ -2818,7 +3299,7 @@ public partial class MainWindow : Window
 
     private void ShowCanvasContextMenu(Point canvasPos)
     {
-        var menu = new ContextMenu();
+        var items = new List<AppFlyoutItem>();
         var hasPanels = _selectedPanelIds.Count > 0;
         var hasClipboard = _panelClipboard is { Count: > 0 };
         var hasConnections = _selectedConnectionIds.Count > 0;
@@ -2826,19 +3307,10 @@ public partial class MainWindow : Window
         var hasRoof = _project.Roofs.Roofs.Any(r => r.HasRoof);
         var hasSelection = hasPanels || hasConnections || hasEquipment || _selectedObstacleId is not null;
 
-        void Add(string header, Action action, bool enabled = true, string? gesture = null)
-        {
-            var item = new MenuItem
-            {
-                Header = header,
-                IsEnabled = enabled,
-                InputGestureText = gesture,
-            };
-            item.Click += (_, _) => action();
-            menu.Items.Add(item);
-        }
+        void Add(string header, Action action, bool enabled = true, string? gesture = null) =>
+            items.Add(AppFlyoutItem.Command(header, action, enabled, gesture));
 
-        void Sep() => menu.Items.Add(new Separator());
+        void Sep() => items.Add(AppFlyoutItem.Separator());
 
         Add("Copy", CopySelectedPanels, hasPanels, "Ctrl+C");
         Add("Paste here", () =>
@@ -2868,17 +3340,14 @@ public partial class MainWindow : Window
             var s = stringHits[0];
             Add($"Select string ({s.DisplayName})", () => SetSelection(panels: s.PanelIdsInSeriesOrder));
         }
-        else if (stringHits.Count > 1)
+        else
         {
-            var sub = new MenuItem { Header = "Select string" };
             foreach (var s in stringHits)
             {
                 var capture = s;
-                var mi = new MenuItem { Header = $"{capture.DisplayName}  ·  {capture.PanelIdsInSeriesOrder.Count} mod" };
-                mi.Click += (_, _) => SetSelection(panels: capture.PanelIdsInSeriesOrder);
-                sub.Items.Add(mi);
+                Add($"Select {capture.DisplayName}  ·  {capture.PanelIdsInSeriesOrder.Count} mod",
+                    () => SetSelection(panels: capture.PanelIdsInSeriesOrder));
             }
-            menu.Items.Add(sub);
         }
 
         if (hasConnections)
@@ -2918,7 +3387,7 @@ public partial class MainWindow : Window
         Add("Frame selection", FrameSelectionInView, hasPanels || hasEquipment);
         Add("Delete", () => DeleteSelection(), hasSelection, "Del");
 
-        menu.IsOpen = true;
+        AppFlyout.ShowAtMouse(items);
     }
 
     private void FrameSelectionInView()
@@ -2958,7 +3427,7 @@ public partial class MainWindow : Window
         const double padPx = 80;
         var zoomX = (viewW - 2 * padPx) / (widthMm * MmToPx);
         var zoomY = (viewH - 2 * padPx) / (heightMm * MmToPx);
-        _zoom = Math.Clamp(Math.Min(zoomX, zoomY), 0.15, 3.0);
+        _zoom = Math.Clamp(Math.Min(zoomX, zoomY), ZoomMin, ZoomFitMax);
         var cx = (minX + maxX) / 2;
         var cy = (minY + maxY) / 2;
         _panOffset = new Point(
@@ -2982,25 +3451,20 @@ public partial class MainWindow : Window
             return;
         }
 
-        var menu = new ContextMenu();
-        foreach (var s in list)
+        var items = list.Select(s =>
         {
-            var item = new MenuItem { Header = $"{s.DisplayName}  ·  {s.PanelIdsInSeriesOrder.Count} mod" };
             var capture = s;
-            item.Click += (_, _) => SetSelection(panels: capture.PanelIdsInSeriesOrder);
-            menu.Items.Add(item);
-        }
-
-        menu.PlacementTarget = CtxStringButton;
-        menu.IsOpen = true;
+            return AppFlyoutItem.Command(
+                $"{capture.DisplayName}  ·  {capture.PanelIdsInSeriesOrder.Count} mod",
+                () => SetSelection(panels: capture.PanelIdsInSeriesOrder));
+        }).ToList();
+        AppFlyout.ShowBelow(CtxStringButton!, items);
     }
 
     private void RefreshAddPalette()
     {
         var q = (AddSearchBox?.Text ?? "").Trim();
-        PopulateAddCategory(AddSolarTiles, AddSolarSection, "Solar", q, ShowsPanels);
         PopulateAddCategory(AddElectricalTiles, AddElectricalSection, "Electrical", q, ShowsEquipment);
-        PopulateAddCategory(AddStructuralTiles, AddStructuralSection, "Structural", q, ShowsRoofGeometry);
 
         if (AddRecentSection is not null)
         {
@@ -3008,9 +3472,7 @@ public partial class MainWindow : Window
             foreach (var key in _recentAddKeys.Take(6))
             {
                 if (!TryGetAddCatalogItem(key, out var item)) continue;
-                if (item.Category == "Solar" && !ShowsPanels) continue;
                 if (item.Category == "Electrical" && !ShowsEquipment) continue;
-                if (item.Category == "Structural" && !ShowsRoofGeometry) continue;
                 AddRecentTiles?.Children.Add(CreateAddTile(item));
             }
             AddRecentSection.Visibility = string.IsNullOrEmpty(q) && (AddRecentTiles?.Children.Count ?? 0) > 0
@@ -3025,7 +3487,7 @@ public partial class MainWindow : Window
         _recentAddKeys.Insert(0, key);
         if (_recentAddKeys.Count > 8)
             _recentAddKeys.RemoveRange(8, _recentAddKeys.Count - 8);
-        if (_uiTool == UiTool.Add)
+        if (_workspacePlan == WorkspacePlan.Interior)
             RefreshAddPalette();
     }
 
@@ -3040,10 +3502,6 @@ public partial class MainWindow : Window
 
     private IEnumerable<AddCatalogItem> GetAddCatalog()
     {
-        yield return new("boviet", "Module", "Boviet · 270 W", "▦", "Solar", () => AddBoviet_Click(this, new RoutedEventArgs()));
-        yield return new("g400", "Module", "Generic · 400 W", "▦", "Solar", () => AddGeneric400_Click(this, new RoutedEventArgs()));
-        yield return new("g550", "Module", "Generic · 550 W", "▦", "Solar", () => AddGeneric550_Click(this, new RoutedEventArgs()));
-        yield return new("custom", "Module", "Custom panel…", "▦", "Solar", () => AddCustom_Click(this, new RoutedEventArgs()));
         yield return new("combiner", "Combiner", "6-string", "▤", "Electrical", () => AddCombiner_Click(this, new RoutedEventArgs()), "combiner-6string.png");
         yield return new("disconnect", "Solar disconnect", "Set Amp rating", "⏻", "Electrical", () => AddDisconnect_Click(this, new RoutedEventArgs()), "disconnect-pv-isolator.png");
         yield return new("inv42", "Inverter", "ANENJI · 4.2 kW hybrid", "◇", "Electrical", () => AddInverterAnenji4_2k_Click(this, new RoutedEventArgs()), "inverter-anenji-4_2kw.png");
@@ -3061,7 +3519,6 @@ public partial class MainWindow : Window
         yield return new("inv76", "Inverter", "7.6 kW string", "◇", "Electrical", () => AddInverter76k_Click(this, new RoutedEventArgs()));
         yield return new("acdisc", "AC disconnect", "AC side", "⏻", "Electrical", () => AddAcDisconnect_Click(this, new RoutedEventArgs()));
         yield return new("aclc", "Load center", "AC panel", "☰", "Electrical", () => AddAcLoadCenter_Click(this, new RoutedEventArgs()));
-        yield return new("vent", "Roof vent", "Obstacle", "◇", "Structural", () => AddObstacleMode_Click(this, new RoutedEventArgs()));
     }
 
     private bool TryGetAddCatalogItem(string key, out AddCatalogItem item)
@@ -3241,7 +3698,7 @@ public partial class MainWindow : Window
         var cx = (host?.ActualWidth ?? 800) / 2;
         var cy = (host?.ActualHeight ?? 600) / 2;
         var (beforeX, beforeY) = CanvasToWorld(new Point(cx, cy));
-        _zoom = Math.Clamp(_zoom * factor, 0.25, 4.0);
+        _zoom = Math.Clamp(_zoom * factor, ZoomMin, ZoomMax);
         var after = WorldToCanvas(beforeX, beforeY);
         _panOffset.X += cx - after.x;
         _panOffset.Y += cy - after.y;
@@ -3251,14 +3708,6 @@ public partial class MainWindow : Window
 
     private void ShowImportRoof_Click(object sender, RoutedEventArgs e) =>
         SatelliteMap_Click(sender, e);
-
-    private void LayersDrawerToggle_Click(object sender, RoutedEventArgs e)
-    {
-        if (_uiTool == UiTool.Layers)
-            SetUiTool(UiTool.Select);
-        else
-            SetUiTool(UiTool.Layers);
-    }
 
     private Point GetPortCanvasPoint(ElectricalPort port)
     {
@@ -3317,6 +3766,30 @@ public partial class MainWindow : Window
         ((canvasPoint.X - _panOffset.X) / (MmToPx * _zoom),
          (canvasPoint.Y - _panOffset.Y) / (MmToPx * _zoom));
 
+    /// <summary>Screen size tracks zoom so notes stay small inside the roof instead of blowing up when zoomed out.</summary>
+    private double RoofNoteFontSize(double basePx) =>
+        Math.Clamp(basePx * Math.Min(_zoom, 1.0), 5, basePx);
+
+    private bool TryPlaceRoofNote(TextBlock label, double cx, double cy, double maxWidth, double maxHeight)
+    {
+        if (maxWidth < 28 || maxHeight < 12)
+            return false;
+
+        label.FontSize = RoofNoteFontSize(label.FontSize);
+        label.TextWrapping = TextWrapping.Wrap;
+        label.TextAlignment = TextAlignment.Center;
+        label.MaxWidth = Math.Max(24, maxWidth * 0.86);
+        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var w = label.DesiredSize.Width;
+        var h = label.DesiredSize.Height;
+        if (w > maxWidth * 0.95 || h > maxHeight * 0.92)
+            return false;
+
+        Canvas.SetLeft(label, cx - w / 2);
+        Canvas.SetTop(label, cy - h / 2);
+        return true;
+    }
+
     private static void SetPortsVisible(PanelVisual visual, bool visible)
     {
         // Port dots live on the high-Z overlay layer; only +/- labels toggle here.
@@ -3336,10 +3809,13 @@ public partial class MainWindow : Window
     private void AddGeneric550_Click(object sender, RoutedEventArgs e) =>
         AddPanel(SolarPanelDefinition.CreateGeneric550().Id);
 
+    private void AddGeneric700_Click(object sender, RoutedEventArgs e) =>
+        AddPanel(SolarPanelDefinition.CreateGeneric700().Id);
+
     private void AddCustom_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new CustomPanelDialog { Owner = this };
-        if (dialog.ShowDialog() != true || dialog.CreatedDefinition is null) return;
+        var dialog = new CustomPanelDialog();
+        if (AppModalHost.Show(dialog) != true || dialog.CreatedDefinition is null) return;
         _project.EnsureDefinition(dialog.CreatedDefinition);
         AddPanel(dialog.CreatedDefinition.Id);
     }
@@ -3460,7 +3936,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppConfirmDialog.Alert(this, ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -3485,7 +3961,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppConfirmDialog.Alert(this, ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -3517,7 +3993,7 @@ public partial class MainWindow : Window
             {
                 e.Cancel = true;
                 _applyUpdateOnCloseRequested = false;
-                MessageBox.Show(this,
+                AppConfirmDialog.Alert(this,
                     "Couldn't start the update installer.\n\n" +
                     "The download may be missing — open Settings → Check for updates, then try again.",
                     "Update failed",
@@ -3531,7 +4007,7 @@ public partial class MainWindow : Window
             {
                 e.Cancel = true;
                 _applyUpdateOnCloseRequested = false;
-                MessageBox.Show(this, ex.Message, "Update failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                AppConfirmDialog.Alert(this, ex.Message, "Update failed", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
     }
@@ -3599,7 +4075,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Unable to open project", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppConfirmDialog.Alert(this, ex.Message, "Unable to open project", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -3678,6 +4154,7 @@ public partial class MainWindow : Window
         CopySiteDesign(_project.Site, loaded.Site);
         CopyRacking(_project.Racking, loaded.Racking);
         CopyCanvasSettings(_project.Canvas, loaded.Canvas);
+        _project.InitialDesignTarget = loaded.InitialDesignTarget;
         _project.SchemaVersion = loaded.SchemaVersion;
 
         _project.Name = loaded.Name;
@@ -3685,11 +4162,18 @@ public partial class MainWindow : Window
         _project.ProjectId = loaded.ProjectId;
         _project.History.Clear();
         ClearTransientSelection();
+        _workspacePlan = WorkspacePlan.Roof;
+        FrameRoofsInView();
         RefreshAll();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            FrameRoofsInView();
+            RefreshAll();
+        }), DispatcherPriority.Loaded);
 
         if (skippedWires > 0)
         {
-            MessageBox.Show(
+            AppConfirmDialog.Alert(
                 this,
                 $"{skippedWires} wire(s) from the file could not be restored (ports busy or invalid). " +
                 "Other site data and equipment should still be intact — check strings on the roof.",
@@ -3754,6 +4238,9 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (ModalIsOpen || MapIsOpen)
+            return;
+
         // Delete always targets canvas selection (even if setback box still has focus).
         if (e.Key is Key.Delete)
         {
@@ -3862,6 +4349,12 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.Escape)
         {
+            if (AppFlyout.IsOpen)
+            {
+                AppFlyout.Close();
+                e.Handled = true;
+                return;
+            }
             CancelWireDrag();
             EndMarquee(commit: false);
             if (_tool == CanvasTool.Measure)
@@ -3905,7 +4398,7 @@ public partial class MainWindow : Window
         var mouse = e.GetPosition(DesignCanvas);
         var (beforeX, beforeY) = CanvasToWorld(mouse);
         var factor = e.Delta > 0 ? 1.1 : 1 / 1.1;
-        _zoom = Math.Clamp(_zoom * factor, 0.25, 4.0);
+        _zoom = Math.Clamp(_zoom * factor, ZoomMin, ZoomMax);
         var after = WorldToCanvas(beforeX, beforeY);
         _panOffset.X += mouse.X - after.x;
         _panOffset.Y += mouse.Y - after.y;
@@ -3960,27 +4453,6 @@ public partial class MainWindow : Window
             var (xMm, yMm) = CanvasToWorld(pos);
             _measurePoints.Add(new Point2Mm(xMm, yMm));
             RebuildMeasureVisuals();
-            e.Handled = true;
-            return;
-        }
-
-        if (_tool == CanvasTool.PlaceObstacle)
-        {
-            var active = _project.Roofs.EnsureActiveRoof();
-            var (xMm, yMm) = CanvasToWorld(pos);
-            const double w = 600;
-            const double h = 600;
-            _project.Roofs.EnsureActiveRoof().AddObstacle(new RoofObstacle(
-                Guid.NewGuid(),
-                RoofObstacleKind.Vent,
-                xMm - w / 2,
-                yMm - h / 2,
-                w,
-                h,
-                "Vent"));
-            _tool = CanvasTool.Select;
-            _project.NotifyChanged("Add obstacle");
-            RefreshAll();
             e.Handled = true;
             return;
         }
@@ -4332,7 +4804,7 @@ public partial class MainWindow : Window
                 ClearPreviewPlugHint();
             }
 
-            _previewWire.Stroke = PolarityBrush(fromPort.Polarity);
+            _previewWire.Stroke = PolarityCableBrush(fromPort.Polarity, target is not null);
             var ortho = PvWireRouting.OrthoPreview(
                 new PvVec2(start.X, start.Y),
                 new PvVec2(n1.X, n1.Y),
@@ -4476,6 +4948,8 @@ public partial class MainWindow : Window
 
     private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
     {
+        try
+        {
         if (_isPanning)
         {
             _isPanning = false;
@@ -4617,7 +5091,10 @@ public partial class MainWindow : Window
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, ex.Message, "Unable to connect", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ShowCanvasToast(pos, ex.Message, (Brush)FindResource("DangerBrush"), 1800);
+                    StatusText.Text = "WIRE  |  " + ex.Message;
+                    if (HudDetail is not null)
+                        HudDetail.Text = ex.Message;
                 }
             }
 
@@ -4632,6 +5109,7 @@ public partial class MainWindow : Window
             DesignCanvas.ReleaseMouseCapture();
             if (_dragMoved)
             {
+                var moves = new List<SolarSim.Application.Commands.ICommand>();
                 foreach (var (id, origin) in _dragOrigins.ToList())
                 {
                     if (_project.Graph.TryGetEquipment(id, out var equipment))
@@ -4650,16 +5128,27 @@ public partial class MainWindow : Window
                     if (Math.Abs(fx - origin.x) > 0.01 || Math.Abs(fy - origin.y) > 0.01)
                     {
                         panel.SetPosition(origin.x, origin.y);
-                        _project.History.Execute(new MovePanelCommand(
+                        moves.Add(new MovePanelCommand(
                             _project, id, origin.x, origin.y, fx, fy));
                     }
                 }
+
+                if (moves.Count == 1)
+                    _project.History.Execute(moves[0]);
+                else if (moves.Count > 1)
+                    _project.History.Execute(new CompositeCommand($"Moved {moves.Count} panels", moves));
             }
 
             _draggingPanelId = null;
             _dragOrigins.Clear();
             ClearAlignmentGuides();
             RefreshAll();
+        }
+        }
+        finally
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                TryRevealInspectorAfterPointerUp();
         }
     }
 
@@ -4706,8 +5195,14 @@ public partial class MainWindow : Window
 
         if (port.IsOccupied)
         {
-            MessageBox.Show(this, "This terminal is already connected.", "Port occupied",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowCanvasToast(
+                e.GetPosition(DesignCanvas),
+                "Port occupied — already wired",
+                (Brush)FindResource("DangerBrush"),
+                1600);
+            StatusText.Text = "WIRE  |  Port occupied — right-click the terminal to disconnect";
+            if (HudDetail is not null)
+                HudDetail.Text = "Port occupied — right-click the terminal to disconnect";
             e.Handled = true;
             return;
         }
@@ -4717,6 +5212,16 @@ public partial class MainWindow : Window
         foreach (var v in _equipmentVisuals.Values) SetEquipmentPortsVisible(v, true);
         EnsurePreviewWire();
         DesignCanvas.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void Port_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: Guid portId }) return;
+        if (!_project.Graph.TryGetPort(portId, out var port) || port.ConnectionId is not Guid connId)
+            return;
+
+        DisconnectWire(connId);
         e.Handled = true;
     }
 
@@ -4773,8 +5278,11 @@ public partial class MainWindow : Window
         var fromBattDisc = fromOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.BatteryDisconnect };
         var fromPvDisc = fromOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.PvDisconnect };
         var fromBattery = fromOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.Battery };
+        var fromCombiner = fromOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.CombinerBox };
+        var fromMppt = from.Label.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase);
         // Solar disconnects are reused on battery runs — prefer BAT when already tied to a battery.
         var pvDiscPrefersBattery = fromPvDisc && DisconnectTouchesBattery(fromOwner.Id);
+        var hoverEquipmentId = ShowsEquipment ? FindEquipmentAt(canvasPoint) : null;
 
         void Consider(ElectricalPort port, IElectricalComponent owner)
         {
@@ -4786,29 +5294,40 @@ public partial class MainWindow : Window
             if (!validation.IsValid) return;
 
             var p = GetPortCanvasPoint(port);
+            if (double.IsNaN(p.X) || double.IsNaN(p.Y)) return;
             var dist = Hypot(p.X - canvasPoint.X, p.Y - canvasPoint.Y);
             // Prefer the electrically correct inverter bank when ports sit close together.
             var score = dist;
             var label = port.Label;
             var preferBat = fromBattDisc || fromBattery || pvDiscPrefersBattery;
-            var preferMppt = fromPvDisc && !pvDiscPrefersBattery
-                && DisconnectTouchesPvSource(fromOwner.Id);
+            var preferMppt = (fromPvDisc && !pvDiscPrefersBattery
+                && DisconnectTouchesPvSource(fromOwner.Id))
+                || fromCombiner;
             if (preferBat)
             {
                 if (label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
                     score *= 0.2;
-                else if (label.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase))
+                else if (label.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase)
+                         || label.StartsWith("AC", StringComparison.OrdinalIgnoreCase))
                     score += 120;
             }
             else if (preferMppt)
             {
                 if (label.StartsWith("MPPT", StringComparison.OrdinalIgnoreCase))
                     score *= 0.2;
-                else if (label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
+                else if (label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase)
+                         || label.StartsWith("AC", StringComparison.OrdinalIgnoreCase))
                     score += 120;
             }
+            else if (fromMppt && owner is ElectricalEquipmentInstance { Kind: EquipmentKind.CombinerBox })
+            {
+                if (label.StartsWith("OUT", StringComparison.OrdinalIgnoreCase))
+                    score *= 0.2;
+            }
 
-            if (score < bestScore && dist < PortHitRadiusPx * 4)
+            var overTarget = hoverEquipmentId is Guid hid && hid == owner.Id;
+            var snapLimit = overTarget ? double.PositiveInfinity : PortHitRadiusPx * 8;
+            if (score < bestScore && dist < snapLimit)
             {
                 bestScore = score;
                 best = port;
@@ -4948,33 +5467,51 @@ public partial class MainWindow : Window
 
     private void ShowConnectedToast(Point near, Polarity fromPolarity, Polarity toPolarity)
     {
+        var fromLabel = fromPolarity == Polarity.Positive ? "+" : "−";
+        var toLabel = toPolarity == Polarity.Positive ? "+" : "−";
+        ShowCanvasToast(
+            near,
+            $"PLUGGED  {fromLabel} → {toLabel}",
+            (Brush)FindResource("AccentBrush"),
+            450);
+    }
+
+    private void ShowCanvasToast(Point near, string text, Brush foreground, int durationMs)
+    {
         if (_connectedToast is not null)
             DesignCanvas.Children.Remove(_connectedToast);
 
-        var fromLabel = fromPolarity == Polarity.Positive ? "+" : "−";
-        var toLabel = toPolarity == Polarity.Positive ? "+" : "−";
-        _connectedToast = new TextBlock
+        var chip = new Border
         {
-            Text = $"PLUGGED  {fromLabel} → {toLabel}",
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)FindResource("AccentBrush"),
+            Background = (Brush)FindResource("SurfaceBrush"),
+            BorderBrush = (Brush)FindResource("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10, 6, 10, 6),
             IsHitTestVisible = false,
+            Child = new TextBlock
+            {
+                Text = text,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = foreground,
+            },
         };
-        Canvas.SetLeft(_connectedToast, near.X + 12);
-        Canvas.SetTop(_connectedToast, near.Y - 18);
-        DesignCanvas.Children.Add(_connectedToast);
+        _connectedToast = chip;
+        Canvas.SetLeft(chip, near.X + 12);
+        Canvas.SetTop(chip, near.Y - 22);
+        DesignCanvas.Children.Add(chip);
 
-        var timer = new System.Windows.Threading.DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(450),
-        };
+        _canvasToastTimer?.Stop();
+        var shown = chip;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(durationMs) };
+        _canvasToastTimer = timer;
         timer.Tick += (_, _) =>
         {
             timer.Stop();
-            if (_connectedToast is not null)
+            if (_connectedToast == shown)
             {
-                DesignCanvas.Children.Remove(_connectedToast);
+                DesignCanvas.Children.Remove(shown);
                 _connectedToast = null;
             }
         };
@@ -5591,7 +6128,7 @@ public partial class MainWindow : Window
 
     private void AddDisconnect_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(
+        AppConfirmDialog.Alert(
             this,
             "Solar disconnects (PV array DC isolators) are not one-size-fits-all.\n\n" +
             "Common ratings are around 1000 V DC with current options such as " +
@@ -5818,6 +6355,7 @@ public partial class MainWindow : Window
                 Tag = port.Id,
             };
             ellipse.MouseLeftButtonDown += Port_MouseLeftButtonDown;
+            ellipse.MouseRightButtonUp += Port_MouseRightButtonUp;
             root.Children.Add(ellipse);
             portEllipses[port.Id] = ellipse;
 
@@ -6734,14 +7272,16 @@ public partial class MainWindow : Window
         var viewH = DesignCanvas.ActualHeight;
         if (viewW < 40 || viewH < 40 || double.IsNaN(viewW) || double.IsNaN(viewH))
         {
-            viewW = Math.Max(ActualWidth - 360, 640);
-            viewH = Math.Max(ActualHeight - 80, 480);
+            var winW = ActualWidth > 40 ? ActualWidth : Width;
+            var winH = ActualHeight > 40 ? ActualHeight : Height;
+            viewW = Math.Max(winW - 360, 640);
+            viewH = Math.Max(winH - 80, 480);
         }
 
-        const double padPx = 72;
+        var padPx = Math.Max(96, Math.Min(viewW, viewH) * 0.12);
         var zoomX = (viewW - 2 * padPx) / (widthMm * MmToPx);
         var zoomY = (viewH - 2 * padPx) / (heightMm * MmToPx);
-        _zoom = Math.Clamp(Math.Min(zoomX, zoomY), 0.12, 2.8);
+        _zoom = Math.Clamp(Math.Min(zoomX, zoomY), ZoomMin, ZoomFitMax);
 
         var cx = (minX + maxX) / 2;
         var cy = (minY + maxY) / 2;
@@ -6786,7 +7326,7 @@ public partial class MainWindow : Window
     {
         if (GetActiveRoofSurface() is not { } active || active.Vertices.Count < 3)
         {
-            MessageBox.Show(this, "Need at least 3 vertices to close the roof.", "Roof",
+            AppConfirmDialog.Alert(this, "Need at least 3 vertices to close the roof.", "Roof",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -6804,7 +7344,7 @@ public partial class MainWindow : Window
     {
         if (_project.Roofs.Roofs.Count == 0) return;
 
-        var result = MessageBox.Show(this,
+        var result = AppConfirmDialog.Alert(this,
             "Clear all roof layers? This cannot be undone with Esc.",
             "Clear roofs",
             MessageBoxButton.YesNo,
@@ -6837,14 +7377,9 @@ public partial class MainWindow : Window
         var current = GoogleSolarApiKeyStore.TryResolve() ?? "";
         var masked = current.Length <= 8 ? current : current[..4] + "…" + current[^4..];
 
-        var dialog = new Window
+        var dialog = new CodeModal
         {
-            Title = "Google API key",
             Width = 520,
-            Height = 460,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = this,
-            ResizeMode = ResizeMode.NoResize,
             Background = (Brush)FindResource("BgBrush"),
             FontFamily = (FontFamily)FindResource("UiFont"),
         };
@@ -6954,33 +7489,39 @@ public partial class MainWindow : Window
 
         root.Children.Add(buttons);
         root.Children.Add(body);
-        dialog.Content = root;
+        dialog.Content = new Border
+        {
+            BorderBrush = (Brush)FindResource("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            Background = (Brush)FindResource("BgBrush"),
+            Child = root,
+        };
 
         string? result = null;
         save.Click += (_, _) =>
         {
             result = box.Text;
-            dialog.DialogResult = true;
+            dialog.Complete(true);
         };
-        cancel.Click += (_, _) => dialog.DialogResult = false;
+        cancel.Click += (_, _) => dialog.Complete(false);
         dialog.Loaded += (_, _) =>
         {
             box.Focus();
             Keyboard.Focus(box);
         };
 
-        if (dialog.ShowDialog() != true || result is null)
+        if (AppModalHost.Show(dialog) != true || result is null)
             return;
 
         if (string.IsNullOrWhiteSpace(result))
         {
-            MessageBox.Show(this, "Key unchanged (empty input).", "Google API key",
+            AppConfirmDialog.Alert(this, "Key unchanged (empty input).", "Google API key",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         GoogleSolarApiKeyStore.Save(result);
-        MessageBox.Show(this, "API key saved.", "Google API key",
+        AppConfirmDialog.Alert(this, "API key saved.", "Google API key",
             MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
@@ -7010,7 +7551,7 @@ public partial class MainWindow : Window
     private async void ImportGoogleSolar_Click(object sender, RoutedEventArgs e)
     {
         // Optional / advanced only — primary roof import is free map tracing.
-        var goFree = MessageBox.Show(this,
+        var goFree = AppConfirmDialog.Alert(this,
             "Recommended: use free Trace roof on map (no Google billing).\n\n"
             + "Continue with optional Google Solar API import anyway?",
             "Google Solar (optional)",
@@ -7060,7 +7601,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = "GOOGLE SOLAR  |  Import failed";
-            MessageBox.Show(this, ex.Message, "Google Solar import failed",
+            AppConfirmDialog.Alert(this, ex.Message, "Google Solar import failed",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -7078,17 +7619,19 @@ public partial class MainWindow : Window
         double? initLat = _project.Site.LatitudeDegrees;
         double? initLon = _project.Site.LongitudeDegrees;
 
-        var dialog = new SatelliteMapDialog(null, initialQuery, initLat, initLon)
-        {
-            Owner = this,
-        };
-        if (dialog.ShowDialog() != true)
+        MapOverlay.OpenSession(initialQuery, initLat, initLon);
+    }
+
+    private void OnMapOverlayImported(object? sender, EventArgs e)
+    {
+        HideMapOverlay();
+        if (MapOverlay is null)
             return;
 
-        var rings = dialog.RoofRings.Count > 0
-            ? dialog.RoofRings
-            : dialog.RoofOutline.Count >= 3
-                ? new IReadOnlyList<(double Lat, double Lon)>[] { dialog.RoofOutline }
+        var rings = MapOverlay.RoofRings.Count > 0
+            ? MapOverlay.RoofRings
+            : MapOverlay.RoofOutline.Count >= 3
+                ? new IReadOnlyList<(double Lat, double Lon)>[] { MapOverlay.RoofOutline }
                 : Array.Empty<IReadOnlyList<(double Lat, double Lon)>>();
         if (rings.Count == 0)
             return;
@@ -7097,16 +7640,17 @@ public partial class MainWindow : Window
         {
             if (_project.Roofs.Roofs.Count > 0)
             {
-                var confirm = MessageBox.Show(this,
-                    "Import replaces all current roof layers. Continue?",
-                    "Trace roof",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-                if (confirm != MessageBoxResult.Yes) return;
+                if (!AppConfirmDialog.Ask(this,
+                        "Trace roof",
+                        "Replace existing roofs?",
+                        "Import replaces all current roof layers.",
+                        confirmLabel: "Replace",
+                        cancelLabel: "Cancel"))
+                    return;
             }
 
-            var import = FreeRoofTraceImport.BuildMany(rings, dialog.SelectedLabel);
-            FreeRoofTraceImport.ApplyToProject(_project, import, dialog.SelectedLabel);
+            var import = FreeRoofTraceImport.BuildMany(rings, MapOverlay.SelectedLabel);
+            FreeRoofTraceImport.ApplyToProject(_project, import, MapOverlay.SelectedLabel);
             // Map traces are never square — auto-align longest edge + snap edges to H/V.
             try
             {
@@ -7132,7 +7676,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = "ROOF  |  Trace import failed";
-            MessageBox.Show(this, ex.Message, "Trace roof failed",
+            AppConfirmDialog.Alert(this, ex.Message, "Trace roof failed",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -7143,7 +7687,7 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(apiKey))
             return apiKey;
 
-        var go = MessageBox.Show(this,
+        var go = AppConfirmDialog.Alert(this,
             "No Google API key found.\n\n"
             + "Open the setup dialog? It includes one-click links to enable Solar API and create a key — then paste it here.\n\n"
             + "(You can also set env SOLARSIM_GOOGLE_API_KEY.)",
@@ -7161,7 +7705,7 @@ public partial class MainWindow : Window
     {
         if (_project.Roofs.Roofs.Count > 0)
         {
-            var confirm = MessageBox.Show(this,
+            var confirm = AppConfirmDialog.Alert(this,
                 "Import replaces all current roof layers. Continue?",
                 "Google Solar",
                 MessageBoxButton.YesNo,
@@ -7180,19 +7724,14 @@ public partial class MainWindow : Window
         ApplyWorkspacePlanUi();
         RefreshAll();
         StatusText.Text = $"GOOGLE SOLAR  |  {import.Summary}";
-        MessageBox.Show(this, import.Summary, "Google Solar", MessageBoxButton.OK, MessageBoxImage.Information);
+        AppConfirmDialog.Alert(this, import.Summary, "Google Solar", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private string? PromptText(string title, string message, string defaultValue)
     {
-        var dialog = new Window
+        var dialog = new CodeModal
         {
-            Title = title,
             Width = 440,
-            Height = 220,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = this,
-            ResizeMode = ResizeMode.NoResize,
             Background = (Brush)FindResource("BgBrush"),
         };
         var root = new DockPanel { Margin = new Thickness(16) };
@@ -7224,25 +7763,17 @@ public partial class MainWindow : Window
         body.Children.Add(box);
         root.Children.Add(buttons);
         root.Children.Add(body);
-        dialog.Content = root;
-        string? result = null;
-        ok.Click += (_, _) => { result = box.Text; dialog.DialogResult = true; };
-        cancel.Click += (_, _) => { dialog.DialogResult = false; };
-        return dialog.ShowDialog() == true ? result : null;
-    }
-
-    private void AddObstacleMode_Click(object sender, RoutedEventArgs e)
-    {
-        if (!_project.Roofs.HasAnyClosedRoof)
+        dialog.Content = new Border
         {
-            MessageBox.Show(this, "Create/close a roof before placing obstacles.", "Roof",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-        _project.Roofs.EnsureActiveRoof();
-        _tool = CanvasTool.PlaceObstacle;
-        UpdateToolButtonStyles();
-        StatusText.Text = "PLACE OBSTACLE  |  Click on the roof to drop a vent  |  Esc cancel";
+            BorderBrush = (Brush)FindResource("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            Background = (Brush)FindResource("BgBrush"),
+            Child = root,
+        };
+        string? result = null;
+        ok.Click += (_, _) => { result = box.Text; dialog.Complete(true); };
+        cancel.Click += (_, _) => dialog.Complete(false);
+        return AppModalHost.Show(dialog) == true ? result : null;
     }
 
     private void AddAcDisconnect_Click(object sender, RoutedEventArgs e)
@@ -7277,7 +7808,7 @@ public partial class MainWindow : Window
 
     private void AddBatteryDisconnect_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(
+        AppConfirmDialog.Alert(
             this,
             BatteryDisconnectGuide.RatingWarning + "\n\n" +
             "Example (DHM1B): 100A ≤6 AWG · 250A ≤1/0 · 400A ≤2/0 · 600A ≤250 MCM.\n" +
@@ -7337,7 +7868,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Export report failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppConfirmDialog.Alert(this, ex.Message, "Export report failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -7514,6 +8045,28 @@ public partial class MainWindow : Window
             return;
         }
 
+        double? roofPitch = null;
+        if (RoofPitchBox is not null && !string.IsNullOrWhiteSpace(RoofPitchBox.Text))
+        {
+            if (!double.TryParse(RoofPitchBox.Text, out var rp) || rp < 0 || rp > 60)
+            {
+                UpdateSiteFieldBoxes();
+                return;
+            }
+            roofPitch = rp;
+        }
+
+        double? roofAz = null;
+        if (RoofAzimuthBox is not null && !string.IsNullOrWhiteSpace(RoofAzimuthBox.Text))
+        {
+            if (!double.TryParse(RoofAzimuthBox.Text, out var ra) || ra < 0 || ra > 360)
+            {
+                UpdateSiteFieldBoxes();
+                return;
+            }
+            roofAz = ra;
+        }
+
         double? lat = null;
         double? lon = null;
         if (!string.IsNullOrWhiteSpace(LatitudeBox.Text))
@@ -7549,7 +8102,14 @@ public partial class MainWindow : Window
             || Math.Abs(_project.Site.ArrayTiltDegrees - tilt) >= 0.001
             || Math.Abs(_project.Site.ArrayAzimuthDegrees - az) >= 0.001;
 
-        if (!changed) return;
+        var activeRoof = GetActiveRoofSurface();
+        if (activeRoof is null && (roofPitch is not null || roofAz is not null))
+            activeRoof = _project.Roofs.EnsureActiveRoof();
+
+        var roofChanged = activeRoof is not null
+            && (activeRoof.PitchDegrees != roofPitch || activeRoof.AzimuthDegrees != roofAz);
+
+        if (!changed && !roofChanged) return;
 
         _project.Site.LocationName = location;
         _project.Site.LatitudeDegrees = lat;
@@ -7560,7 +8120,12 @@ public partial class MainWindow : Window
         _project.Site.SystemDerateFactor = derate;
         _project.Site.ArrayTiltDegrees = tilt;
         _project.Site.ArrayAzimuthDegrees = az;
-        _project.NotifyChanged("Change site assumptions");
+        if (roofChanged && activeRoof is not null)
+        {
+            activeRoof.PitchDegrees = roofPitch;
+            activeRoof.AzimuthDegrees = roofAz;
+        }
+        _project.NotifyChanged(roofChanged && !changed ? "Change roof orientation" : "Change site assumptions");
         RefreshStatusAndInspector();
     }
 
@@ -7577,7 +8142,9 @@ public partial class MainWindow : Window
             || HotCellBox.IsKeyboardFocusWithin || PeakSunHoursBox.IsKeyboardFocusWithin
             || DerateBox.IsKeyboardFocusWithin || LatitudeBox.IsKeyboardFocusWithin
             || LongitudeBox.IsKeyboardFocusWithin || ArrayTiltBox.IsKeyboardFocusWithin
-            || ArrayAzimuthBox.IsKeyboardFocusWithin)
+            || ArrayAzimuthBox.IsKeyboardFocusWithin
+            || RoofPitchBox is { IsKeyboardFocusWithin: true }
+            || RoofAzimuthBox is { IsKeyboardFocusWithin: true })
             return;
 
         LocationNameBox.Text = _project.Site.LocationName;
@@ -7589,6 +8156,10 @@ public partial class MainWindow : Window
         DerateBox.Text = _project.Site.SystemDerateFactor.ToString("0.##");
         ArrayTiltBox.Text = _project.Site.ArrayTiltDegrees.ToString("0.#");
         ArrayAzimuthBox.Text = _project.Site.ArrayAzimuthDegrees.ToString("0.#");
+        if (RoofPitchBox is not null)
+            RoofPitchBox.Text = GetActiveRoofSurface()?.PitchDegrees?.ToString("0.#") ?? "";
+        if (RoofAzimuthBox is not null)
+            RoofAzimuthBox.Text = GetActiveRoofSurface()?.AzimuthDegrees?.ToString("0.#") ?? "";
     }
 
     private bool _climatePresetUiReady;
@@ -7638,7 +8209,7 @@ public partial class MainWindow : Window
             (_project.LastPvlibEstimate is { } last
                 ? $"Last pvlib run ~{last.EstimatedAnnualKwh:0} kWh/yr\n{last.MethodNote}"
                 : "No pvlib run yet.");
-        MessageBox.Show(this, status.Summary, "pvlib status", MessageBoxButton.OK, MessageBoxImage.Information);
+        AppConfirmDialog.Alert(this, status.Summary, "pvlib status", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private async void RunPvlibEstimate_Click(object sender, RoutedEventArgs e)
@@ -7660,7 +8231,7 @@ public partial class MainWindow : Window
                     $"  ~{csharp.EstimatedAnnualKwh:0} kWh/yr\n" +
                     string.Join("\n", csharp.Months.Select(m => $"  {m.MonthName}: {m.EstimatedKwh:0} kWh"));
                 StatusText.Text = "PVLIB  |  Unavailable — using C# estimate";
-                MessageBox.Show(this,
+                AppConfirmDialog.Alert(this,
                     result.Error + "\n\nBuilt-in C# estimate remains available.",
                     "pvlib",
                     MessageBoxButton.OK,
@@ -7682,7 +8253,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = "PVLIB  |  Failed";
-            MessageBox.Show(this, ex.Message, "pvlib failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppConfirmDialog.Alert(this, ex.Message, "pvlib failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -7705,7 +8276,6 @@ public partial class MainWindow : Window
     private void UpdateToolButtonStyles()
     {
         DrawRoofButton.FontWeight = _tool == CanvasTool.DrawRoof ? FontWeights.Bold : FontWeights.Normal;
-        AddObstacleButton.FontWeight = _tool == CanvasTool.PlaceObstacle ? FontWeights.Bold : FontWeights.Normal;
     }
 
     private void RebuildRoofVisuals()
@@ -7925,40 +8495,48 @@ public partial class MainWindow : Window
                 }
             }
 
+            var roofMinX = points.Min(p => p.X);
+            var roofMaxX = points.Max(p => p.X);
+            var roofMinY = points.Min(p => p.Y);
+            var roofMaxY = points.Max(p => p.Y);
+            var roofW = roofMaxX - roofMinX;
+            var roofH = roofMaxY - roofMinY;
+
             foreach (var (a, b, lengthMm) in roof.EdgeMeasurements())
             {
                 var (ax, ay) = WorldToCanvas(a.X, a.Y);
                 var (bx, by) = WorldToCanvas(b.X, b.Y);
+                var edgeLen = Math.Sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
                 var label = new TextBlock
                 {
                     Text = _project.Units.FormatLength(lengthMm),
-                    FontSize = 11,
+                    FontSize = 9,
                     Foreground = new SolidColorBrush(Color.FromRgb(0x37, 0x47, 0x4F)),
                     Background = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
-                    Padding = new Thickness(3, 1, 3, 1),
+                    Padding = new Thickness(2, 0, 2, 0),
                     IsHitTestVisible = false,
                 };
-                Canvas.SetLeft(label, (ax + bx) / 2);
-                Canvas.SetTop(label, (ay + by) / 2 - 10);
-                DesignCanvas.Children.Add(label);
-                _roofVisuals.Add(label);
+                if (TryPlaceRoofNote(label, (ax + bx) / 2, (ay + by) / 2, edgeLen * 0.72, 22))
+                {
+                    DesignCanvas.Children.Add(label);
+                    _roofVisuals.Add(label);
+                }
             }
 
             var areaLabel = new TextBlock
             {
                 Text = $"{roof.Name} {_project.Units.FormatAreaSquareMeters(roof.AreaSquareMeters())}",
-                FontSize = 12,
+                FontSize = 9,
                 FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal,
                 Foreground = new SolidColorBrush(Color.FromRgb(0x37, 0x47, 0x4F)),
                 IsHitTestVisible = false,
             };
-            var cx = vertices.Average(v => v.X);
-            var cy = vertices.Average(v => v.Y);
-            var (acx, acy) = WorldToCanvas(cx, cy);
-            Canvas.SetLeft(areaLabel, acx - 40);
-            Canvas.SetTop(areaLabel, acy - 8);
-            DesignCanvas.Children.Add(areaLabel);
-            _roofVisuals.Add(areaLabel);
+            var (acx, acy) = WorldToCanvas(vertices.Average(v => v.X), vertices.Average(v => v.Y));
+            if (TryPlaceRoofNote(areaLabel, acx, acy, roofW, roofH))
+            {
+                DesignCanvas.Children.Add(areaLabel);
+                _roofVisuals.Add(areaLabel);
+            }
         }
         else
         {
@@ -8689,6 +9267,8 @@ public partial class MainWindow : Window
             EnforceSetback = source.EnforceSetback,
             EnforceBoundary = source.EnforceBoundary,
             EnforceObstacles = source.EnforceObstacles,
+            PitchDegrees = source.PitchDegrees,
+            AzimuthDegrees = source.AzimuthDegrees,
         };
         roof.SetVertices(source.Vertices, source.IsClosed);
         foreach (var obstacle in source.Obstacles)
@@ -8849,33 +9429,19 @@ public partial class MainWindow : Window
 
     private void RefreshLayersPanel()
     {
+        if (LayerList is null) return;
+
         _suppressLayerListSelection = true;
         LayerList.Items.Clear();
 
-        switch (_layersCategory)
+        foreach (var roof in _project.Roofs.Roofs)
         {
-            case LayersCategory.Roofs:
-                foreach (var roof in _project.Roofs.Roofs)
-                {
-                    var prefix = roof.Id == _project.Roofs.ActiveRoofId ? "* " : "  ";
-                    var hidden = roof.IsVisible ? "" : " (hidden)";
-                    LayerList.Items.Add(new RoofLayerItem(
-                        roof.Id,
-                        $"{prefix}{roof.Name}{hidden}",
-                        roof.Id == _project.Roofs.ActiveRoofId));
-                }
-                break;
-            case LayersCategory.Panels:
-                foreach (var panel in _project.Graph.Panels.Values.OrderBy(p => p.PositionYMm).ThenBy(p => p.PositionXMm))
-                {
-                    if (!_project.Definitions.TryGetValue(panel.DefinitionId, out var def)) continue;
-                    LayerList.Items.Add(new PanelLayerItem(panel.Id, $"{def.DisplayName}  {def.PmaxWatts:0} W"));
-                }
-                break;
-            case LayersCategory.Equipment:
-                foreach (var eq in _project.Graph.Equipment.Values.OrderBy(e => e.Name))
-                    LayerList.Items.Add(new EquipmentLayerItem(eq.Id, $"{eq.Name}  ({eq.Kind})"));
-                break;
+            var prefix = roof.Id == _project.Roofs.ActiveRoofId ? "* " : "  ";
+            var hidden = roof.IsVisible ? "" : " (hidden)";
+            LayerList.Items.Add(new RoofLayerItem(
+                roof.Id,
+                $"{prefix}{roof.Name}{hidden}",
+                roof.Id == _project.Roofs.ActiveRoofId));
         }
 
         SelectLayerListItemForCurrentSelection();
@@ -8884,80 +9450,16 @@ public partial class MainWindow : Window
 
     private void SelectLayerListItemForCurrentSelection()
     {
-        if (_layersCategory == LayersCategory.Roofs && _project.Roofs.ActiveRoofId is Guid activeRoofId)
+        if (_project.Roofs.ActiveRoofId is not Guid activeRoofId) return;
+
+        for (var i = 0; i < LayerList.Items.Count; i++)
         {
-            for (var i = 0; i < LayerList.Items.Count; i++)
+            if (LayerList.Items[i] is RoofLayerItem item && item.RoofId == activeRoofId)
             {
-                if (LayerList.Items[i] is RoofLayerItem item && item.RoofId == activeRoofId)
-                {
-                    LayerList.SelectedIndex = i;
-                    return;
-                }
+                LayerList.SelectedIndex = i;
+                return;
             }
         }
-        else if (_layersCategory == LayersCategory.Panels && _selectedPanelIds.Count == 1)
-        {
-            var panelId = _selectedPanelIds.First();
-            for (var i = 0; i < LayerList.Items.Count; i++)
-            {
-                if (LayerList.Items[i] is PanelLayerItem item && item.PanelId == panelId)
-                {
-                    LayerList.SelectedIndex = i;
-                    return;
-                }
-            }
-        }
-        else if (_layersCategory == LayersCategory.Equipment && _selectedEquipmentIds.Count == 1)
-        {
-            var equipmentId = _selectedEquipmentIds.First();
-            for (var i = 0; i < LayerList.Items.Count; i++)
-            {
-                if (LayerList.Items[i] is EquipmentLayerItem item && item.EquipmentId == equipmentId)
-                {
-                    LayerList.SelectedIndex = i;
-                    return;
-                }
-            }
-        }
-    }
-
-    private void LayersRoofsTab_Click(object sender, RoutedEventArgs e)
-    {
-        _layersCategory = LayersCategory.Roofs;
-        UpdateLayersTabStyles();
-        RefreshLayersPanel();
-    }
-
-    private void LayersPanelsTab_Click(object sender, RoutedEventArgs e)
-    {
-        _layersCategory = LayersCategory.Panels;
-        UpdateLayersTabStyles();
-        RefreshLayersPanel();
-    }
-
-    private void LayersEquipmentTab_Click(object sender, RoutedEventArgs e)
-    {
-        _layersCategory = LayersCategory.Equipment;
-        UpdateLayersTabStyles();
-        RefreshLayersPanel();
-    }
-
-    private void UpdateLayersTabStyles()
-    {
-        StyleLayerTab(LayersRoofsTab, _layersCategory == LayersCategory.Roofs);
-        StyleLayerTab(LayersPanelsTab, _layersCategory == LayersCategory.Panels);
-        StyleLayerTab(LayersEquipmentTab, _layersCategory == LayersCategory.Equipment);
-    }
-
-    private void StyleLayerTab(Button button, bool active)
-    {
-        button.FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal;
-        button.Background = active
-            ? (Brush)FindResource("AccentBrush")
-            : Brushes.Transparent;
-        button.Foreground = active
-            ? Brushes.White
-            : (Brush)FindResource("MutedBrush");
     }
 
     private void LayerList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -9000,15 +9502,13 @@ public partial class MainWindow : Window
 
     private void DeleteRoofLayer_Click(object sender, RoutedEventArgs e)
     {
-        if (_layersCategory != LayersCategory.Roofs) return;
-
         Guid? roofId = LayerList.SelectedItem is RoofLayerItem item
             ? item.RoofId
             : _project.Roofs.ActiveRoofId;
 
         if (roofId is not Guid id || _project.Roofs.Find(id) is null) return;
 
-        var result = MessageBox.Show(this,
+        var result = AppConfirmDialog.Alert(this,
             "Delete the selected roof layer?",
             "Delete roof",
             MessageBoxButton.YesNo,

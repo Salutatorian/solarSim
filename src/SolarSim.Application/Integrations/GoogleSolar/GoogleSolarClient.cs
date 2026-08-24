@@ -253,10 +253,11 @@ public sealed class GoogleSolarClient
         foreach (var (index, pts, seg) in rawCorners)
         {
             var shifted = pts.Select(p => new Point2Mm(p.X - minX + marginMm, p.Y - minY + marginMm)).ToList();
-            var pitch = seg.PitchDegrees?.ToString("0.#", CultureInfo.InvariantCulture) ?? "?";
-            var az = seg.AzimuthDegrees?.ToString("0.#", CultureInfo.InvariantCulture) ?? "?";
-            var area = seg.Stats?.AreaMeters2?.ToString("0.#", CultureInfo.InvariantCulture) ?? "?";
-            var roof = new RoofSurface(Guid.NewGuid(), $"Google Seg {index} (pitch {pitch}° az {az}° · {area} m²)");
+            var roof = new RoofSurface(Guid.NewGuid(), $"Roof {index}")
+            {
+                PitchDegrees = seg.PitchDegrees,
+                AzimuthDegrees = seg.AzimuthDegrees,
+            };
             roof.SetVertices(shifted, closed: true);
             roof.SetbackMm = 457.2;
             roofs.Add(roof);
@@ -300,6 +301,12 @@ public sealed class GoogleSolarClient
 
         if (import.MaxSunshineHoursPerYear is double annual && annual > 0)
             project.Site.PeakSunHoursPerDay = Math.Clamp(annual / 365.0, 0.5, 12);
+
+        var (tilt, az) = project.Roofs.EffectiveOrientation(
+            project.Site.ArrayTiltDegrees,
+            project.Site.ArrayAzimuthDegrees);
+        project.Site.ArrayTiltDegrees = tilt;
+        project.Site.ArrayAzimuthDegrees = az;
 
         project.NotifyChanged("Import Google Solar roof");
     }

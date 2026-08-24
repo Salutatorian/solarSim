@@ -72,4 +72,28 @@ public sealed class RoofDocument
 
     public double TotalAreaSquareMeters() =>
         _roofs.Where(r => r.HasRoof && r.IsVisible).Sum(r => r.AreaSquareMeters());
+
+    /// <summary>
+    /// Area-weighted tilt/azimuth for production. Roofs with no pitch/az inherit
+    /// <paramref name="fallbackTiltDegrees"/> / <paramref name="fallbackAzimuthDegrees"/>.
+    /// </summary>
+    public (double TiltDegrees, double AzimuthDegrees) EffectiveOrientation(
+        double fallbackTiltDegrees,
+        double fallbackAzimuthDegrees)
+    {
+        var closed = _roofs.Where(r => r.HasRoof && r.IsVisible).ToList();
+        if (closed.Count == 0)
+            return (fallbackTiltDegrees, fallbackAzimuthDegrees);
+
+        double weightTilt = 0, weightAz = 0, areaSum = 0;
+        foreach (var roof in closed)
+        {
+            var area = Math.Max(roof.AreaSquareMeters(), 0.001);
+            weightTilt += (roof.PitchDegrees ?? fallbackTiltDegrees) * area;
+            weightAz += (roof.AzimuthDegrees ?? fallbackAzimuthDegrees) * area;
+            areaSum += area;
+        }
+
+        return (weightTilt / areaSum, weightAz / areaSum);
+    }
 }

@@ -41,5 +41,7 @@ TestResults/
 *.trx
 *.coverage
 
-# Publish output
-artifacts/
+# Local EIA-861 extract used to regenerate the bundled catalog
+Tools/_eia861/
+Tools/_eia861/
+

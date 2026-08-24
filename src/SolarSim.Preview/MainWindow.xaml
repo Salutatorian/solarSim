@@ -1,6 +1,7 @@
 <Window x:Class="SolarSim.Preview.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SolarSim.Preview"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="solarSim"
         Icon="pack://application:,,,/Assets/solarsim-logo.ico"
@@ -14,173 +15,185 @@
         PreviewKeyDown="Window_PreviewKeyDown"
         Closing="Window_Closing">
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="40"
+        <shell:WindowChrome CaptionHeight="52"
                             ResizeBorderThickness="6"
                             GlassFrameThickness="0"
                             CornerRadius="0"
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
-    <Grid>
-    <DockPanel Background="{DynamicResource BgBrush}">
-        <Border DockPanel.Dock="Top" Background="{DynamicResource ChromeBrush}" Height="40"
+    <Grid Background="{DynamicResource BgBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="52"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Compact file chrome — canvas owns the rest -->
+        <Border Grid.Row="0" Background="{DynamicResource ChromeBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="80"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                    <Image Style="{StaticResource AppLogoMark}" Width="22" Height="22" Margin="0,0,8,0"
-                           VerticalAlignment="Center"/>
-                    <TextBlock Text="solarSim" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold"
-                               FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="AppVersionLabel" Text="0.1.25" Foreground="{DynamicResource MutedBrush}"
-                               FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock Text="design aid" Foreground="{DynamicResource MutedBrush}" FontSize="11"
-                               VerticalAlignment="Center" Margin="0,0,14,0" Opacity="0.85"
-                               ToolTip="Not stamped electrical, structural, or bankable-yield approval."/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Image Style="{StaticResource AppLogoMark}" Width="22" Height="22"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
                     <Button x:Name="FileMenuButton" Content="Untitled" Style="{StaticResource GhostButton}"
-                            Click="OverflowMenu_Click" Padding="8,4" FontSize="13"
+                            Click="OverflowMenu_Click" Padding="12,6" FontSize="13" FontWeight="SemiBold"
                             Foreground="{DynamicResource TextBrush}"
                             ToolTip="Project menu"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <TextBlock x:Name="AppVersionLabel" Text="1.5.0" Foreground="{DynamicResource MutedBrush}"
+                               FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.7"/>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Button x:Name="RoofPlanButton" Content="Roof" Style="{StaticResource NavTabButton}" Click="RoofPlan_Click"
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource IconGhostButton}" Width="34" Click="Undo_Click" ToolTip="Undo"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <local:AppIcon Kind="Undo" Width="15" Height="15"/>
+                    </Button>
+                    <Button Style="{StaticResource IconGhostButton}" Width="34" Click="Redo_Click" ToolTip="Redo"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <local:AppIcon Kind="Redo" Width="15" Height="15"/>
+                    </Button>
+                    <Button x:Name="ThemeToggleButton" Style="{StaticResource IconGhostButton}" Width="34"
+                            Click="ThemeToggle_Click" ToolTip="Theme"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <local:AppIcon x:Name="ThemeToggleIcon" Kind="Sun" Width="15" Height="15"/>
+                    </Button>
+                    <Button Content="Save" Style="{StaticResource PrimaryButton}" Padding="16,6" Click="Save_Click" Margin="8,0,8,0"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button x:Name="InteriorPlanButton" Content="Equipment" Style="{StaticResource NavTabButton}" Click="InteriorPlan_Click"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
-                    <Button Content="↶" Style="{StaticResource IconGhostButton}" Width="34" Click="Undo_Click" ToolTip="Undo"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button Content="↷" Style="{StaticResource IconGhostButton}" Width="34" Click="Redo_Click" ToolTip="Redo" Margin="0,0,6,0"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button x:Name="ThemeToggleButton" Content="◐" Style="{StaticResource IconGhostButton}" Width="34"
-                            Click="ThemeToggle_Click" ToolTip="Theme" Margin="0,0,6,0"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button Content="Save" Style="{StaticResource PrimaryButton}" Padding="14,5" Click="Save_Click" Margin="0,0,6,0"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Grid Width="34" Height="32" Margin="0,0,6,0">
-                        <Button x:Name="SettingsGearButton" Content="⚙" Style="{StaticResource IconGhostButton}" Width="34"
+                    <Grid Width="34" Height="32" Margin="0,0,4,0">
+                        <Button x:Name="SettingsGearButton" Style="{StaticResource IconGhostButton}" Width="34"
                                 Click="Settings_Click" ToolTip="Settings"
-                                shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <local:AppIcon Kind="Settings" Width="15" Height="15"/>
+                        </Button>
                         <Ellipse x:Name="SettingsUpdateBadge" Width="9" Height="9" Fill="#EF4444"
                                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0"
                                  Visibility="Collapsed" IsHitTestVisible="False"/>
                     </Grid>
-                    <Button x:Name="OverflowMenuButton" Content="⋯" Style="{StaticResource IconGhostButton}" Width="34"
-                            Click="OverflowMenu_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                        <Button.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="Open Project…" Click="Open_Click"/>
-                                <MenuItem Header="Save As…" Click="SaveAs_Click"/>
-                                <MenuItem Header="Project Settings…" Click="ProjectSettings_Click"/>
-                                <Separator/>
-                                <MenuItem Header="Single-Line Diagram" Click="SingleLine_Click"/>
-                                <MenuItem Header="BOM / Wire Schedule" Click="BomSchedule_Click"/>
-                                <MenuItem Header="Export Report (HTML/PDF)…" Click="ExportReport_Click"/>
-                                <Separator/>
-                                <MenuItem Header="Google Solar import (optional paid)…" Click="ImportGoogleSolar_Click"/>
-                                <MenuItem Header="Google API key (optional)…" Click="SetGoogleApiKey_Click"/>
-                                <MenuItem Header="pvlib Status…" Click="PvlibStatus_Click"/>
-                                <Separator/>
-                                <MenuItem Header="Demo Roof (12×8 m)" Click="DemoRoof_Click"/>
-                                <MenuItem Header="Demo L-Roof" Click="DemoLRoof_Click"/>
-                                <MenuItem Header="Clear Roof" Click="ClearRoof_Click"/>
-                                <Separator/>
-                                <MenuItem Header="Settings…" Click="Settings_Click"/>
-                                <MenuItem Header="About solarSim…" Click="About_Click"/>
-                            </ContextMenu>
-                        </Button.ContextMenu>
+                    <Button x:Name="OverflowMenuButton" Style="{StaticResource IconGhostButton}" Width="34"
+                            Click="OverflowMenu_Click" Margin="0,0,8,0"
+                            ToolTip="Project menu"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button.Content>
+                            <local:AppIcon Kind="More" Width="15" Height="15"/>
+                        </Button.Content>
                     </Button>
                     <Button x:Name="DeleteButton" Visibility="Collapsed" Click="Delete_Click"/>
-                </StackPanel>
-                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Stretch">
-                    <Button Content="─" Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
-                            FontSize="12" Click="Minimize_Click"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button x:Name="MaximizeButton" Content="□" Style="{StaticResource GhostButton}" Width="40" Height="32"
-                            Padding="0" FontSize="12" Click="Maximize_Click"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button Content="✕" Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
-                            FontSize="12" Click="CloseWindow_Click"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <Border DockPanel.Dock="Bottom" Background="{DynamicResource ChromeBrush}" Height="44" Padding="14,0"
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
-            <Grid>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock x:Name="HudModules" Text="0 modules" Foreground="{DynamicResource TextBrush}"
-                               FontSize="12.5" FontWeight="SemiBold" Margin="0,0,18,0"/>
-                    <TextBlock x:Name="HudPower" Text="0 W DC" Foreground="{DynamicResource TextBrush}"
-                               FontSize="12.5" FontWeight="SemiBold" Margin="0,0,18,0"/>
-                    <TextBlock x:Name="HudStrings" Text="0 strings" Foreground="{DynamicResource MutedBrush}"
-                               FontSize="12.5" Margin="0,0,18,0"/>
-                    <TextBlock x:Name="HudHealth" Text="✓ No issues" Foreground="{DynamicResource OkBrush}"
-                               FontSize="12.5"/>
-                    <TextBlock x:Name="StatusText" Visibility="Collapsed"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock x:Name="HudDetail" Foreground="{DynamicResource MutedBrush}" FontSize="12"
-                               VerticalAlignment="Center" Margin="0,0,16,0" MaxWidth="420" TextTrimming="CharacterEllipsis"/>
-                    <Button Content="Properties" Style="{StaticResource GhostButton}" Click="ToggleInspector_Click"
-                            Padding="8,4" Margin="0,0,10,0"/>
-                    <Button Content="−" Style="{StaticResource IconGhostButton}" Width="28" Click="ZoomOut_Click"/>
-                    <TextBlock x:Name="ZoomLabel" Text="100%" Width="48" TextAlignment="Center"
-                               VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
-                    <Button Content="+" Style="{StaticResource IconGhostButton}" Width="28" Click="ZoomIn_Click"/>
+                    <Button Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
+                            Click="Minimize_Click" ToolTip="Minimize"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <local:AppIcon Kind="Minimize" Width="12" Height="12"/>
+                    </Button>
+                    <Button x:Name="MaximizeButton" Style="{StaticResource GhostButton}" Width="40" Height="32"
+                            Padding="0" Click="Maximize_Click" ToolTip="Maximize"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <local:AppIcon x:Name="MaximizeIcon" Kind="Maximize" Width="12" Height="12"/>
+                    </Button>
+                    <Button Style="{StaticResource GhostButton}" Width="44" Height="32" Padding="0"
+                            Click="CloseWindow_Click" ToolTip="Close"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <local:AppIcon Kind="Close" Width="12" Height="12"/>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Grid>
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="48"/>
+                <ColumnDefinition Width="80"/>
                 <ColumnDefinition x:Name="SidePanelColumn" Width="0"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition x:Name="InspectorColumn" Width="0"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="{DynamicResource BgBrush}"
+            <!-- Labeled tool rail -->
+            <Border Grid.Column="0" Background="{DynamicResource ChromeBrush}"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
-                <DockPanel>
-                    <Button x:Name="LayersRailButton" DockPanel.Dock="Bottom" Style="{StaticResource ToolRailButton}"
-                            Click="LayersDrawerToggle_Click" Margin="0,0,0,8" ToolTip="Layers" Content="☰"/>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="0,10,0,0">
-                            <Button x:Name="ToolSelectButton" Style="{StaticResource ToolRailButton}" Click="ToolSelect_Click" ToolTip="Select" Content="↖"/>
-                            <Button x:Name="ToolRoofButton" Style="{StaticResource ToolRailButton}" Click="ToolRoof_Click" ToolTip="Roof" Content="⌂"/>
-                            <Button x:Name="ToolPanelButton" Style="{StaticResource ToolRailButton}" Click="ToolPanel_Click" ToolTip="Panels" Content="▦"/>
-                            <Button x:Name="ToolWireButton" Style="{StaticResource ToolRailButton}" Click="ToolWire_Click" ToolTip="Wire" Content="⌁"/>
-                            <Button x:Name="ToolObstacleButton" Style="{StaticResource ToolRailButton}" Click="ToolObstacle_Click" ToolTip="Obstacle" Content="◇"/>
-                            <Button x:Name="ToolMeasureButton" Style="{StaticResource ToolRailButton}" Click="ToolMeasure_Click" ToolTip="Measure" Content="↔"/>
-                            <Button x:Name="ToolAddButton" Style="{StaticResource ToolRailButton}" Click="ToolAdd_Click" ToolTip="Add" Content="+"/>
-                        </StackPanel>
-                    </ScrollViewer>
-                </DockPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,10,0,10">
+                        <Button x:Name="ToolSelectButton" Style="{StaticResource ToolRailButton}" Click="ToolSelect_Click" ToolTip="Select">
+                            <StackPanel>
+                                <local:AppIcon Kind="Select" Width="18" Height="18" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Select" FontSize="9" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolRoofButton" Style="{StaticResource ToolRailButton}" Click="ToolRoof_Click" ToolTip="Roof">
+                            <StackPanel>
+                                <local:AppIcon Kind="Roof" Width="18" Height="18" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Roof" FontSize="9" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolPanelButton" Style="{StaticResource ToolRailButton}" Click="ToolPanel_Click" ToolTip="Panels">
+                            <StackPanel>
+                                <local:AppIcon Kind="Panels" Width="18" Height="18" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Panels" FontSize="9" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolEquipmentButton" Style="{StaticResource ToolRailButton}" Click="ToolEquipment_Click" ToolTip="Equipment">
+                            <StackPanel>
+                                <local:AppIcon Kind="Equipment" Width="18" Height="18" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Equipment" FontSize="9" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolSuggestionButton" Style="{StaticResource ToolRailButton}" Click="ToolSuggestion_Click"
+                                ToolTip="Suggestion" Visibility="Collapsed">
+                            <StackPanel>
+                                <local:AppIcon Kind="Suggestion" Width="18" Height="18" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Suggest" FontSize="9" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolMeasureButton" Style="{StaticResource ToolRailButton}" Click="ToolMeasure_Click" ToolTip="Measure">
+                            <StackPanel>
+                                <local:AppIcon Kind="Measure" Width="18" Height="18" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Measure" FontSize="9" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
 
-            <Border x:Name="SidePanel" Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="0,0,1,0" Visibility="Collapsed">
-                <DockPanel Margin="14,12,10,12">
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                        <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource IconGhostButton}"
-                                Width="28" Height="28" Click="CloseSidePanel_Click"/>
-                        <TextBlock x:Name="ContextTitle" Text="Roof" FontWeight="SemiBold" FontSize="15"
+            <Border x:Name="SidePanel" Grid.Column="1" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0" Visibility="Collapsed">
+                <DockPanel Margin="16,16,10,16">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconGhostButton}"
+                                Width="28" Height="28" Click="CloseSidePanel_Click" ToolTip="Close">
+                            <local:AppIcon Kind="Close" Width="12" Height="12"/>
+                        </Button>
+                        <TextBlock x:Name="ContextTitle" Text="Roof" FontFamily="{StaticResource DisplayFont}"
+                                   FontWeight="SemiBold" FontSize="16"
                                    Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     </DockPanel>
                     <ScrollViewer Style="{StaticResource PanelScrollViewer}">
                         <StackPanel>
+                            <StackPanel x:Name="SuggestionPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                                <TextBlock Text="Suggestion" Style="{StaticResource FieldLabel}" Margin="0,0,0,8"/>
+                                <TextBlock x:Name="SuggestionBody" TextWrapping="Wrap" FontSize="12.5"
+                                           Foreground="{DynamicResource TextBrush}" Margin="0,0,0,10"/>
+                                <Button x:Name="SuggestionPlaceButton" Content="Lay on roof"
+                                        Style="{StaticResource PrimaryButton}" Margin="0,0,0,8"
+                                        Click="PlaceEstimate_Click"/>
+                                <Button x:Name="SuggestionEstimateButton" Content="Enter kWh…"
+                                        Style="{StaticResource PrimaryButton}" Margin="0,0,0,8"
+                                        Click="QuickEstimate_Click"/>
+                                <WrapPanel x:Name="SuggestionChipHost"/>
+                                <TextBlock x:Name="SuggestionHint" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+                            </StackPanel>
                             <StackPanel x:Name="RoofContextPanel" Visibility="Collapsed">
                                 <Button x:Name="DrawRoofButton" Content="Draw roof" Style="{StaticResource PaletteRowButton}" Click="DrawRoof_Click"/>
                                 <Button Content="Trace roof on map…" Style="{StaticResource PaletteRowButton}" Click="SatelliteMap_Click"/>
                                 <Button Content="New roof layer" Style="{StaticResource PaletteRowButton}" Click="NewRoofLayer_Click"/>
+                                <TextBlock Text="Roof layers" Style="{StaticResource FieldLabel}" Margin="0,12,0,6"/>
+                                <ListBox x:Name="LayerList" BorderThickness="0" Background="Transparent"
+                                         MaxHeight="160" Margin="0,0,0,8"
+                                         SelectionChanged="LayerList_SelectionChanged"
+                                         MouseDoubleClick="LayerList_MouseDoubleClick"/>
+                                <Button Content="Delete roof layer" Style="{StaticResource DangerButton}" Padding="10,6"
+                                        HorizontalAlignment="Left" Click="DeleteRoofLayer_Click"/>
                                 <Button Content="Close polygon" Style="{StaticResource PaletteRowButton}" Click="CloseRoof_Click"/>
                                 <Button Content="Straighten edges" Style="{StaticResource PaletteRowButton}" Click="StraightenRoof_Click"
                                         ToolTip="One-click: align house + snap every edge horizontal/vertical. Also runs automatically after map import. Dragging corners snaps to straight (Alt = free)."/>
@@ -198,28 +211,19 @@
                                                Text="Free map: search address → zoom → click each roof corner → Import. No Google billing."/>
                                 </StackPanel>
                             </StackPanel>
-
-                            <!-- Panels -->
                             <StackPanel x:Name="PanelContextPanel" Visibility="Collapsed">
+                                <StackPanel x:Name="EstimatePlacePanel" Visibility="Collapsed" Margin="0,0,0,12">
+                                    <TextBlock x:Name="EstimatePlaceHint" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedBrush}" FontSize="12.5" Margin="0,0,0,8"/>
+                                    <Button Content="Place estimate on roof" Style="{StaticResource PaletteRowButton}"
+                                            Click="PlaceEstimate_Click"/>
+                                </StackPanel>
                                 <Button Content="Boviet 270 W" Style="{StaticResource PaletteRowButton}" Click="AddBoviet_Click"/>
                                 <Button Content="Generic 400 W" Style="{StaticResource PaletteRowButton}" Click="AddGeneric400_Click"/>
                                 <Button Content="Generic 550 W" Style="{StaticResource PaletteRowButton}" Click="AddGeneric550_Click"/>
+                                <Button Content="Generic 700 W" Style="{StaticResource PaletteRowButton}" Click="AddGeneric700_Click"/>
                                 <Button Content="Custom panel…" Style="{StaticResource PaletteRowButton}" Click="AddCustom_Click"/>
                             </StackPanel>
-
-                            <!-- Wire -->
-                            <StackPanel x:Name="WireContextPanel" Visibility="Collapsed">
-                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12.5" LineHeight="18"
-                                           Text="Select a panel, then drag from PV+ to a compatible PV−. Right-click a wire to disconnect."/>
-                            </StackPanel>
-
-                            <!-- Obstacle -->
-                            <StackPanel x:Name="ObstacleContextPanel" Visibility="Collapsed">
-                                <Button x:Name="AddObstacleButton" Content="Place roof vent" Style="{StaticResource PaletteRowButton}"
-                                        Click="AddObstacleMode_Click"/>
-                            </StackPanel>
-
-                            <!-- Add / library -->
                             <Border x:Name="AddPalette" Visibility="Collapsed">
                                 <StackPanel>
                                     <TextBox x:Name="AddSearchBox" Margin="0,0,0,12" Padding="8,7"
@@ -229,47 +233,16 @@
                                              CaretBrush="{DynamicResource TextBrush}"
                                              Tag="Search components…"
                                              TextChanged="AddSearch_TextChanged"/>
-
                                     <StackPanel x:Name="AddRecentSection" Visibility="Collapsed" Margin="0,0,0,12">
                                         <TextBlock Text="Recent" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
                                         <WrapPanel x:Name="AddRecentTiles"/>
                                     </StackPanel>
-
-                                    <StackPanel x:Name="AddSolarSection" Margin="0,0,0,12">
-                                        <TextBlock Text="Solar" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
-                                        <WrapPanel x:Name="AddSolarTiles"/>
-                                    </StackPanel>
-
                                     <StackPanel x:Name="AddElectricalSection" Margin="0,0,0,12">
                                         <TextBlock Text="Electrical" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
                                         <WrapPanel x:Name="AddElectricalTiles"/>
                                     </StackPanel>
-
-                                    <StackPanel x:Name="AddStructuralSection">
-                                        <TextBlock Text="Structural" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
-                                        <WrapPanel x:Name="AddStructuralTiles"/>
-                                    </StackPanel>
                                 </StackPanel>
                             </Border>
-
-                            <!-- Layers -->
-                            <Border x:Name="LayersDrawer" Visibility="Collapsed">
-                                <DockPanel>
-                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                                        <Button x:Name="LayersRoofsTab" Content="Roofs" Style="{StaticResource SegmentButton}" Click="LayersRoofsTab_Click"/>
-                                        <Button x:Name="LayersPanelsTab" Content="Panels" Style="{StaticResource SegmentButton}" Click="LayersPanelsTab_Click"/>
-                                        <Button x:Name="LayersEquipmentTab" Content="Equipment" Style="{StaticResource SegmentButton}" Click="LayersEquipmentTab_Click"/>
-                                    </StackPanel>
-                                    <StackPanel x:Name="RoofLayerActions" DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                                        <Button Content="New layer" Padding="10,6" Margin="0,0,6,0" Click="NewRoofLayer_Click"/>
-                                        <Button Content="Delete" Style="{StaticResource DangerButton}" Padding="10,6" Click="DeleteRoofLayer_Click"/>
-                                    </StackPanel>
-                                    <ListBox x:Name="LayerList" BorderThickness="0" Background="Transparent"
-                                             SelectionChanged="LayerList_SelectionChanged"
-                                             MouseDoubleClick="LayerList_MouseDoubleClick"/>
-                                </DockPanel>
-                            </Border>
-
                             <StackPanel x:Name="MeasureContextPanel" Visibility="Collapsed">
                                 <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12.5"
                                            Text="Click two or more points on the canvas. Live edge lengths appear as you move — same style as Draw roof. Esc clears the measure."/>
@@ -279,69 +252,168 @@
                 </DockPanel>
             </Border>
 
-            <!-- Hero canvas stage -->
-            <Border Grid.Column="2" Background="{DynamicResource CanvasBrush}" ClipToBounds="True">
-                <Grid>
-                    <Rectangle x:Name="CanvasGridRect" Fill="{DynamicResource CanvasDotBrush}"/>
-                    <Canvas x:Name="DesignCanvas" Background="Transparent"
-                            MouseWheel="Canvas_MouseWheel"
-                            MouseDown="Canvas_MouseDown"
-                            MouseMove="Canvas_MouseMove"
-                            MouseUp="Canvas_MouseUp"
-                            MouseLeave="Canvas_MouseLeave"
-                            MouseRightButtonUp="Canvas_MouseRightButtonUp"/>
+            <!-- Full-bleed canvas + overlays -->
+            <Grid Grid.Column="2">
+                <Border Background="{DynamicResource CanvasBrush}" ClipToBounds="True">
+                    <Grid>
+                        <Rectangle x:Name="CanvasGridRect" Fill="{DynamicResource CanvasDotBrush}"/>
+                        <Canvas x:Name="DesignCanvas" Background="Transparent"
+                                MouseWheel="Canvas_MouseWheel"
+                                MouseDown="Canvas_MouseDown"
+                                MouseMove="Canvas_MouseMove"
+                                MouseUp="Canvas_MouseUp"
+                                MouseLeave="Canvas_MouseLeave"
+                                MouseRightButtonUp="Canvas_MouseRightButtonUp"/>
 
-                    <!-- Soft empty state — no card -->
-                    <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Image Style="{StaticResource AppLogoMark}" Width="72" Height="72" Margin="0,0,0,18"
-                               HorizontalAlignment="Center" Opacity="0.95"/>
-                        <TextBlock x:Name="EmptyStateTitle" Text="Start with your roof"
-                                   FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="EmptyStateBody" Text="Draw or trace a roof · design aid only — not stamped approval"
-                                   FontSize="14" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" Margin="0,8,0,22"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Button Content="Draw roof" Style="{StaticResource PrimaryButton}" Width="118" Height="34"
-                                    Click="EmptyStateDraw_Click" Margin="0,0,10,0"/>
-                            <Button x:Name="EmptyStateButton" Content="Satellite map" Style="{StaticResource GhostButton}"
-                                    Width="128" Height="34" Click="EmptyStateImport_Click"
-                                    BorderBrush="{DynamicResource BorderBrush}" Foreground="{DynamicResource TextBrush}"/>
+                        <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+                            <TextBlock x:Name="EmptyStateTitle" Text="Start with your roof"
+                                       FontFamily="{StaticResource DisplayFont}" FontSize="28" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="EmptyStateBody" Text="Pick a path. You can always switch later."
+                                       FontSize="14" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center"
+                                       TextAlignment="Center" Margin="0,8,0,22" TextWrapping="Wrap"/>
+                            <UniformGrid x:Name="EmptyStateChoices" Columns="2" Width="480">
+                                <Button Style="{StaticResource ChoiceCardButton}" Click="EmptyStateDraw_Click" Margin="0,0,8,0">
+                                    <StackPanel>
+                                        <local:AppIcon Kind="Roof" Width="22" Height="22" Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="Draw roof" FontWeight="SemiBold" FontSize="15" Margin="0,8,0,4"
+                                                   Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBlock Text="Click corners on the canvas"
+                                                   Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="EmptyStateButton" Style="{StaticResource ChoiceCardButton}"
+                                        Click="EmptyStateImport_Click" Margin="8,0,0,0">
+                                    <StackPanel>
+                                        <local:AppIcon Kind="Pin" Width="22" Height="22" Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="Trace on map" FontWeight="SemiBold" FontSize="15" Margin="0,8,0,4"
+                                                   Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBlock Text="Satellite outline, then import"
+                                                   Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Button>
+                            </UniformGrid>
                         </StackPanel>
-                    </StackPanel>
 
-                    <!-- Floating selection toolbar (Figma-style) -->
-                    <Border x:Name="ContextToolBar" Visibility="Collapsed"
-                            HorizontalAlignment="Left" VerticalAlignment="Top"
-                            Background="{DynamicResource SurfaceBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="4,3"
-                            Panel.ZIndex="80">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.35" Color="#000000"/>
-                        </Border.Effect>
+                        <Border x:Name="ContextToolBar" Visibility="Collapsed"
+                                HorizontalAlignment="Left" VerticalAlignment="Top"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="14" Padding="6,4"
+                                Panel.ZIndex="80">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.4" Color="#000000"/>
+                            </Border.Effect>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="CtxRotateButton" Style="{StaticResource ContextActionButton}"
+                                        ToolTip="Rotate 90° (R)" Click="CtxRotate_Click" Width="32" Padding="0">
+                                    <local:AppIcon Kind="Rotate" Width="14" Height="14"/>
+                                </Button>
+                                <Button x:Name="CtxDuplicateButton" Content="Duplicate" Style="{StaticResource ContextActionButton}"
+                                        ToolTip="Duplicate (Ctrl+D)" Click="CtxDuplicate_Click"/>
+                                <Button x:Name="CtxStringButton" Content="String" Style="{StaticResource ContextActionButton}"
+                                        ToolTip="Select string" Click="CtxString_Click" Margin="0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Floating plan switch — fixed width so Roof / Equipment never shove the canvas -->
+                <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,14,0,0"
+                        Width="232"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="12" Padding="4" Panel.ZIndex="40">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="16" ShadowDepth="1" Opacity="0.35" Color="#000000"/>
+                    </Border.Effect>
+                    <UniformGrid Columns="2">
+                        <Button x:Name="RoofPlanButton" Content="Roof" Style="{StaticResource NavTabButton}" Click="RoofPlan_Click"/>
+                        <Button x:Name="InteriorPlanButton" Content="Equipment" Style="{StaticResource NavTabButton}" Click="InteriorPlan_Click"/>
+                    </UniformGrid>
+                </Border>
+
+                <Border x:Name="EstimateBanner" Visibility="Collapsed"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,62,0,0"
+                        MaxWidth="560"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="12" Padding="12,10" Panel.ZIndex="41">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="16" ShadowDepth="1" Opacity="0.35" Color="#000000"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <DockPanel LastChildFill="True">
+                            <Button x:Name="EstimatePlaceButton" DockPanel.Dock="Right"
+                                    Content="Lay on roof" Style="{StaticResource PrimaryButton}"
+                                    Padding="12,6" Margin="12,0,0,0" Click="PlaceEstimate_Click"
+                                    VerticalAlignment="Center"/>
+                            <StackPanel>
+                                <TextBlock Text="Suggested array" FontWeight="SemiBold" FontSize="13"
+                                           Foreground="{DynamicResource TextBrush}"/>
+                                <TextBlock x:Name="EstimateBannerText" TextWrapping="Wrap"
+                                           VerticalAlignment="Center" FontSize="12.5" Margin="0,2,0,0"
+                                           Foreground="{DynamicResource TextBrush}"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <WrapPanel x:Name="EstimatePresetHost" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Floating HUD — replaces the old bottom status bar -->
+                <DockPanel VerticalAlignment="Bottom" Margin="16,0,16,16" Panel.ZIndex="40" IsHitTestVisible="True">
+                    <Border Style="{StaticResource HudChip}" DockPanel.Dock="Right" Margin="10,0,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <Button x:Name="CtxRotateButton" Content="↻" Style="{StaticResource ContextActionButton}"
-                                    ToolTip="Rotate 90° (R)" Click="CtxRotate_Click" Width="32" Padding="0"/>
-                            <Button x:Name="CtxDuplicateButton" Content="Duplicate" Style="{StaticResource ContextActionButton}"
-                                    ToolTip="Duplicate (Ctrl+D)" Click="CtxDuplicate_Click"/>
-                            <Button x:Name="CtxStringButton" Content="String" Style="{StaticResource ContextActionButton}"
-                                    ToolTip="Select string" Click="CtxString_Click" Margin="0"/>
+                            <Button Style="{StaticResource GhostButton}" Click="ToggleInspector_Click"
+                                    Padding="10,4" Margin="0,0,8,0" ToolTip="Properties">
+                                <StackPanel Orientation="Horizontal">
+                                    <local:AppIcon Kind="Sliders" Width="14" Height="14" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Properties" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource IconGhostButton}" Width="28" Click="ZoomOut_Click" ToolTip="Zoom out">
+                                <local:AppIcon Kind="ZoomOut" Width="14" Height="14"/>
+                            </Button>
+                            <TextBlock x:Name="ZoomLabel" Text="100%" Width="44" TextAlignment="Center"
+                                       VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                            <Button Style="{StaticResource IconGhostButton}" Width="28" Click="ZoomIn_Click" ToolTip="Zoom in">
+                                <local:AppIcon Kind="ZoomIn" Width="14" Height="14"/>
+                            </Button>
                         </StackPanel>
                     </Border>
-                </Grid>
-            </Border>
+                    <Border Style="{StaticResource HudChip}" HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="HudModules" Text="0 modules" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12.5" FontWeight="SemiBold" Margin="0,0,14,0"/>
+                            <TextBlock x:Name="HudPower" Text="0 W DC" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12.5" FontWeight="SemiBold" Margin="0,0,14,0"/>
+                            <TextBlock x:Name="HudStrings" Text="0 strings" Foreground="{DynamicResource MutedBrush}"
+                                       FontSize="12.5" Margin="0,0,14,0"/>
+                            <TextBlock x:Name="HudHealth" Text="✓ No issues" Foreground="{DynamicResource OkBrush}"
+                                       FontSize="12.5"/>
+                            <TextBlock x:Name="StatusText" Visibility="Collapsed"/>
+                            <TextBlock x:Name="HudDetail" Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="16,0,0,0" MaxWidth="280" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Border>
+                </DockPanel>
+            </Grid>
 
-            <!-- Properties inspector -->
-            <Border x:Name="InspectorPanel" Grid.Column="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1,0,0,0" Visibility="Collapsed">
-                <DockPanel Margin="16,12,8,12">
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,8,12">
-                        <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource IconGhostButton}"
-                                Width="28" Click="ToggleInspector_Click"/>
+            <Border x:Name="InspectorPanel" Grid.Column="3" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Visibility="Collapsed">
+                <DockPanel Margin="16,16,8,16">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,8,14">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconGhostButton}"
+                                Width="28" Click="ToggleInspector_Click" ToolTip="Close">
+                            <local:AppIcon Kind="Close" Width="12" Height="12"/>
+                        </Button>
                         <Button DockPanel.Dock="Right" Content="Delete" Style="{StaticResource DangerButton}"
                                 Padding="10,5" FontSize="11" Click="Delete_Click" Margin="0,0,6,0"/>
-                        <TextBlock Text="Properties" FontWeight="SemiBold" FontSize="14"
-                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <local:AppIcon Kind="Sliders" Width="16" Height="16" Margin="0,0,8,0"/>
+                            <TextBlock Text="Properties" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold" FontSize="16"
+                                       Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </DockPanel>
                     <Border DockPanel.Dock="Bottom" Margin="0,12,14,0">
                         <DockPanel>
@@ -350,7 +422,6 @@
                                      SelectionChanged="StringsList_SelectionChanged"/>
                         </DockPanel>
                     </Border>
-                    <!-- Right padding reserves a gutter so overlay scrollbars never cover values -->
                     <ScrollViewer Style="{StaticResource PanelScrollViewer}">
                         <StackPanel Margin="0,0,4,0">
                             <TextBlock x:Name="InspectorHeading" Text="Project" FontSize="15" FontWeight="SemiBold"
@@ -361,7 +432,6 @@
                             <StackPanel x:Name="InspectorRows"/>
                             <TextBlock x:Name="InspectorBody" TextWrapping="Wrap" FontSize="12.5" LineHeight="20"
                                        Foreground="{DynamicResource MutedBrush}" Visibility="Collapsed"/>
-
                             <StackPanel x:Name="SiteTempsPanel" Margin="0,18,0,0">
                                 <TextBlock Text="Site" Style="{StaticResource SectionLabel}"/>
                                 <ComboBox x:Name="UnitsCombo" Margin="0,0,0,8" SelectionChanged="UnitsCombo_SelectionChanged"/>
@@ -381,15 +451,22 @@
                                 <TextBox x:Name="PeakSunHoursBox" Text="4.5" Margin="0,0,0,6" LostFocus="SiteField_LostFocus" KeyDown="SiteField_KeyDown"/>
                                 <TextBlock Text="Derate" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
                                 <TextBox x:Name="DerateBox" Text="0.85" Margin="0,0,0,6" LostFocus="SiteField_LostFocus" KeyDown="SiteField_KeyDown"/>
-                                <TextBlock Text="Tilt °" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Site tilt °" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
                                 <TextBox x:Name="ArrayTiltBox" Text="20" Margin="0,0,0,6" LostFocus="SiteField_LostFocus" KeyDown="SiteField_KeyDown"/>
-                                <TextBlock Text="Azimuth °" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Site az °" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
                                 <TextBox x:Name="ArrayAzimuthBox" Text="180" Margin="0,0,0,8" LostFocus="SiteField_LostFocus" KeyDown="SiteField_KeyDown"/>
+                                <TextBlock Text="Active roof pitch °" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                                <TextBox x:Name="RoofPitchBox" Margin="0,0,0,6"
+                                         ToolTip="Blank = use site tilt. 0 = flat."
+                                         LostFocus="SiteField_LostFocus" KeyDown="SiteField_KeyDown"/>
+                                <TextBlock Text="Active roof az °" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                                <TextBox x:Name="RoofAzimuthBox" Margin="0,0,0,8"
+                                         ToolTip="Blank = use site azimuth. 0 = north, 180 = south."
+                                         LostFocus="SiteField_LostFocus" KeyDown="SiteField_KeyDown"/>
                                 <TextBlock Text="Panel color" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" Visibility="Collapsed"/>
                                 <ComboBox x:Name="PanelColorCombo" Margin="0,0,0,8" SelectionChanged="PanelColorCombo_SelectionChanged" Visibility="Collapsed"/>
                                 <Button Content="Run pvlib yield" Style="{StaticResource PaletteRowButton}" Click="RunPvlibEstimate_Click"/>
                             </StackPanel>
-
                             <StackPanel x:Name="RackingPanel" Margin="0,16,0,0">
                                 <TextBlock Text="Racking" Style="{StaticResource SectionLabel}"/>
                                 <CheckBox x:Name="ShowAttachmentsCheck" Content="Show attachments" Margin="0,0,0,10"
@@ -403,7 +480,6 @@
                                 <TextBlock x:Name="RackingSummaryText" TextWrapping="Wrap" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"
                                            Text="Place modules to estimate rails / attachments."/>
                             </StackPanel>
-
                             <StackPanel x:Name="RoofToolsPanel" Visibility="Collapsed"/>
                             <TextBlock x:Name="TipText" Visibility="Collapsed"/>
                         </StackPanel>
@@ -411,16 +487,15 @@
                 </DockPanel>
             </Border>
         </Grid>
-    </DockPanel>
 
-        <!-- Bottom-right update toast (local download ready) -->
         <Border x:Name="UpdateToast"
                 Visibility="Collapsed"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                Margin="0,0,18,58" Padding="14,12"
+                Margin="0,0,18,24" Padding="14,12"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                CornerRadius="10" Width="300"
+                CornerRadius="12" Width="300"
+                Panel.ZIndex="90"
                 shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
@@ -441,5 +516,19 @@
                 </StackPanel>
             </StackPanel>
         </Border>
+
+        <!-- Same HWND as the editor so window-capture recorders (Recordly) don't stop on Create project. -->
+        <local:HomeView x:Name="HomeOverlay" Grid.Row="0" Grid.RowSpan="2"
+                        Panel.ZIndex="500"/>
+        <local:SatelliteMapDialog x:Name="MapOverlay" Grid.Row="0" Grid.RowSpan="2"
+                                  Visibility="Collapsed" Panel.ZIndex="600"/>
+        <Grid x:Name="ModalLayer" Grid.Row="0" Grid.RowSpan="2"
+              Panel.ZIndex="900" Visibility="Collapsed">
+            <Border Background="#E00A0A0C"/>
+            <ContentControl x:Name="ModalHost"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Margin="24"/>
+        </Grid>
     </Grid>
 </Window>

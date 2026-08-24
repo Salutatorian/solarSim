@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:SolarSim.Desktop"
+        x:Class="SolarSim.Desktop.MainWindow"
+        Title="solarSim"
+        Width="1280" Height="800"
+        MinWidth="800" MinHeight="520"
+        Background="#0B1220">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#111827" Padding="12,8" BorderBrush="#1F2937" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="solarSim" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center"/>
+                    <TextBlock Text="Mac preview" Foreground="#F59E0B" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <Button Content="New" Click="New_Click"/>
+                    <Button Content="Open…" Click="Open_Click"/>
+                    <Button Content="Save" Click="Save_Click"/>
+                    <Button Content="Add panel" Click="AddPanel_Click"/>
+                    <Button Content="Rotate" Click="Rotate_Click"/>
+                    <Button Content="Delete" Click="Delete_Click"/>
+                    <Button Content="Undo" Click="Undo_Click"/>
+                    <Button Content="Redo" Click="Redo_Click"/>
+                    <Button Content="Fit" Click="Fit_Click"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" x:Name="ProjectTitle" Text="Untitled"
+                           Margin="16,0" VerticalAlignment="Center" Foreground="#9CA3AF"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="2" x:Name="StatusText" Text=""
+                           VerticalAlignment="Center" Foreground="#D1D5DB" FontSize="13"/>
+            </Grid>
+        </Border>
+        <Border DockPanel.Dock="Bottom" Background="#111827" Padding="12,6" BorderBrush="#1F2937" BorderThickness="0,1,0,0">
+            <TextBlock Text="Same .solarproj files as Windows. Scroll to zoom · right-drag to pan · drag a panel to move. Satellite map tracing is still Windows-only (WebView2)."
+                       Foreground="#6B7280" FontSize="11" TextWrapping="Wrap"/>
+        </Border>
+        <local:DesignCanvasControl x:Name="Canvas"/>
+    </DockPanel>
+</Window>

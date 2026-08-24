@@ -1,4 +1,5 @@
 using SolarSim.Domain.Equipment;
+using SolarSim.Domain.Roof;
 
 namespace SolarSim.Domain.Electrical;
 
@@ -12,10 +13,11 @@ public static class SingleLineDiagramService
         ProjectCalculationResult calc,
         IReadOnlyDictionary<Guid, SolarPanelDefinition> definitions,
         IReadOnlyList<InverterMpptReport> mpptReports,
-        SiteDesignConditions? site = null)
+        SiteDesignConditions? site = null,
+        RoofDocument? roofs = null)
     {
         site ??= new SiteDesignConditions();
-        var energy = DetailedProductionEstimateService.Estimate(calc.TotalPmaxWatts, site);
+        var energy = DetailedProductionEstimateService.Estimate(calc.TotalPmaxWatts, site, roofs);
 
         var lines = new List<string>
         {

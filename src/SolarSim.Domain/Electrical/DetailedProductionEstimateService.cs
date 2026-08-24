@@ -1,3 +1,5 @@
+using SolarSim.Domain.Roof;
+
 namespace SolarSim.Domain.Electrical;
 
 public sealed class MonthlyProductionRow
@@ -40,13 +42,18 @@ public static class DetailedProductionEstimateService
     private static readonly double[] NorthernSeason =
         [0.55, 0.70, 0.90, 1.10, 1.25, 1.30, 1.28, 1.18, 1.00, 0.80, 0.60, 0.50];
 
-    public static DetailedProductionEstimate Estimate(double totalDcWatts, SiteDesignConditions site)
+    public static DetailedProductionEstimate Estimate(
+        double totalDcWatts,
+        SiteDesignConditions site,
+        RoofDocument? roofs = null)
     {
         var kw = Math.Max(0, totalDcWatts) / 1000.0;
         var basePsh = Math.Clamp(site.PeakSunHoursPerDay, 0, 12);
         var derate = Math.Clamp(site.SystemDerateFactor, 0.1, 1.0);
-        var tilt = Math.Clamp(site.ArrayTiltDegrees, 0, 60);
-        var az = NormalizeAzimuth(site.ArrayAzimuthDegrees);
+        var (rawTilt, rawAz) = roofs?.EffectiveOrientation(site.ArrayTiltDegrees, site.ArrayAzimuthDegrees)
+                               ?? (site.ArrayTiltDegrees, site.ArrayAzimuthDegrees);
+        var tilt = Math.Clamp(rawTilt, 0, 60);
+        var az = NormalizeAzimuth(rawAz);
         var lat = site.LatitudeDegrees;
 
         var tiltFactor = TiltFactor(tilt, lat);

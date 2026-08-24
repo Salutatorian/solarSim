@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>SolarSim.Desktop</RootNamespace>
+    <AssemblyName>solarSim</AssemblyName>
+    <ApplicationTitle>solarSim</ApplicationTitle>
+    <Product>solarSim</Product>
+    <Version>1.5.0</Version>
+    <AssemblyVersion>1.5.0.0</AssemblyVersion>
+    <FileVersion>1.5.0.0</FileVersion>
+    <InformationalVersion>1.5.0</InformationalVersion>
+    <Company>solarSim</Company>
+    <Description>Cross-platform solar design lab (macOS / Windows / Linux). Same .solarproj engine as the Windows WPF app. Design aid — not stamped approval.</Description>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SolarSim.Application\SolarSim.Application.csproj" />
+    <ProjectReference Include="..\SolarSim.Domain\SolarSim.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.8" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.8" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.8" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Info.plist" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

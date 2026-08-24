@@ -1,9 +1,13 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace SolarSim.Preview;
 
-public partial class WhatsNewDialog : Window
+public partial class WhatsNewDialog : UserControl, IAppModal
 {
+    public event Action<bool?>? Completed;
+
     public WhatsNewDialog(string version, string? releasedLocal, string notes)
     {
         InitializeComponent();
@@ -21,5 +25,14 @@ public partial class WhatsNewDialog : Window
             : notes.Trim();
     }
 
-    private void Ok_Click(object sender, RoutedEventArgs e) => Close();
+    private void Ok_Click(object sender, RoutedEventArgs e) => Completed?.Invoke(true);
+
+    private void Dialog_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Escape or Key.Enter)
+        {
+            Completed?.Invoke(true);
+            e.Handled = true;
+        }
+    }
 }

@@ -233,6 +233,23 @@ public static class ConnectionValidator
         var otherOwner = startBat ? endOwner : startOwner;
         var otherPort = startBat ? end : start;
 
+        if (otherOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.Battery })
+        {
+            var otherBat = otherPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase);
+            if (start.Polarity != end.Polarity
+                || !batteryPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase)
+                || !otherBat)
+            {
+                result.AddError(
+                    "BATTERY_PARALLEL",
+                    "Battery wiring",
+                    "Parallel batteries join BAT+ to BAT+ and BAT− to BAT−.",
+                    start.OwnerComponentId, end.OwnerComponentId);
+            }
+
+            return;
+        }
+
         if (otherOwner is ElectricalEquipmentInstance { Kind: EquipmentKind.StringInverter })
         {
             if (!otherPort.Label.StartsWith("BAT", StringComparison.OrdinalIgnoreCase)

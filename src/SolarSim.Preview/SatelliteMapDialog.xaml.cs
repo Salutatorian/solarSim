@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Web.WebView2.Core;
 using SolarSim.Application.Integrations.GoogleSolar;
@@ -10,7 +11,7 @@ using SolarSim.Application.Integrations.OpenMap;
 
 namespace SolarSim.Preview;
 
-public partial class SatelliteMapDialog : Window
+public partial class SatelliteMapDialog : UserControl
 {
     private const string VirtualHost = "app.solarsim.local";
 
@@ -22,34 +23,82 @@ public partial class SatelliteMapDialog : Window
     public IReadOnlyList<IReadOnlyList<(double Lat, double Lon)>> RoofRings { get; private set; }
         = Array.Empty<IReadOnlyList<(double Lat, double Lon)>>();
 
-    private readonly double? _initialLat;
-    private readonly double? _initialLon;
-    private readonly string? _initialQuery;
+    public event EventHandler? Imported;
+    public event EventHandler? Cancelled;
+
+    private double? _initialLat;
+    private double? _initialLon;
+    private string? _initialQuery;
     private readonly List<(double Lat, double Lon)> _outline = new();
     private readonly List<List<(double Lat, double Lon)>> _rings = new();
     private bool _mapReady;
+    private bool _webviewStarted;
 
-    public SatelliteMapDialog(
-        string? apiKeyIgnored = null,
-        string? initialQuery = null,
-        double? initialLat = null,
-        double? initialLon = null)
+    private Window? OwnerWindow => Window.GetWindow(this);
+
+    public SatelliteMapDialog()
     {
-        // Free map needs no key; keep parameter so call sites compile.
-        _ = apiKeyIgnored;
         InitializeComponent();
-        _initialQuery = initialQuery;
-        _initialLat = initialLat;
-        _initialLon = initialLon;
-        if (!string.IsNullOrWhiteSpace(initialQuery)
-            && !initialQuery.Equals("Unspecified", StringComparison.OrdinalIgnoreCase))
-            SearchBox.Text = initialQuery;
-
-        Loaded += SatelliteMapDialog_Loaded;
         SizeChanged += (_, _) => _ = InvalidateMapSizeAsync();
     }
 
-    private async void SatelliteMapDialog_Loaded(object sender, RoutedEventArgs e)
+    public void OpenSession(string? initialQuery, double? initialLat, double? initialLon)
+    {
+        _initialQuery = string.IsNullOrWhiteSpace(initialQuery)
+            || initialQuery.Equals("Unspecified", StringComparison.OrdinalIgnoreCase)
+            ? null
+            : initialQuery.Trim();
+        _initialLat = initialLat;
+        _initialLon = initialLon;
+        _outline.Clear();
+        _rings.Clear();
+        _mapReady = _webviewStarted && MapView.CoreWebView2 is not null;
+        RoofOutline = Array.Empty<(double, double)>();
+        RoofRings = Array.Empty<IReadOnlyList<(double Lat, double Lon)>>();
+        SelectedLatitude = initialLat;
+        SelectedLongitude = initialLon;
+        SelectedLabel = _initialQuery ?? "";
+        SearchBox.Text = _initialQuery ?? "";
+        ImportButton.IsEnabled = false;
+        NewSectionButton.IsEnabled = false;
+        FinishOutlineButton.IsEnabled = false;
+        PinLabel.Text = "Search, then click each corner";
+        Visibility = Visibility.Visible;
+        SetBrowserVisible(true);
+        Focus();
+        _ = StartOrRefreshMapAsync();
+    }
+
+    /// <summary>
+    /// WebView2 is a HWND host — it paints over WPF dialogs. Hide it while a modal is up.
+    /// </summary>
+    public void SetBrowserVisible(bool visible)
+    {
+        if (MapView is null) return;
+        MapView.Visibility = visible ? Visibility.Visible : Visibility.Hidden;
+    }
+
+    private async Task StartOrRefreshMapAsync()
+    {
+        if (!_webviewStarted)
+        {
+            await StartWebViewAsync().ConfigureAwait(true);
+            return;
+        }
+
+        if (MapView.CoreWebView2 is not null)
+        {
+            await MapView.CoreWebView2
+                .ExecuteScriptAsync("window.solarSimMap && solarSimMap.clearOutline();")
+                .ConfigureAwait(true);
+        }
+
+        await InvalidateMapSizeAsync().ConfigureAwait(true);
+        await ApplyInitialViewAsync().ConfigureAwait(true);
+        await MaybeShowTutorialAsync().ConfigureAwait(true);
+    }
+
+    private async Task StartWebViewAsync()
     {
         try
         {
@@ -66,6 +115,7 @@ public partial class SatelliteMapDialog : Window
                 .ConfigureAwait(true);
 
             await MapView.EnsureCoreWebView2Async(env).ConfigureAwait(true);
+            _webviewStarted = true;
             var core = MapView.CoreWebView2;
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
@@ -81,8 +131,8 @@ public partial class SatelliteMapDialog : Window
             var htmlDir = ResolveHtmlDirectory();
             if (htmlDir is null)
             {
-                StatusText.Text = "Map HTML missing.";
-                MessageBox.Show(this,
+                PinLabel.Text = "Map files missing.";
+                AppConfirmDialog.Alert(OwnerWindow,
                     "Could not find SiteMap/satellite-picker.html next to the app.",
                     "Trace roof",
                     MessageBoxButton.OK,
@@ -99,8 +149,8 @@ public partial class SatelliteMapDialog : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = "WebView2 failed to start.";
-            var go = MessageBox.Show(this,
+            PinLabel.Text = "WebView2 failed to start.";
+            var go = AppConfirmDialog.Alert(OwnerWindow,
                 "Microsoft Edge WebView2 Runtime is required for Trace roof on map.\n\n" +
                 "Install the Evergreen Runtime, then restart solarSim.\n\n" +
                 "Open the download page now?\n\n" +
@@ -182,9 +232,9 @@ public partial class SatelliteMapDialog : Window
         {
             case "ready":
                 _mapReady = true;
-                StatusText.Text = "Drag to pan · scroll to zoom · click corners";
                 await InvalidateMapSizeAsync().ConfigureAwait(true);
                 await ApplyInitialViewAsync().ConfigureAwait(true);
+                await MaybeShowTutorialAsync().ConfigureAwait(true);
                 break;
 
             case "outline":
@@ -192,8 +242,10 @@ public partial class SatelliteMapDialog : Window
                 break;
 
             case "view":
-                if (payload.TryGetProperty("mPerPx", out var mEl) && mEl.TryGetDouble(out var mPerPx))
-                    UpdateScaleStatus(mPerPx);
+                break;
+
+            case "tutorial-dismissed":
+                TraceTutorialStore.MarkSeen();
                 break;
 
             default:
@@ -257,12 +309,13 @@ public partial class SatelliteMapDialog : Window
             var totalArea = _rings.Sum(r => RoofTraceMetrics.Measure(r).AreaMeters2);
             if (_rings.Count == 1)
             {
+                var m = RoofTraceMetrics.Measure(_rings[0]);
                 PinLabel.Text = canFinish
-                    ? $"{activeCorners} corners open — keep clicking, or Finish / click first point to close"
-                    : RoofTraceMetrics.FormatHud(RoofTraceMetrics.Measure(_rings[0]), _rings[0].Count);
+                    ? $"{activeCorners} corners — click the first to close"
+                    : $"{_rings[0].Count} corners · {m.AreaMeters2:0.0} m²";
             }
             else
-                PinLabel.Text = $"{_rings.Count} sections · {totalArea:0.0} m² total — New section or Import";
+                PinLabel.Text = $"{_rings.Count} sections · {totalArea:0.0} m²";
         }
         else
         {
@@ -272,12 +325,14 @@ public partial class SatelliteMapDialog : Window
                 SelectedLongitude = _outline.Average(p => p.Lon);
             }
             PinLabel.Text = canFinish
-                ? $"{activeCorners} corners open — keep clicking sides, then Finish"
-                : RoofTraceMetrics.FormatHud(RoofTraceMetrics.Measure(_outline), _outline.Count);
+                ? $"{activeCorners} corners — click the first to close"
+                : activeCorners == 0
+                    ? "Search, then click each corner"
+                    : $"{activeCorners} corners";
         }
 
         if (payload.TryGetProperty("mPerPx", out var mEl) && mEl.TryGetDouble(out var mPerPx))
-            UpdateScaleStatus(mPerPx);
+            _ = mPerPx;
     }
 
     private static List<(double Lat, double Lon)> ParseCornerArray(JsonElement corners)
@@ -294,16 +349,21 @@ public partial class SatelliteMapDialog : Window
         return ring;
     }
 
-    private void UpdateScaleStatus(double mPerPx)
+    private async Task MaybeShowTutorialAsync()
     {
-        if (mPerPx <= 0 || double.IsNaN(mPerPx) || double.IsInfinity(mPerPx))
-            return;
+        if (TraceTutorialStore.HasSeen()) return;
+        if (MapView.CoreWebView2 is null) return;
+        await MapView.CoreWebView2
+            .ExecuteScriptAsync("window.solarSimMap && solarSimMap.showTutorial();")
+            .ConfigureAwait(true);
+    }
 
-        StatusText.Text = mPerPx < 0.5
-            ? $"~{mPerPx:0.00} m/px — good for corner clicks"
-            : mPerPx < 1.5
-                ? $"~{mPerPx:0.00} m/px — zoom in more for tighter measure"
-                : $"~{mPerPx:0.0} m/px — drag to pan · scroll to zoom";
+    private async void ReplayTutorial_Click(object sender, RoutedEventArgs e)
+    {
+        if (MapView.CoreWebView2 is null || !_mapReady) return;
+        await MapView.CoreWebView2
+            .ExecuteScriptAsync("window.solarSimMap && solarSimMap.showTutorial();")
+            .ConfigureAwait(true);
     }
 
     private async Task ApplyInitialViewAsync()
@@ -342,13 +402,13 @@ public partial class SatelliteMapDialog : Window
         if (string.IsNullOrWhiteSpace(query)
             || query.Equals("Unspecified", StringComparison.OrdinalIgnoreCase))
         {
-            StatusText.Text = "Enter an address or lat,lon.";
+            PinLabel.Text = "Enter an address or lat,lon.";
             return;
         }
 
         if (!_mapReady)
         {
-            StatusText.Text = "Map still loading…";
+            PinLabel.Text = "Map still loading…";
             return;
         }
 
@@ -364,7 +424,7 @@ public partial class SatelliteMapDialog : Window
             }
             else
             {
-                StatusText.Text = "Searching (OpenStreetMap)…";
+                PinLabel.Text = "Searching…";
                 var geo = new NominatimGeocoder();
                 (lat, lon, label) = await geo.GeocodeAsync(query).ConfigureAwait(true);
             }
@@ -373,12 +433,12 @@ public partial class SatelliteMapDialog : Window
             SelectedLongitude = lon;
             SelectedLabel = label;
             await FlyToAsync(lat, lon).ConfigureAwait(true);
-            PinLabel.Text = "Click roof corners on the satellite image.";
+            PinLabel.Text = "Click each corner.";
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Search failed.";
-            MessageBox.Show(this, ex.Message, "Trace roof", MessageBoxButton.OK, MessageBoxImage.Warning);
+            PinLabel.Text = "Search failed.";
+            AppConfirmDialog.Alert(OwnerWindow, ex.Message, "Trace roof", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -458,34 +518,12 @@ public partial class SatelliteMapDialog : Window
 
         if (rings.Count == 0)
         {
-            MessageBox.Show(this,
-                "Click every roof corner on the map (any number of sides — not just 4).\n"
-                + "Click the first point (green) or Finish outline when done.\n"
-                + "Drag orange handles to adjust. Use New section for L/T shapes.",
+            AppConfirmDialog.Tell(OwnerWindow!,
                 "Trace roof",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                "Nothing to import yet",
+                "Click each roof corner, then the first point to close.\nUse New section for extra wings.");
             return;
         }
-
-        var totalArea = rings.Sum(r => RoofTraceMetrics.Measure(r).AreaMeters2);
-        var sectionLines = string.Join("\n", rings.Select((r, i) =>
-        {
-            var m = RoofTraceMetrics.Measure(r);
-            var edges = string.Join(", ", m.EdgeLengthsMeters.Select(x => $"{x:0.00} m"));
-            return $"  Section {i + 1}: {r.Count} corners · {m.AreaMeters2:0.0} m² · {edges}";
-        }));
-
-        var confirm = MessageBox.Show(this,
-            $"Import traced roof?\n\n" +
-            $"{rings.Count} section(s) · {totalArea:0.0} m² total\n" +
-            $"{sectionLines}\n\n" +
-            "Scale uses GPS lat/lon (haversine / local tangent) — design aid, not a survey.",
-            "Trace roof",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.OK)
-            return;
 
         RoofRings = rings.Select(r => (IReadOnlyList<(double Lat, double Lon)>)r.ToList()).ToList();
         RoofOutline = rings[0].ToList();
@@ -495,15 +533,11 @@ public partial class SatelliteMapDialog : Window
         if (string.IsNullOrWhiteSpace(SelectedLabel))
             SelectedLabel = FormatLatLon(SelectedLatitude.Value, SelectedLongitude.Value);
 
-        DialogResult = true;
-        Close();
+        Imported?.Invoke(this, EventArgs.Empty);
     }
 
-    private void Cancel_Click(object sender, RoutedEventArgs e)
-    {
-        DialogResult = false;
-        Close();
-    }
+    private void Cancel_Click(object sender, RoutedEventArgs e) =>
+        Cancelled?.Invoke(this, EventArgs.Empty);
 
     private static string FormatLatLon(double lat, double lon) =>
         $"{lat.ToString("0.######", CultureInfo.InvariantCulture)}, "

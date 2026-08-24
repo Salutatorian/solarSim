@@ -12,6 +12,16 @@ Output:
 - `artifacts/publish/solarSim-<version>-win-x64/` — runnable folder (`solarSim.exe`)
 - `artifacts/publish/solarSim-<version>-win-x64.zip` — uploadable archive
 
+macOS (run on a Mac or in GitHub Actions `macos-latest`):
+
+```powershell
+./Tools/Publish-Mac.ps1              # Apple Silicon
+./Tools/Publish-Mac.ps1 -Runtime osx-x64
+```
+
+Output: `solarSim-<version>-osx-arm64.dmg` (Apple Silicon) and `solarSim-<version>-osx-x64.dmg` (Intel).
+Each disk image has `solarSim.app` plus an Applications shortcut — drag to install.
+
 ## GitHub Release
 
 Prefer **milestone releases** (~every 10 patches, or when something big ships) so the Releases page stays short. See [docs/RELEASE-MILESTONES.md](docs/RELEASE-MILESTONES.md). You can still bump the app version every patch; only push a `v*` tag when you want a public download page.
@@ -22,8 +32,8 @@ Prefer **milestone releases** (~every 10 patches, or when something big ships) s
 4. When publishing a milestone, create and push a version tag:
 
 ```powershell
-git tag v0.1.40
-git push origin v0.1.40
+git tag v1.5.0
+git push origin v1.5.0
 ```
 
 The **Release** workflow builds, tests, zips, and publishes a GitHub Release with the zip attached.
@@ -34,8 +44,9 @@ After the zip is up, edit the Release notes to summarize everything since the la
 
 ## Requirements for end users
 
-- Windows 10/11 x64
-- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (needed for **Trace roof on map**)
+- Windows 10/11 x64 (full WPF editor)
+- macOS 12+ preview: Apple Silicon or Intel **.dmg** (unsigned)
+- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (Windows **Trace roof on map** only)
 
 ## Known issues (public beta)
 
@@ -50,5 +61,6 @@ After the zip is up, edit the Release notes to summarize everything since the la
 
 ## Versioning
 
-- `0.1.x` — public beta Windows WPF lab
+- `1.5.x` — public beta (one-window Windows editor; macOS preview)
+- `0.1.x` — earlier public beta
 - Bump patch for fixes; minor when UX/features shift meaningfully

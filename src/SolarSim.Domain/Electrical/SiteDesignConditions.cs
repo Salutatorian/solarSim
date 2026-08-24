@@ -127,6 +127,17 @@ public static class SiteClimatePresets
         },
         new()
         {
+            Id = "saipan",
+            DisplayName = "Saipan, CNMI",
+            LatitudeDegrees = 15.18,
+            LongitudeDegrees = 145.75,
+            MinAmbientCelsius = 20,
+            HotCellCelsius = 75,
+            PeakSunHoursPerDay = 5.5,
+            SystemDerateFactor = 0.82,
+        },
+        new()
+        {
             Id = "phoenix",
             DisplayName = "Phoenix, AZ",
             LatitudeDegrees = 33.45,
