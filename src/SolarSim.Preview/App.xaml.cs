@@ -9,6 +9,14 @@ public partial class App : System.Windows.Application
 {
     private void App_Startup(object sender, StartupEventArgs e)
     {
+        if (WindowsAppInstall.TryHandleCommandLine(e.Args))
+        {
+            Shutdown();
+            return;
+        }
+
+        WindowsAppInstall.RegisterThisCopy();
+
         Window window;
         var file = e.Args.FirstOrDefault(a =>
             a.EndsWith(".solarproj", StringComparison.OrdinalIgnoreCase) && File.Exists(a));

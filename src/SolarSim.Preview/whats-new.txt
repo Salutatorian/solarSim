@@ -1,17 +1,12 @@
-solarSim 1.5.12
+solarSim 1.5.13
 Released: 2026-08-25
 
-Windows is one file
-• Download the .exe and double-click — no unzip
+Uninstall
+• After you run it once, remove it from Settings → Apps or Control Panel → Programs and Features
+• Project files (.solarproj) are not deleted
 
 Earlier
+• 1.5.12 — Windows is one .exe, no unzip
 • 1.5.11 — update reminder bottom-right
 • 1.5.1 — wrap suggestion arrays; updates on Home
 • 1.5.0 — one window for Home, map, and dialogs
-• 0.1.40 — suggestion rail, polarity cables, estimate on demand
-• 0.1.39 — jump in from kWh
-• 0.1.38 — module size presets on the estimate
-• 0.1.37 — US utilities directory
-• 0.1.36 — Quick System Estimate
-• 0.1.35 — per-roof pitch/azimuth + architecture docs
-• 0.1.34 — tip donations + Apache 2.0

@@ -10,10 +10,10 @@
     <AssemblyName>solarSim</AssemblyName>
     <ApplicationTitle>solarSim</ApplicationTitle>
     <Product>solarSim</Product>
-    <Version>1.5.12</Version>
-    <AssemblyVersion>1.5.12.0</AssemblyVersion>
-    <FileVersion>1.5.12.0</FileVersion>
-    <InformationalVersion>1.5.12</InformationalVersion>
+    <Version>1.5.13</Version>
+    <AssemblyVersion>1.5.13.0</AssemblyVersion>
+    <FileVersion>1.5.13.0</FileVersion>
+    <InformationalVersion>1.5.13</InformationalVersion>
     <Company>solarSim</Company>
     <Description>Visual solar design lab for Windows (design aid — not stamped approval). Local projects only. Apache-2.0 — see LICENSE.</Description>
     <ApplicationIcon>Assets\solarsim-logo.ico</ApplicationIcon>

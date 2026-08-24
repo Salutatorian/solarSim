@@ -6,6 +6,9 @@ Project history for review and submission.
 
 Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect all passing).
 
+### Programs and Features (`1.5.13`)
+- After you run the Windows exe once, solarSim appears in Settings → Apps and Control Panel → Programs and Features. Uninstall does not delete your `.solarproj` files.
+
 ### One-click Windows (`1.5.12`)
 - Windows download is a single `.exe` — no unzip
 

@@ -5,7 +5,8 @@ Patch tags still exist in git for history; only milestone pages stay on Releases
 
 | Milestone | Covers | Download |
 |-----------|--------|----------|
-| **v1.5.12** (latest) | 1.5.12 (Windows is a single .exe) | Current Windows exe + macOS preview |
+| **v1.5.13** (latest) | 1.5.13 (uninstall from Programs and Features) | Current Windows exe + macOS preview |
+| **v1.5.12** | 1.5.12 (Windows is a single .exe) | Historical |
 | **v1.5.11** | 1.5.11 (bottom-right update toast) | Historical |
 | **v1.5.1** | 1.5.1 (Home updates, wrapped array fill) | Historical |
 | **v1.5.0** | 0.1.35 → 1.5.0 (one-window editor, kWh start, estimate, map overlay) | Historical |
