@@ -16,16 +16,4 @@
 
 Not sure which Mac? Apple menu → **About This Mac**. Chip = Apple → Silicon. Processor = Intel → Intel.
 
-## What it does
-
-### Trace your roof
-
-![Trace roof on satellite map](docs/screenshots/01-trace-roof-on-map.png)
-
-### Place panels & strings
-
-![Roof plan with panels and strings](docs/screenshots/02-roof-panels-and-strings.png)
-
-### Design equipment
-
-![Equipment plan](docs/screenshots/03-equipment-electrical.png)
+![solarSim](docs/screenshots/demo.gif)
