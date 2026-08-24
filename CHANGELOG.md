@@ -6,6 +6,11 @@ Project history for review and submission.
 
 Current `.solarproj` schema: **10** · Domain tests: run `dotnet test` (expect all passing).
 
+### Update toast (`1.5.11`)
+- Update reminder sits bottom-right (Ignore / Update) — it no longer covers Save in the title bar
+- Settings only says an update is available; release-note markdown is gone
+- Checkbox lines up with its label
+
 ### Wrap + Home updates (`1.5.1`)
 - Suggestion **Lay on roof** wraps into extra rows when a single line would be too long (10 modules → 2×5 on a short roof)
 - Update check, install, and What’s new run on the Home screen — you do not need to open a project first

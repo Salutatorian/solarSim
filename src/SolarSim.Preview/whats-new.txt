@@ -1,11 +1,12 @@
-solarSim 1.5.1
+solarSim 1.5.11
 Released: 2026-08-25
 
-Home updates + array wrap
-• Check and install updates from the Home screen — no need to open a project
-• Suggestion Lay on roof wraps to extra rows when one line is too long (10 → 2×5)
+Updates
+• Reminder is bottom-right: Ignore or Update
+• Settings just says an update is available — click Update
 
 Earlier
+• 1.5.1 — wrap suggestion arrays; updates on Home
 • 1.5.0 — one window for Home, map, and dialogs
 • 0.1.40 — suggestion rail, polarity cables, estimate on demand
 • 0.1.39 — jump in from kWh

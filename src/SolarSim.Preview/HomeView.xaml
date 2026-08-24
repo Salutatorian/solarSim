@@ -72,7 +72,7 @@
         <Border Grid.Column="1" Background="{DynamicResource BgBrush}">
             <Grid Margin="28,0,28,20">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="40"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="Auto"/>
@@ -80,45 +80,18 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" MinHeight="40">
-                    <Border x:Name="HomeUpdateBanner" Visibility="Collapsed"
-                            HorizontalAlignment="Left" VerticalAlignment="Center"
-                            Background="{DynamicResource SurfaceBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                            CornerRadius="10" Padding="12,8" MaxWidth="460" Margin="0,6,88,6">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,12,0">
-                                <TextBlock x:Name="HomeUpdateTitle" FontWeight="SemiBold" FontSize="13"
-                                           Foreground="{DynamicResource TextBrush}" Text="Update available"/>
-                                <TextBlock x:Name="HomeUpdateBody" FontSize="12" TextWrapping="Wrap"
-                                           Foreground="#E4E4E7" Margin="0,2,0,0"
-                                           Text="A new version is ready. You do not need to open a project."/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Content="Cancel" Style="{StaticResource GhostButton}" Padding="10,5"
-                                        Click="HomeUpdateCancel_Click" Margin="0,0,6,0"/>
-                                <Button x:Name="HomeUpdateApply" Content="Update" Style="{StaticResource PrimaryButton}"
-                                        Padding="12,5" Click="HomeUpdateApply_Click"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
-                                Click="Minimize_Click" ToolTip="Minimize"
-                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                            <local:AppIcon Kind="Minimize" Width="12" Height="12"/>
-                        </Button>
-                        <Button Style="{StaticResource GhostButton}" Width="44" Height="32" Padding="0"
-                                Click="Close_Click" ToolTip="Close"
-                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                            <local:AppIcon Kind="Close" Width="12" Height="12"/>
-                        </Button>
-                    </StackPanel>
-                </Grid>
+                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Style="{StaticResource GhostButton}" Width="40" Height="32" Padding="0"
+                            Click="Minimize_Click" ToolTip="Minimize"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <local:AppIcon Kind="Minimize" Width="12" Height="12"/>
+                    </Button>
+                    <Button Style="{StaticResource GhostButton}" Width="44" Height="32" Padding="0"
+                            Click="Close_Click" ToolTip="Close"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <local:AppIcon Kind="Close" Width="12" Height="12"/>
+                    </Button>
+                </StackPanel>
 
                 <StackPanel Grid.Row="1">
                     <TextBlock Text="Start a file" FontFamily="{StaticResource DisplayFont}"

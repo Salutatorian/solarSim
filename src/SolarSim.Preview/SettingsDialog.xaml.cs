@@ -73,13 +73,9 @@ public partial class SettingsDialog : UserControl, IAppModal
         if (avail is null)
         {
             if (!string.IsNullOrEmpty(svc.DownloadError))
-                UpdateStatusText.Text = $"Update check: {svc.DownloadError}";
-            else if (!string.IsNullOrEmpty(svc.LastCheckedLatest))
-                UpdateStatusText.Text =
-                    $"You're on {_currentVersion}. Latest release is {svc.LastCheckedLatest} — up to date.";
+                UpdateStatusText.Text = svc.DownloadError;
             else
-                UpdateStatusText.Text = $"You're on {_currentVersion}. No update found.";
-            UpdateNotesPreview.Text = "";
+                UpdateStatusText.Text = $"You're on {_currentVersion}.";
             DownloadUpdateButton.Visibility = Visibility.Collapsed;
             CancelDownloadButton.Visibility = Visibility.Collapsed;
             UpdateProgressTrack.Visibility = Visibility.Collapsed;
@@ -88,44 +84,34 @@ public partial class SettingsDialog : UserControl, IAppModal
         else if (svc.IsDownloading || (svc.AutoApplyWhenReady && svc.DownloadComplete))
         {
             UpdateStatusText.Text = svc.IsDownloading
-                ? $"Downloading update {avail.Version}… installs automatically at 100%."
-                : $"Update {avail.Version} ready — installing and restarting…";
-            UpdateNotesPreview.Text = string.IsNullOrWhiteSpace(avail.Notes)
-                ? "(No release notes)"
-                : avail.Notes;
+                ? $"Downloading {avail.Version}…"
+                : $"Installing {avail.Version}…";
             DownloadUpdateButton.Visibility = Visibility.Collapsed;
             CancelDownloadButton.Visibility = Visibility.Visible;
-            CancelDownloadButton.Content = "Cancel";
+            CancelDownloadButton.Content = "Ignore";
             UpdateProgressTrack.Visibility = Visibility.Visible;
             var pct = (int)Math.Round(svc.DownloadProgress01 * 100);
-            // Fixed-width label so "9%" → "10%" doesn't shift the layout.
             UpdatePercentText.Text = svc.DownloadProgressIndeterminate
                 ? $"{pct,3}%…"
                 : $"{pct,3}%";
         }
         else if (svc.DownloadComplete)
         {
-            UpdateStatusText.Text = $"Update {avail.Version} downloaded — click Update to install and restart.";
-            UpdateNotesPreview.Text = string.IsNullOrWhiteSpace(avail.Notes)
-                ? "(No release notes)"
-                : avail.Notes;
+            UpdateStatusText.Text = $"Update {avail.Version} is ready.";
             DownloadUpdateButton.Visibility = Visibility.Visible;
             DownloadUpdateButton.Content = "Update";
             CancelDownloadButton.Visibility = Visibility.Visible;
-            CancelDownloadButton.Content = "Cancel";
-            UpdateProgressTrack.Visibility = Visibility.Visible;
-            UpdatePercentText.Text = "100%";
+            CancelDownloadButton.Content = "Ignore";
+            UpdateProgressTrack.Visibility = Visibility.Collapsed;
+            UpdatePercentText.Text = "";
         }
         else
         {
-            UpdateStatusText.Text = $"Update {avail.Version} available — click Update to download and install.";
-            UpdateNotesPreview.Text = string.IsNullOrWhiteSpace(avail.Notes)
-                ? "(No release notes)"
-                : avail.Notes;
+            UpdateStatusText.Text = $"Update {avail.Version} is available.";
             DownloadUpdateButton.Visibility = Visibility.Visible;
             DownloadUpdateButton.Content = "Update";
             CancelDownloadButton.Visibility = Visibility.Visible;
-            CancelDownloadButton.Content = "Cancel";
+            CancelDownloadButton.Content = "Ignore";
             UpdateProgressTrack.Visibility = Visibility.Collapsed;
             UpdatePercentText.Text = "";
         }

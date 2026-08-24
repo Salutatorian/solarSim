@@ -426,35 +426,26 @@ public partial class MainWindow : Window
             svc.RequestUserUpdate();
         }
 
-        var showToast = hasUpdate && !svc.UserDismissedToast && !HomeIsOpen;
-        BindHomeUpdateOffer(svc, hasUpdate);
+        var showToast = hasUpdate && !svc.UserDismissedToast && !MapIsOpen && !ModalIsOpen;
         if (UpdateToast is null) return;
 
         UpdateToast.Visibility = showToast ? Visibility.Visible : Visibility.Collapsed;
         if (!showToast || svc.Available is null) return;
 
         var ver = svc.Available.Version;
-        // Mini toast = static reminder only (no live %). Progress lives in Settings.
-        // Keep copy identical while downloading so the toast never reflows / vibrates.
         string title;
         string body;
         Visibility applyVis;
         if (svc.IsDownloading || svc.AutoApplyWhenReady)
         {
             title = $"Installing {ver}";
-            body = "Downloading and installing — progress is in Settings.";
+            body = "A new version is installing.";
             applyVis = Visibility.Collapsed;
-        }
-        else if (svc.DownloadComplete)
-        {
-            title = $"Update {ver} available";
-            body = "Click Update to install and restart. Cancel dismisses this notice.";
-            applyVis = Visibility.Visible;
         }
         else
         {
-            title = $"Update {ver} available";
-            body = "Click Update to download and install. Cancel dismisses this notice.";
+            title = $"Update {ver}";
+            body = "A new version is ready.";
             applyVis = Visibility.Visible;
         }
 
@@ -462,7 +453,7 @@ public partial class MainWindow : Window
             UpdateToastTitle.Text = title;
         if (UpdateToastBody.Text != body)
             UpdateToastBody.Text = body;
-        UpdateToastCancelButton.Content = "Cancel";
+        UpdateToastCancelButton.Content = "Ignore";
         UpdateToastCancelButton.Visibility = Visibility.Visible;
         if (UpdateToastApplyButton.Visibility != applyVis)
             UpdateToastApplyButton.Visibility = applyVis;
@@ -471,45 +462,6 @@ public partial class MainWindow : Window
             UpdateToastApplyButton.Content = "Update";
             UpdateToastApplyButton.IsEnabled = true;
         }
-    }
-
-    private void BindHomeUpdateOffer(AppUpdateService svc, bool hasUpdate)
-    {
-        if (HomeOverlay is null)
-            return;
-
-        if (!HomeIsOpen || !hasUpdate || svc.UserDismissedToast || svc.Available is null)
-        {
-            HomeOverlay.BindUpdateOffer(null, null, false, null, null);
-            return;
-        }
-
-        string body;
-        var canApply = true;
-        if (svc.IsDownloading || svc.AutoApplyWhenReady)
-        {
-            body = "Downloading and installing — you can wait here.";
-            canApply = false;
-        }
-        else if (svc.DownloadComplete)
-            body = "Install from Home — you do not need to open a project.";
-        else
-            body = "Download and install from Home — you do not need to open a project.";
-
-        HomeOverlay.BindUpdateOffer(
-            svc.Available.Version,
-            body,
-            canApply,
-            () =>
-            {
-                AppUpdateService.Instance.RequestUserUpdate();
-                RefreshUpdateUi();
-            },
-            () =>
-            {
-                AppUpdateService.Instance.DismissUpdateUi();
-                RefreshUpdateUi();
-            });
     }
 
     private void Settings_Click(object sender, RoutedEventArgs e)

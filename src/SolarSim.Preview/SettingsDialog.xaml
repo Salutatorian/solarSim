@@ -86,31 +86,29 @@
 
                     <TextBlock Text="Updates" Style="{StaticResource SectionLabel}" Margin="0,18,0,8"/>
                     <TextBlock x:Name="UpdateStatusText" Text="Checking…" Foreground="{DynamicResource TextBrush}"
-                               FontSize="12.5" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="UpdateNotesPreview" Margin="0,8,0,10" FontSize="12"
-                               Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" MaxHeight="100"
-                               TextTrimming="CharacterEllipsis"/>
+                               FontSize="13" TextWrapping="Wrap"/>
 
-                    <Grid x:Name="UpdateProgressTrack" Margin="0,4,0,8" Height="14" Visibility="Collapsed">
-                        <Border Background="{DynamicResource SegmentTrackBrush}" CornerRadius="7"/>
+                    <Grid x:Name="UpdateProgressTrack" Margin="0,10,0,6" Height="8" Visibility="Collapsed">
+                        <Border Background="{DynamicResource SegmentTrackBrush}" CornerRadius="4"/>
                         <Border x:Name="UpdateProgressFill" HorizontalAlignment="Left"
-                                Background="#2DD4BF" CornerRadius="7" Width="0"/>
+                                Background="#2DD4BF" CornerRadius="4" Width="0"/>
                     </Grid>
                     <TextBlock x:Name="UpdatePercentText" Text="" Foreground="{DynamicResource MutedBrush}"
                                FontSize="12" Margin="0,0,0,12" MinWidth="48"
                                FontFamily="Consolas, Courier New, monospace"/>
 
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                         <Button x:Name="CheckUpdateButton" Content="Check for updates" Style="{StaticResource ModernButtonBase}"
                                 Padding="12,7" Click="CheckUpdate_Click" Margin="0,0,8,0"/>
                         <Button x:Name="DownloadUpdateButton" Content="Update" Style="{StaticResource PrimaryButton}"
                                 Padding="12,7" Click="DownloadUpdate_Click" Margin="0,0,8,0" Visibility="Collapsed"/>
-                        <Button x:Name="CancelDownloadButton" Content="Cancel" Style="{StaticResource GhostButton}"
+                        <Button x:Name="CancelDownloadButton" Content="Ignore" Style="{StaticResource GhostButton}"
                                 Padding="10,7" Click="CancelDownload_Click" Visibility="Collapsed"/>
                     </StackPanel>
 
-                    <CheckBox x:Name="ApplyOnExitCheck" Content="If an update was downloaded earlier, also install it when I close the app"
-                              IsChecked="True" Margin="0,14,0,0" Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
+                    <CheckBox x:Name="ApplyOnExitCheck" Content="Install when I close the app"
+                              IsChecked="True" Margin="0,16,0,0" VerticalAlignment="Center"
+                              Foreground="{DynamicResource MutedBrush}" FontSize="13"/>
                 </StackPanel>
             </ScrollViewer>
         </DockPanel>

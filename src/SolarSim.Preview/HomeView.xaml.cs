@@ -11,8 +11,6 @@ namespace SolarSim.Preview;
 public partial class HomeView : UserControl
 {
     private string? _chosenPath;
-    private Action? _applyUpdate;
-    private Action? _dismissUpdate;
 
     public event Action<string>? ProjectChosen;
 
@@ -201,36 +199,6 @@ public partial class HomeView : UserControl
 
     private void Close_Click(object sender, RoutedEventArgs e) => OwnerWindow?.Close();
 
-    public void BindUpdateOffer(string? version, string? body, bool canApply, Action? apply, Action? dismiss)
-    {
-        _applyUpdate = apply;
-        _dismissUpdate = dismiss;
-        if (HomeUpdateBanner is null)
-            return;
-
-        if (string.IsNullOrWhiteSpace(version) || apply is null)
-        {
-            HomeUpdateBanner.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        HomeUpdateTitle.Text = $"Update {version} available";
-        HomeUpdateBody.Text = string.IsNullOrWhiteSpace(body)
-            ? "Install from here — you do not need to open a project."
-            : body;
-        if (HomeUpdateApply is not null)
-        {
-            HomeUpdateApply.IsEnabled = canApply;
-            HomeUpdateApply.Visibility = canApply ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        HomeUpdateBanner.Visibility = Visibility.Visible;
-    }
-
-    private void HomeUpdateApply_Click(object sender, RoutedEventArgs e) => _applyUpdate?.Invoke();
-
-    private void HomeUpdateCancel_Click(object sender, RoutedEventArgs e) => _dismissUpdate?.Invoke();
-
     private static string AppVersion()
     {
         var asm = typeof(HomeView).Assembly;
@@ -244,6 +212,6 @@ public partial class HomeView : UserControl
         }
 
         var v = asm.GetName().Version;
-        return v is null ? "1.5.1" : $"{v.Major}.{v.Minor}.{v.Build}";
+        return v is null ? "1.5.11" : $"{v.Major}.{v.Minor}.{v.Build}";
     }
 }

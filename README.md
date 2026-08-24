@@ -1,6 +1,6 @@
 # solarSim
 
-[![Download](https://img.shields.io/badge/Download-v1.5.1-4C9AFF?labelColor=333333)](https://github.com/Salutatorian/solarSim/releases/latest)
+[![Download](https://img.shields.io/badge/Download-v1.5.11-4C9AFF?labelColor=333333)](https://github.com/Salutatorian/solarSim/releases/latest)
 [![Platform](https://img.shields.io/badge/Windows-full_editor-0B1220?labelColor=333333)](https://github.com/Salutatorian/solarSim/releases/latest)
 [![macOS](https://img.shields.io/badge/macOS-preview-0B1220?labelColor=333333)](https://github.com/Salutatorian/solarSim/releases/latest)
 [![Privacy](https://img.shields.io/badge/Privacy-no_cloud_sync-22C55E?labelColor=333333)](https://github.com/Salutatorian/solarSim#what-it-does)

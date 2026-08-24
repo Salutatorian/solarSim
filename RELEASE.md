@@ -32,8 +32,8 @@ Prefer **milestone releases** (~every 10 patches, or when something big ships) s
 4. When publishing a milestone, create and push a version tag:
 
 ```powershell
-git tag v1.5.1
-git push origin v1.5.1
+git tag v1.5.11
+git push origin v1.5.11
 ```
 
 The **Release** workflow builds, tests, zips, and publishes a GitHub Release with the zip attached.
